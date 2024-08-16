@@ -10,3 +10,4 @@ Once they have found their location the user can select a
 designated marker (tide station) and download 1 year of high
 and low tide data of their desired location into their
 iCalendar, Google Calendar, or Outlook.
+# TideInCal
