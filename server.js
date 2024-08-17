@@ -54,10 +54,10 @@ app.listen(port, () => {
 });
 
 // Function to fetch tidal data and create ICS content
-const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
-  const year = new Date().getFullYear();
+constgetYearData = async (id, stationTitle, country, feet, userTimezone) => {
+  const year = newDate().getFullYear();
   const nextYr = year + 1;
-  const today = new Date();
+  const today = newDate();
   const month2d = String(today.getMonth() + 1).padStart(2, '0');
   const day2d = String(today.getDate()).padStart(2, '0');
   let events = [];
@@ -66,11 +66,13 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
     ? `https://api-iwls.dfo-mpo.gc.ca/api/v1/stations/${id}/data?time-series-code=wlp-hilo&from=${year}-${month2d}-${day2d}T00%3A00%3A00Z&to=${nextYr}-${month2d}-${day2d}T00%3A00%3A00Z`
     : `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${year}${month2d}${day2d}&end_date=${nextYr}${month2d}${day2d}&station=${id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=DataAPI_Sample&format=json`;
 
-  const response = await fetch(apiUrl);
+  const response = awaitfetch(apiUrl);
   const data = await response.json();
   const tideData = country === 'canada' ? data : data.predictions;
 
-  tideData.forEach((entry, i) => {
+  for (let i = 0; i < tideData.length; i++) {
+    const entry = tideData[i];
+
     const tide = country === 'canada'
       ? entry.value > (tideData[i + 1]?.value || entry.value) ? "High Tide" : "Low Tide"
       : entry.type === 'L' ? "Low Tide" : "High Tide";
@@ -79,36 +81,34 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
       ? `${country === 'canada' ? (entry.value * 3.2808399).toFixed(2) : entry.v}Ft`
       : `${country === 'canada' ? entry.value : (entry.v / 3.2808399).toFixed(2)}M`;
 
-    const startDate = new Date(country === 'canada' ? entry.eventDate : entry.t);
-    const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 minutes duration
+    const startDate = newDate(country === 'canada' ? entry.eventDate : entry.t);
+    const endDate = newDate(startDate.getTime() + 30 * 60 * 1000); // 30 minutes duration
 
+    // start file ICS event creation
     const eventContent = `BEGIN:VEVENT
-UID:tide-event-${i}
-DTSTAMP:${formatDateForICS(new Date())}
-DTSTART:${formatDateForICS(startDate, userTimezone)}
-DTEND:${formatDateForICS(endDate, userTimezone)}
-SUMMARY:${tide} @ ${tideHeight}
-DESCRIPTION:Tide at ${stationTitle}
-LOCATION:${stationTitle}
-STATUS:CONFIRMED
-END:VEVENT`;
+    UID:tide-event-${i}
+    DTSTAMP:${formatDateForICS(newDate())}
+    DTSTART:${formatDateForICS(startDate, userTimezone)}
+      DTEND:${formatDateForICS(endDate, userTimezone)}
+        SUMMARY:${tide} @ ${tideHeight}
+          DESCRIPTION:Tide at ${stationTitle}
+    LOCATION:${stationTitle}
+      STATUS:CONFIRMED
+    END:VEVENT`;
 
     events.push(eventContent);
-  });
+  }
 
   const icsContent = `BEGIN:VCALENDAR
-VERSION:2.0
-CALSCALE:GREGORIAN
-PRODID:-//My Company//My Product//EN
-METHOD:PUBLISH
-X-WR-CALNAME:${stationTitle} Tides
-X-WR-TIMEZONE:${userTimezone}
-${events.join('\n')}
-END:VCALENDAR`;
+    VERSION:2.0
+    CALSCALE:GREGORIAN
+    PRODID:-//My Company//My Product//EN
+      METHOD:PUBLISH
+    X-WR-CALNAME:${stationTitle} Tides
+    X-WR-TIMEZONE:${userTimezone}${events.join('\n')}
+    END:VCALENDAR`;
 
-  console.log('ICS Content:\n', icsContent); // Debug log
-
-  const calendarFileNm = `${stationTitle}_${year}_${nextYr}.ics`;
+  console.log('ICS Content:\n', icsContent); // Debug logconst calendarFileNm = `${stationTitle}_${year}_${nextYr}.ics`;
   const filePath = path.join(__dirname, 'tempICSFile', calendarFileNm);
   fs.writeFileSync(filePath, icsContent);
 
