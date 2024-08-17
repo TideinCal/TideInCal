@@ -55,9 +55,9 @@ app.listen(port, () => {
 
 // Function to fetch tidal data and create ICS content
 constgetYearData = async (id, stationTitle, country, feet, userTimezone) => {
-  const year = newDate().getFullYear();
+  const year = new Date().getFullYear();
   const nextYr = year + 1;
-  const today = newDate();
+  const today = new Date();
   const month2d = String(today.getMonth() + 1).padStart(2, '0');
   const day2d = String(today.getDate()).padStart(2, '0');
   let events = [];
