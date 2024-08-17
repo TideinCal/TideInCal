@@ -1,0 +1,173 @@
+/* My Style */
+body {
+  font-family: 'Open Sans', sans-serif;
+  background-color: #f0f0f0;
+  color: #424767;
+}
+#navBar, dark-bg{
+  background-color: #0d1b48;
+}
+
+.section-header {
+  height: 90vh;
+  background-color: #0d1b48;
+  color: #f0f0f0;
+  border-bottom-left-radius: 100% 20%;
+  border-bottom-right-radius: 100% 20%;
+  border-bottom: 9px solid #7DF9FF;
+}
+
+/* DL Section header*/
+.section-header-dl {
+  padding-top:5%;
+  height: 95vh;
+  background-color: #f0f0f0;
+  color: #0d1b48;
+  border-bottom-left-radius: 100% 20%;
+  border-bottom-right-radius: 100% 20%;
+  border-bottom: 9px solid #7DF9FF;
+}
+#logo.dlLogo{
+  margin-bottom: 0.5rem!important;
+
+}
+
+#title {
+  font-family: 'Kanit', sans-serif !important;
+}
+#mapBtn{
+  font-family: 'Kanit', sans-serif;
+}
+#mapRow{
+  position: relative;
+  top: -20vh;
+}
+#map {
+  height: 80vh;
+  border: 2px #f0f0f0 solid;
+  border-radius: 10px;
+}
+
+.card{
+  margin-top: 3% !important;
+}
+.card-img-top{
+  padding: 1em;
+}
+#nameDiv {
+  margin-top: 1rem;
+}
+.title{
+  text-align: center;
+  display:block;
+  width:80%;
+  margin:0 auto;
+}
+
+.imgIcon {
+  height: 156px;
+  width: 156px;
+  cursor: pointer;
+  position: relative;
+}
+#gDate {
+  position: relative;
+  top: -105px;
+  left: 13px;
+  font-size: 2.4em;
+
+  color: #4c8bf5;
+}
+#iMonth {
+  position: absolute;
+  top: 12%;
+  left: 8%;
+  width: 100%;
+  text-align: center;
+  font-size: 1.6em;
+  color: #fafafa;
+}
+#gMonth{
+  position: absolute;
+  top: 15%;
+  left: 8%;
+  width: 100%;
+  text-align: center;
+  font-size: 1.6em;
+  color: #fafafa;
+}
+
+#iDate {
+  position: relative;
+  top: -109px;
+  left: 13px;
+  font-size: 3.4em;
+}
+
+/***** Weather Widget *****/
+#weather{
+
+}
+.weather-card {
+  color: white;
+  border-radius: 10px;
+  background-color: #0d1b48;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+}
+.weather-card img {
+  margin-top: 0px !important;
+}
+
+.weather-card .card-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.weather-card .card-text {
+  font-size: 16px;
+  margin-bottom: 5px;
+}
+
+.weather-card img {
+  margin-top: 10px;
+}
+
+/** FOOTER **/
+
+#footer {
+  background-color: #0d1b48;
+  color: white;
+  font-weight: bold;
+}
+
+
+/*.form-horizontal{*/
+/*  display:block;*/
+/*  margin:0 auto;*/
+/*}*/
+
+/*!* Modal and Map *!*/
+/*.modal-body {*/
+/*  padding: 0rem;*/
+/*}*/
+
+/*#map { */
+/*  position:absolute; top:0; bottom:0; width:100%; }*/
+/*@media only screen and (min-width: 360px) {*/
+/*  .title {*/
+/*    width: 93%;*/
+/*  }*/
+/*}*/
+/*@media only screen and (min-width: 800px) {*/
+/*  label {*/
+/*  }*/
+/*  input {*/
+/*    height: 3rem;*/
+/*  }*/
+/*  #openModal{*/
+/*    font-size: 1.5rem;*/
+/*  }*/
+/*}*/

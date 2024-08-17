@@ -1,0 +1,22 @@
+{
+  "name": "calendarwaves",
+  "description": "",
+  "main": "index.html",
+  "authors": [
+    "Joe Nelo"
+  ],
+  "license": "ISC",
+  "keywords": [
+    "tide",
+    "calendar",
+    "ocean"
+  ],
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
