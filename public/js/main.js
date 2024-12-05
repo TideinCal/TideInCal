@@ -3,6 +3,7 @@ const dfo_url = "https://api-iwls.dfo-mpo.gc.ca/api/v1/stations";
 const noaa_2 = "https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/tidepredstations.json";
 
 
+
 let year = new Date().getFullYear();
 let months = new Date();
 let month = months.toLocaleString('en-US', { month: 'short' }).toUpperCase();
@@ -76,6 +77,10 @@ const getTides = async () => {
   }
 
   document.getElementById('mapBtn').addEventListener("click", findUserLocation);
+
+
+  // write a function can calls the server to get the tide station locations for the map
+
   const responseCA = await fetch(dfo_url);
   const responseUS = await fetch(noaa_2);
 
@@ -153,23 +158,6 @@ console.log(datatStationsNOAA);
 
 }
 getTides();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 //UK and AUS Urls
