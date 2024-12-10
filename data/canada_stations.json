@@ -1,0 +1,494 @@
+[
+  {
+    "id": "5cebf1df3d0f4a073c4bbbac",
+    "name": "Trois-Rivières",
+    "lat": 46.3405,
+    "lon": -72.539167
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbbe2",
+    "name": "Chicoutimi",
+    "lat": 48.43083333,
+    "lon": -71.05483333
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bbaaa",
+    "name": "Saint-Joseph-de-la-Rive",
+    "lat": 47.448833,
+    "lon": -70.3655
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bba3e",
+    "name": "Daajing Giids",
+    "lat": 53.252,
+    "lon": -132.072
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc43b",
+    "name": "Sandy Cove",
+    "lat": 49.3405,
+    "lon": -123.2319
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbb76",
+    "name": "Deschaillons-sur-Saint-Laurent",
+    "lat": 46.561033,
+    "lon": -72.106222
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc123",
+    "name": "North Sydney",
+    "lat": 46.2088,
+    "lon": -60.2452
+  },
+  {
+    "id": "5cebf1e33d0f4a073c4bc302",
+    "name": "Harrington Harbour",
+    "lat": 50.496333,
+    "lon": -59.476
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbd1e",
+    "name": "Victoria Harbour",
+    "lat": 48.424666,
+    "lon": -123.3707
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc434",
+    "name": "Calamity Point",
+    "lat": 49.31257,
+    "lon": -123.127678
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc06f",
+    "name": "Port Alberni",
+    "lat": 49.233,
+    "lon": -124.814
+  },
+  {
+    "id": "5cebf1e33d0f4a073c4bc285",
+    "name": "Cap-aux-Meules",
+    "lat": 47.378861,
+    "lon": -61.857283
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc062",
+    "name": "Bamfield",
+    "lat": 48.836,
+    "lon": -125.136
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bbae6",
+    "name": "Saint-Laurent I.O.",
+    "lat": 46.85816667,
+    "lon": -71.00333333
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc45a",
+    "name": "Ambleside",
+    "lat": 49.326,
+    "lon": -123.155
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb94a",
+    "name": "Port Moody",
+    "lat": 49.288,
+    "lon": -122.866
+  },
+  {
+    "id": "5cebf1e03d0f4a073c4bbea6",
+    "name": "Port Hawkesbury",
+    "lat": 45.614312,
+    "lon": -61.365944
+  },
+  {
+    "id": "5cebf1e33d0f4a073c4bc165",
+    "name": "Argentia",
+    "lat": 47.289964,
+    "lon": -53.992219
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbb91",
+    "name": "Batiscan",
+    "lat": 46.500333,
+    "lon": -72.245833
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc469",
+    "name": "Prince Rupert RoRo",
+    "lat": 54.234885,
+    "lon": -130.335097
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bbb11",
+    "name": "Lauzon",
+    "lat": 46.8325,
+    "lon": -71.157833
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb94c",
+    "name": "Point Atkinson",
+    "lat": 49.337,
+    "lon": -123.253
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc02e",
+    "name": "Henslung Cove",
+    "lat": 54.191,
+    "lon": -133.002
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbb38",
+    "name": "Neuville",
+    "lat": 46.6965,
+    "lon": -71.572833
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbf06",
+    "name": "Île d'Entrée",
+    "lat": 47.277444,
+    "lon": -61.718639
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc0f6",
+    "name": "Vieux-Québec",
+    "lat": 46.811111,
+    "lon": -71.20175
+  },
+  {
+    "id": "5cebf1e03d0f4a073c4bbd92",
+    "name": "Rimouski",
+    "lat": 48.478333,
+    "lon": -68.513667
+  },
+  {
+    "id": "5cebf1e33d0f4a073c4bc28f",
+    "name": "Lower Escuminac",
+    "lat": 47.0822,
+    "lon": -64.88554
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc060",
+    "name": "Port Renfrew",
+    "lat": 48.555,
+    "lon": -124.421
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbc8d",
+    "name": "Yarmouth",
+    "lat": 43.831898,
+    "lon": -66.124469
+  },
+  {
+    "id": "5cebf1e33d0f4a073c4bc176",
+    "name": "St. Johns",
+    "lat": 47.5691135,
+    "lon": -52.700762
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbb56",
+    "name": "Portneuf",
+    "lat": 46.681167,
+    "lon": -71.877167
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bba16",
+    "name": "Stewart",
+    "lat": 55.9166,
+    "lon": -130.01
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbd26",
+    "name": "Sidney",
+    "lat": 48.649216,
+    "lon": -123.3929
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbce7",
+    "name": "Tuktoyaktuk",
+    "lat": 69.438226,
+    "lon": -132.994402
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc0c2",
+    "name": "Bella Bella",
+    "lat": 52.163,
+    "lon": -128.143
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bba06",
+    "name": "Prince Rupert",
+    "lat": 54.317,
+    "lon": -130.324
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbb95",
+    "name": "Champlain",
+    "lat": 46.440167,
+    "lon": -72.339667
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbb5f",
+    "name": "Grondines",
+    "lat": 46.585333,
+    "lon": -72.038833
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc368",
+    "name": "Pointe-au-Père",
+    "lat": 48.519167,
+    "lon": -68.473167
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc34d",
+    "name": "Baie-Comeau",
+    "lat": 49.231333,
+    "lon": -68.131001
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc4c3",
+    "name": "Rivière-au-Renard",
+    "lat": 48.997,
+    "lon": -64.3805
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb91e",
+    "name": "Hartley Bay",
+    "lat": 53.424213,
+    "lon": -129.251877
+  },
+  {
+    "id": "5cebf1e33d0f4a073c4bc189",
+    "name": "Bonavista",
+    "lat": 48.6506,
+    "lon": -53.1157
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bbad5",
+    "name": "Saint-François I.O.",
+    "lat": 46.9965,
+    "lon": -70.808167
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbbe7",
+    "name": "Alert",
+    "lat": 82.494152,
+    "lon": -62.3096
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbbc6",
+    "name": "Port-Alfred",
+    "lat": 48.3339,
+    "lon": -70.869267
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc40e",
+    "name": "Darrell Bay",
+    "lat": 49.669,
+    "lon": -123.169
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc347",
+    "name": "Sept-Îles",
+    "lat": 50.19483333,
+    "lon": -66.37683333
+  },
+  {
+    "id": "5cebf1e33d0f4a073c4bc138",
+    "name": "Port aux Basques",
+    "lat": 47.580133,
+    "lon": -59.139111
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbd2d",
+    "name": "Patricia Bay",
+    "lat": 48.6536,
+    "lon": -123.4515
+  },
+  {
+    "id": "5cebf1dd3d0f4a073c4bb8fd",
+    "name": "Churchill",
+    "lat": 58.773429,
+    "lon": -94.1919
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb9c7",
+    "name": "Port Hardy",
+    "lat": 50.722,
+    "lon": -127.489
+  },
+  {
+    "id": "5cebf1e33d0f4a073c4bc21f",
+    "name": "Charlottetown",
+    "lat": 46.232256,
+    "lon": -63.117258
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbbaf",
+    "name": "Tadoussac",
+    "lat": 48.138333,
+    "lon": -69.714
+  },
+  {
+    "id": "5cebf1e33d0f4a073c4bc2b1",
+    "name": "Bathurst Harbour",
+    "lat": 47.616667,
+    "lon": -65.65
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bbfc7",
+    "name": "Ulukhaktok",
+    "lat": 70.736528,
+    "lon": -117.756278
+  },
+  {
+    "id": "5cebf1e03d0f4a073c4bbda9",
+    "name": "Bécancour",
+    "lat": 46.400333,
+    "lon": -72.3795
+  },
+  {
+    "id": "5cebf1e33d0f4a073c4bc1e7",
+    "name": "Nain",
+    "lat": 56.54344,
+    "lon": -61.686524
+  },
+  {
+    "id": "5cebf1e33d0f4a073c4bc2b8",
+    "name": "Belledune",
+    "lat": 47.910665,
+    "lon": -65.845518
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb943",
+    "name": "Vancouver",
+    "lat": 49.2863,
+    "lon": -123.0997
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbc48",
+    "name": "West Advocate",
+    "lat": 45.35,
+    "lon": -64.816667
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc35a",
+    "name": "Sainte-Anne-des-Monts",
+    "lat": 49.134,
+    "lon": -66.485833
+  },
+  {
+    "id": "5cebf1e03d0f4a073c4bbd69",
+    "name": "Long Sault Dam",
+    "lat": 44.998333,
+    "lon": -74.861667
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc427",
+    "name": "Baie-Sainte-Catherine",
+    "lat": 48.126333,
+    "lon": -69.72975
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bba2d",
+    "name": "Rose Harbour",
+    "lat": 52.1552,
+    "lon": -131.0909
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc07c",
+    "name": "Tofino",
+    "lat": 49.154,
+    "lon": -125.913
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbf93",
+    "name": "New Westminster",
+    "lat": 49.2,
+    "lon": -122.91
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbc24",
+    "name": "Saint John",
+    "lat": 45.254629,
+    "lon": -66.059804
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb925",
+    "name": "Kitimat",
+    "lat": 53.989,
+    "lon": -128.696
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc441",
+    "name": "Bonilla Island",
+    "lat": 53.493806,
+    "lon": -130.636972
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bbfac",
+    "name": "Bedford Institute",
+    "lat": 44.682262,
+    "lon": -63.613239
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc404",
+    "name": "Kitsilano",
+    "lat": 49.2767,
+    "lon": -123.13925
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb93c",
+    "name": "Sand Heads",
+    "lat": 49.1052,
+    "lon": -123.3042
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb96d",
+    "name": "Nanaimo Harbour",
+    "lat": 49.1628,
+    "lon": -123.9235
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb996",
+    "name": "Campbell River",
+    "lat": 50.042,
+    "lon": -125.247
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbf8c",
+    "name": "Steveston",
+    "lat": 49.1245,
+    "lon": -123.1922
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc097",
+    "name": "Winter Harbour",
+    "lat": 50.513,
+    "lon": -128.029
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbeb9",
+    "name": "St. Lawrence",
+    "lat": 46.916789,
+    "lon": -55.39005
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbbf3",
+    "name": "Qikiqtarjuaq",
+    "lat": 67.56052,
+    "lon": -64.031752
+  },
+  {
+    "id": "64b6e5ec8027cb190816a0c0",
+    "name": "Pointe-du-Chêne",
+    "lat": 46.240612,
+    "lon": -64.529992
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bbafd",
+    "name": "Saint-Jean-Port-Joli",
+    "lat": 47.216167,
+    "lon": -70.274667
+  }
+]
