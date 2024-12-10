@@ -1,6 +1,8 @@
 const fs = require('fs');
 const fetch = require('node-fetch');
 
+
+// Run "node validateStations.js" in terminal to create Canada and USA JSON FILES OF STATIONS
 // URLs for tide station data
 const urls = {
   canada: 'https://api-iwls.dfo-mpo.gc.ca/api/v1/stations',
