@@ -25,7 +25,7 @@ const myIcon = L.icon({
 // Declare the map variable at a global scope so it’s accessible throughout the file
 let map;
 
-// Dynamically load the popup once a tide icon is selected
+// Dynamically load the popup once a tide icon is selected (bootstrap Card)
 const renderModalContent = (title, id, region, lat, lon, type) => {
   localStorage.setItem('region', region);
   localStorage.setItem('stationTitle', title);
