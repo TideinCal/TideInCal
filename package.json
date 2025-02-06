@@ -4,6 +4,7 @@
   "keywords": [],
   "license": "ISC",
   "author": "Joe Nelo",
+  "type": "module",
   "scripts": {
     "build": "build home.html",
     "dev": "home.html --open",
@@ -21,7 +22,8 @@
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
     "node-cron": "^3.0.3",
-    "node-fetch": "^2.7.0"
+    "node-fetch": "^2.7.0",
+    "p-limit": "^6.2.0"
   },
   "description": "Getting High and Low Tides into your Calendar"
 }

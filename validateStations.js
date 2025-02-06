@@ -1,56 +1,95 @@
-const fs = require('fs');
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
+import fs from 'fs';
+import pLimit from 'p-limit';
 
-
-// Run "node validateStations.js" in terminal to create Canada and USA JSON FILES OF STATIONS
-// URLs for tide station data
-const urls = {
+const apiUrls = {
   canada: 'https://api-iwls.dfo-mpo.gc.ca/api/v1/stations',
-  usa: 'https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/tidepredstations.json',
 };
 
-// Function to fetch and validate tide stations
-const validateStations = async () => {
-  for (const [region, url] of Object.entries(urls)) {
-    try {
-      console.log(`Fetching data for ${region}...`);
-      const response = await fetch(url);
-      const data = await response.json();
+const outputFile = './data/validated_stations.json';
+const limit = pLimit(5); // Adjust concurrency as needed
+const maxRetries = 3;
 
-      let validatedStations = [];
-
-      if (region === 'canada') {
-        // Filter Canadian stations with valid data
-        validatedStations = data
-          .filter(
-            (station) =>
-              station.type === 'PERMANENT' &&
-              station.timeSeries.some((ts) => ts.code === 'wlp-hilo')
-          )
-          .map((station) => ({
-            id: station.id,
-            name: station.officialName,
-            lat: station.latitude,
-            lon: station.longitude,
-          }));
-      } else if (region === 'usa') {
-        // Map NOAA stations
-        validatedStations = data.stationList.map((station) => ({
-          id: station.stationId,
-          name: station.name,
-          lat: station.lat,
-          lon: station.lon,
-        }));
-      }
-
-      // Save validated data to JSON file
-      const filePath = `./data/${region}_stations.json`;
-      fs.writeFileSync(filePath, JSON.stringify(validatedStations, null, 2));
-      console.log(`${region} stations saved to ${filePath}`);
-    } catch (error) {
-      console.error(`Failed to process ${region}:`, error);
+async function fetchMetadata(region) {
+  try {
+    console.log(`Fetching metadata for ${region}...`);
+    const response = await fetch(apiUrls[region]);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch metadata: ${response.statusText}`);
     }
+    const data = await response.json();
+    return data.map((station) => ({
+      id: station.id,
+      name: station.officialName || 'Unnamed Station',
+      lat: station.latitude,
+      lon: station.longitude,
+    }));
+  } catch (error) {
+    console.error(`Error fetching metadata for ${region}:`, error.message);
+    return [];
   }
-};
+}
 
-validateStations();
+async function fetchOneYearData(station, attempt = 1) {
+  const year = new Date().getFullYear();
+  const nextYr = year + 1;
+  const today = new Date();
+  const month2d = String(today.getMonth() + 1).padStart(2, '0');
+  const day2d = String(today.getDate()).padStart(2, '0');
+
+  const url = `https://api-iwls.dfo-mpo.gc.ca/api/v1/stations/${station.id}/data?time-series-code=wlp-hilo&from=${year}-${month2d}-${day2d}T00%3A00%3A00Z&to=${nextYr}-${month2d}-${day2d}T00%3A00%3A00Z`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.log(`Station ${station.name} (ID: ${station.id}) does not return data.`);
+        return false;
+      }
+      if (response.status === 429 && attempt < maxRetries) {
+        console.log(`Rate limit reached. Retrying station ${station.name} in 2 seconds...`);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        return await fetchOneYearData(station, attempt + 1);
+      }
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const data = await response.json();
+    return Array.isArray(data) && data.length > 0;
+  } catch (error) {
+    console.error(
+      `Failed to fetch data for station ${station.name} (ID: ${station.id}): ${error.message}`
+    );
+    return false;
+  }
+}
+
+async function validateStations(region) {
+  const metadata = await fetchMetadata(region);
+  const validatedStations = [];
+  const failedStations = [];
+
+  await Promise.all(
+    metadata.map((station) =>
+      limit(async () => {
+        console.log(`Validating station: ${station.name} (${station.id})`);
+        const isValid = await fetchOneYearData(station);
+        if (isValid) {
+          validatedStations.push(station);
+        } else {
+          failedStations.push(station);
+        }
+      })
+    )
+  );
+
+  console.log(`Validation complete. Valid stations: ${validatedStations.length}`);
+  console.log(`Failed stations: ${failedStations.length}`);
+  fs.writeFileSync(outputFile, JSON.stringify(validatedStations, null, 2));
+  console.log(`Validated stations saved to ${outputFile}`);
+}
+
+async function main() {
+  await validateStations('canada');
+}
+
+main();
