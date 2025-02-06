@@ -1,6 +1,6 @@
 import fetch from 'node-fetch';
 import fs from 'fs';
-import pLimit from 'p-limit';
+import pLimit from 'p-limit'; // added for rate limiting
 
 const apiUrls = {
   canada: 'https://api-iwls.dfo-mpo.gc.ca/api/v1/stations',
