@@ -1,5 +1,5 @@
 import fetch from 'node-fetch';
-import fs from 'fs';
+import fs from 'fs'; //fileSaver
 import pLimit from 'p-limit'; // added for rate limiting
 
 const apiUrls = {

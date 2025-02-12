@@ -1,9 +1,21 @@
-require('dotenv').config();
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const fetch = require('node-fetch');
-const cron = require('node-cron');
+import 'dotenv/config.js'
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import fetch from 'node-fetch';
+import cron from 'node-cron';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+
+// const express = require('express');
+// const fs = require('fs');
+// const path = require('path');
+// const fetch = require('node-fetch');
+// const cron = require('node-cron');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -32,14 +44,14 @@ app.get('/api/tide-regions', (req, res) => {
 // Route to fetch tide stations for a specific region
 app.get('/api/tide-stations', (req, res) => {
   const region = req.query.region;
-  const filePath = `./data/${region}_stations.json`;
+  const filePath = path.join(__dirname, 'data', `${region}_stations.json`);
 
   if (!availableRegions.includes(region)) {
     return res.status(400).json({ error: `Region "${region}" is not supported` });
   }
 
   if (fs.existsSync(filePath)) {
-    const tideStations = require(filePath);
+    const tideStations = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     res.json(tideStations);
   } else {
     res.status(404).json({ error: `Tide station data for "${region}" is not available` });
@@ -62,7 +74,7 @@ app.post('/startDataFetch', async (req, res) => {
   }
 });
 
-// Cleanup old ICS files daily
+// Cleanup old ICS files daily ( WILL NEED TO CHANGE THIS)
 cron.schedule('0 0 * * *', () => {
   const dir = './tempICSFile';
   const files = fs.readdirSync(dir);
@@ -126,29 +138,30 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
     const startDate = new Date(country === 'canada' ? entry.eventDate : entry.t);
     const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 minutes duration
 
+    // Create ICS File
     const eventContent = `BEGIN:VEVENT
-UID:tide-event-${i}
-DTSTAMP:${formatDateForICS(new Date())}
-DTSTART:${formatDateForICS(startDate, userTimezone)}
-DTEND:${formatDateForICS(endDate, userTimezone)}
-SUMMARY:${tide} @ ${tideHeight}
-DESCRIPTION:Tide at ${stationTitle}
-LOCATION:${stationTitle}
-STATUS:CONFIRMED
-END:VEVENT`;
+      UID:tide-event-${i}
+      DTSTAMP:${formatDateForICS(new Date())}
+      DTSTART:${formatDateForICS(startDate, userTimezone)}
+      DTEND:${formatDateForICS(endDate, userTimezone)}
+      SUMMARY:${tide} @ ${tideHeight}
+      DESCRIPTION:Tide at ${stationTitle}
+      LOCATION:${stationTitle}
+      STATUS:CONFIRMED
+      END:VEVENT`;
 
-    events.push(eventContent);
+      events.push(eventContent);
   });
 
   const icsContent = `BEGIN:VCALENDAR
-VERSION:2.0
-CALSCALE:GREGORIAN
-PRODID:-//My Company//My Product//EN
-METHOD:PUBLISH
-X-WR-CALNAME:${stationTitle} Tides
-X-WR-TIMEZONE:${userTimezone}
-${events.join('\n')}
-END:VCALENDAR`;
+      VERSION:2.0
+      CALSCALE:GREGORIAN
+      PRODID:-//My Company//My Product//EN
+      METHOD:PUBLISH
+      X-WR-CALNAME:${stationTitle} Tides
+      X-WR-TIMEZONE:${userTimezone}
+      ${events.join('\n')}
+    END:VCALENDAR`;
 
   const calendarFileNm = `${stationTitle}_${year}_${nextYr}.ics`;
   const filePath = path.join(__dirname, 'tempICSFile', calendarFileNm);
