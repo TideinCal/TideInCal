@@ -8,11 +8,19 @@ const month2d = String(today.getMonth() + 1).padStart(2, '0');
 const day2d = String(today.getDate()).padStart(2, '0');
 
 // const queryFilter = `?time-series-code=wlp-hilo&from=${year}-${month2d}-${day2d}T00%3A00%3A00Z&to=${nextYr}-${month2d}-${day2d}T00%3A00%3A00Z`;
-const apiFilters = {
+const queryFilters = {
   canada: `?time-series-code=wlp-hilo&from=${year}-${month2d}-${day2d}T00%3A00%3A00Z&to=${nextYr}-${month2d}-${day2d}T00%3A00%3A00Z`,
+  usa: `&begin_date=${year}${month2d}${day2d}&end_date=${nextYr}${month2d}${day2d}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=DataAPI_Sample&format=json`
 }
+const metadataFilters = {
+  canada: queryFilters[`canada`],
+  usa: `/mdapi/prod/webapi/stations.json?type=tidepredictions&units=english`
+}
+
 const apiUrls = {
   canada: `https://api-iwls.dfo-mpo.gc.ca/api/v1/stations`,
+  usa: `https://api.tidesandcurrents.noaa.gov`
+  // usa: `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${year}${month2d}${day2d}&end_date=${nextYr}${month2d}${day2d}&station=${id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=DataAPI_Sample&format=json`
 };
 
 const outputFile = './data/validated_stations.json';
@@ -27,16 +35,16 @@ const maxRetries = 3;
 function fetchMetadata(region) {
   try {
     console.log(`Fetching metadata for ${region}...`);
-    const response = fetch(apiUrls[region] + apiFilters[region]);
+    const response = fetch(apiUrls[region] + metadataFilters[region]);
     if (!response.ok) {
       throw new Error(`Failed to fetch metadata: ${response.statusText}`);
     }
-    const data = response.json();
+    const data = (region == 'usa'? response.json().stations : response.json());
     return data.map((station) => ({
       id: station.id,
-      name: station.officialName || 'Unnamed Station',
-      lat: station.latitude,
-      lon: station.longitude,
+      name: station.officialName || station.name || 'Unnamed Station',
+      lat: station.latitude || station.lat,
+      lon: station.longitude || station.lng,
     }));
   } catch (error) {
     console.error(`Error fetching metadata for ${region}:`, error.message);
@@ -48,10 +56,13 @@ function sleep(ms){
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function fetchOneYearData(station, attempt = 1) {
+function fetchOneYearData(station, region, attempt = 1) {
+  const stationFilters = {
+    canada: `/${station.id}/data`,
+    usa: `/api/prod/datagetter?station=${station.id}`
 
-  const url = `https://api-iwls.dfo-mpo.gc.ca/api/v1/stations/${station.id}/data${apiFilters['canada']}`;
-  
+  }
+  const url = `${apiUrls[region]}${stationFilters[region]}${queryFilters[region]}`;
   try {
     const response = fetch(url);
     if (!response.ok) {
@@ -77,20 +88,23 @@ function fetchOneYearData(station, attempt = 1) {
   }
 }
 
-async function validateStations(region) {
-  const metadata = fetchMetadata(region);
+async function validateStations() {
   const validatedStations = [];
   const failedStations = [];
-  console.log(metadata.length);
-  for (const station of metadata){
-    // console.log(`Validating station: ${station.name} (${station.id})`);
-    const isValid = fetchOneYearData(station);
-    if (isValid) {
-      validatedStations.push(station);
-    } else {
-      failedStations.push(station);
+
+  for (const region of ['usa', 'canada']){
+    const metadata = fetchMetadata(region);
+    console.log(`Unverified number of stations for region ${region}: ${metadata.length}`);
+    for (const station of metadata){
+      // console.log(`Validating station: ${region} ${station.name} (${station.id})`);
+      const isValid = fetchOneYearData(station, region);
+      if (isValid) {
+        validatedStations.push(station);
+      } else {
+        failedStations.push(station);
+      }
+      if (region == 'canada') await sleep(500);
     }
-    await sleep(500);
   }
 
   console.log(`Validation complete. Valid stations: ${validatedStations.length}`);
@@ -101,8 +115,15 @@ async function validateStations(region) {
   console.log(`Failed stations saved to ${outputFileFailed}`);
 }
 
+function testUSApi(region){
+  const response = fetch(`${apiUrls[region]}${metadataFilters[region]}`);
+  const data = response.json(); //data is object with keys "count", "units", "stations", "self"
+  console.log(`us stations count raw: ${data.count}`);
+  console.log(data.stations[0]);
+}
+
 function main() {
-  validateStations('canada');
+  validateStations();
 }
 
 main();
