@@ -1,0 +1,242 @@
+[
+  {
+    "id": "5cebf1dd3d0f4a073c4bb8c9",
+    "name": "Diana Bay",
+    "lat": 60.866667,
+    "lon": -70.066667
+  },
+  {
+    "id": "5cebf1dd3d0f4a073c4bb8e3",
+    "name": "Flaherty Island",
+    "lat": 55.9,
+    "lon": -79.616667
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc02e",
+    "name": "Henslung Cove",
+    "lat": 54.191,
+    "lon": -133.002
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bba93",
+    "name": "Saint-Irénée",
+    "lat": 47.558833,
+    "lon": -70.201833
+  },
+  {
+    "id": "5cebf1e03d0f4a073c4bbe95",
+    "name": "Indian Harbour",
+    "lat": 44.516667,
+    "lon": -63.95
+  },
+  {
+    "id": "5dd5a57fff231600015c1993",
+    "name": "Maccan",
+    "lat": 45.724667,
+    "lon": -64.259833
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbf77",
+    "name": "Cape Liverpool",
+    "lat": 73.65,
+    "lon": -78.05
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bbfb4",
+    "name": "Truro",
+    "lat": 45.366667,
+    "lon": -63.316667
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb9db",
+    "name": "Quadyuk Island",
+    "lat": 66.91575,
+    "lon": -107.8125
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bba1a",
+    "name": "Houston Stewart Channel West",
+    "lat": 52.083333,
+    "lon": -131.116667
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb9f1",
+    "name": "Reversing Falls",
+    "lat": 45.2617,
+    "lon": -66.0883
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbf7f",
+    "name": "Entrance Island",
+    "lat": 69.9,
+    "lon": -85.6
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbcfd",
+    "name": "Kleybolte Peninsula",
+    "lat": 81.55,
+    "lon": -91.55
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb9d9",
+    "name": "Roberts Bay",
+    "lat": 68.21155,
+    "lon": -106.6775
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb956",
+    "name": "Boom Islet",
+    "lat": 49.745223,
+    "lon": -123.903803
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bba7f",
+    "name": "Port Leopold",
+    "lat": 73.833333,
+    "lon": -90.333333
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc3ba",
+    "name": "La Salle ",
+    "lat": 42.237174,
+    "lon": -83.106889
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc3d1",
+    "name": "Peace Bridge Below        ",
+    "lat": 42.911639,
+    "lon": -78.908667
+  },
+  {
+    "id": "5cebf1e03d0f4a073c4bbd69",
+    "name": "Long Sault Dam",
+    "lat": 44.998333,
+    "lon": -74.861667
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbbf7",
+    "name": "Aulatsivik Point",
+    "lat": 66.181086,
+    "lon": -65.636452
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbf9f",
+    "name": "Baychimo",
+    "lat": 67.698,
+    "lon": -107.9325
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc01f",
+    "name": "Thank God Harbour",
+    "lat": 81.6,
+    "lon": -61.633333
+  },
+  {
+    "id": "5dd30650e0fdc4b9b4be6dfe",
+    "name": "Pruth Bay",
+    "lat": 51.654504,
+    "lon": -128.129455
+  },
+  {
+    "id": "5dd5abf2ff231600015c1a10",
+    "name": "Tidal View Farm",
+    "lat": 45.01,
+    "lon": -64.073
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc019",
+    "name": "Thule",
+    "lat": 76.533333,
+    "lon": -68.900002
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc01b",
+    "name": "Foulke Harbour",
+    "lat": 78.3,
+    "lon": -72.633333
+  },
+  {
+    "id": "5dd5a784ff231600015c199e",
+    "name": "River Hebert",
+    "lat": 45.690167,
+    "lon": -64.373833
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb9d5",
+    "name": "Kean Point",
+    "lat": 68.955,
+    "lon": -102.361667
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bbfa5",
+    "name": "Povungnituk",
+    "lat": 60.0325,
+    "lon": -77.279167
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbfa1",
+    "name": "Pelly Bay",
+    "lat": 68.55,
+    "lon": -89.883333
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbc3c",
+    "name": "Moncton",
+    "lat": 46.083333,
+    "lon": -64.766667
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc3f9",
+    "name": "Ogdensburg",
+    "lat": 44.709173,
+    "lon": -75.485592
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc3b8",
+    "name": "Tecumseh",
+    "lat": 42.340694,
+    "lon": -82.93069
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bbfc9",
+    "name": "Qarqortoq",
+    "lat": 60.716667,
+    "lon": -46.033333
+  },
+  {
+    "id": "5dd5aa6aff231600015c1a03",
+    "name": "Maitland",
+    "lat": 45.251167,
+    "lon": -63.456
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbf75",
+    "name": "Nuuk",
+    "lat": 64.183333,
+    "lon": -51.75
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc021",
+    "name": "Cape Bryant",
+    "lat": 82.338,
+    "lon": -55.2044
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbcfb",
+    "name": "Tanquary Camp",
+    "lat": 81.4,
+    "lon": -76.916667
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bbfcb",
+    "name": "North Star Bay",
+    "lat": 76.545,
+    "lon": -68.875
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc01d",
+    "name": "Rensselaer Bay",
+    "lat": 78.6258,
+    "lon": -70.9658
+  }
+]
