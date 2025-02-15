@@ -1,1 +1,1310 @@
-[]
+[
+  {
+    "id": "1610367",
+    "name": "Nonopapa, Niihau Island",
+    "lat": 21.87,
+    "lon": -160.235
+  },
+  {
+    "id": "1611347",
+    "name": "Port Allen, Hanapepe Bay",
+    "lat": 21.9033,
+    "lon": -159.592
+  },
+  {
+    "id": "1611400",
+    "name": "NAWILIWILI",
+    "lat": 21.9544,
+    "lon": -159.3561
+  },
+  {
+    "id": "1611401",
+    "name": "Waimea Bay",
+    "lat": 21.9567,
+    "lon": -159.673
+  },
+  {
+    "id": "1611443",
+    "name": "Hanamaulu Bay",
+    "lat": 21.995,
+    "lon": -159.335
+  },
+  {
+    "id": "1841275",
+    "name": "MALAKAL HARBOR",
+    "lat": 7.33,
+    "lon": 134.463
+  },
+  {
+    "id": "8444162",
+    "name": "Boston Light",
+    "lat": 42.3283,
+    "lon": -70.8917
+  },
+  {
+    "id": "8444312",
+    "name": "Moon Head",
+    "lat": 42.3083,
+    "lon": -70.9917
+  },
+  {
+    "id": "8444351",
+    "name": "Hull",
+    "lat": 42.3033,
+    "lon": -70.92
+  },
+  {
+    "id": "8444488",
+    "name": "Neponset, Neponset River",
+    "lat": 42.285,
+    "lon": -71.04
+  },
+  {
+    "id": "8444525",
+    "name": "Nut Island, Quincy Bay",
+    "lat": 42.28,
+    "lon": -70.9533
+  },
+  {
+    "id": "8444601",
+    "name": "Nantasket Beach, Weir River",
+    "lat": 42.27,
+    "lon": -70.86
+  },
+  {
+    "id": "8444662",
+    "name": "Crow Point, Hingham Harbor entrance",
+    "lat": 42.2617,
+    "lon": -70.8933
+  },
+  {
+    "id": "8444762",
+    "name": "Cohasset Harbor (White Head)",
+    "lat": 42.2483,
+    "lon": -70.785
+  },
+  {
+    "id": "8444788",
+    "name": "Weymouth Fore River Bridge",
+    "lat": 42.2483,
+    "lon": -70.9667
+  },
+  {
+    "id": "8445138",
+    "name": "Scituate, Scituate Harbor",
+    "lat": 42.2017,
+    "lon": -70.7267
+  },
+  {
+    "id": "8445425",
+    "name": "Damons Point, North River",
+    "lat": 42.16,
+    "lon": -70.7333
+  },
+  {
+    "id": "8447416",
+    "name": "Piney Point",
+    "lat": 41.695,
+    "lon": -70.72
+  },
+  {
+    "id": "8516411",
+    "name": "Freeport, Baldwin Bay",
+    "lat": 40.6333,
+    "lon": -73.5867
+  },
+  {
+    "id": "8516501",
+    "name": "Baldwin, Parsonage Cove, Hempstead Bay",
+    "lat": 40.6333,
+    "lon": -73.6167
+  },
+  {
+    "id": "8516601",
+    "name": "Long Beach (Inside)",
+    "lat": 40.6,
+    "lon": -73.65
+  },
+  {
+    "id": "8516607",
+    "name": "Harry Tappen Marina, Hempstead Harbor",
+    "lat": 40.83461111111111,
+    "lon": -73.65241666666667
+  },
+  {
+    "id": "8516614",
+    "name": "Glen Cove, Hempstead Harbor",
+    "lat": 40.8633,
+    "lon": -73.655
+  },
+  {
+    "id": "8516661",
+    "name": "Bay Park, Hewlett Bay",
+    "lat": 40.63,
+    "lon": -73.67
+  },
+  {
+    "id": "8516663",
+    "name": "Long Beach, Bridgewater Yacht Club, New York",
+    "lat": 40.59633333333333,
+    "lon": -73.65508333333334
+  },
+  {
+    "id": "8516761",
+    "name": "Port Washington, Manhasset Bay",
+    "lat": 40.8317,
+    "lon": -73.7033
+  },
+  {
+    "id": "8516945",
+    "name": "Kings Point",
+    "lat": 40.810298919677734,
+    "lon": -73.76490020751953
+  },
+  {
+    "id": "8517251",
+    "name": "Worlds Fair Marina, Flushing Bay",
+    "lat": 40.761,
+    "lon": -73.85036111111111
+  },
+  {
+    "id": "8519024",
+    "name": "Fort Wadsworth, The Narrows, Staten Island",
+    "lat": 40.6067008972168,
+    "lon": -74.05500030517578
+  },
+  {
+    "id": "8534287",
+    "name": "Little Sheepshead Creek",
+    "lat": 39.5217,
+    "lon": -74.32
+  },
+  {
+    "id": "8534540",
+    "name": "Absecon, Absecon Creek, U.S. Hwy. 30 bridge",
+    "lat": 39.4233,
+    "lon": -74.5
+  },
+  {
+    "id": "8534638",
+    "name": "Absecon Channel, State Route 87 bridge",
+    "lat": 39.385,
+    "lon": -74.425
+  },
+  {
+    "id": "8535001",
+    "name": "Cedar Swamp Creek, Tuckahoe River",
+    "lat": 39.2467,
+    "lon": -74.7183
+  },
+  {
+    "id": "8535661",
+    "name": "Nummy Island, Grassy Sound Channel",
+    "lat": 39.0283,
+    "lon": -74.8017
+  },
+  {
+    "id": "8535695",
+    "name": "Old Turtle Thorofare, RR. bridge",
+    "lat": 39.0183,
+    "lon": -74.8417
+  },
+  {
+    "id": "8535726",
+    "name": "West Wildwood, Grassy Sound",
+    "lat": 39.005,
+    "lon": -74.8267
+  },
+  {
+    "id": "8535805",
+    "name": "Swain Channel, Taylor Sound",
+    "lat": 38.98,
+    "lon": -74.8633
+  },
+  {
+    "id": "8535835",
+    "name": "Wildwood Crest, ocean pier",
+    "lat": 38.975,
+    "lon": -74.8233
+  },
+  {
+    "id": "8537059",
+    "name": "Mauricetown",
+    "lat": 39.285,
+    "lon": -74.9917
+  },
+  {
+    "id": "8549424",
+    "name": "Edgely, Pa.",
+    "lat": 40.1283,
+    "lon": -74.8233
+  },
+  {
+    "id": "8551851",
+    "name": "Delaware City Branch Channel bridge",
+    "lat": 39.57,
+    "lon": -75.59
+  },
+  {
+    "id": "8571944",
+    "name": "Dover Bridge",
+    "lat": 38.7567,
+    "lon": -75.9983
+  },
+  {
+    "id": "8578002",
+    "name": "Point Lookout",
+    "lat": 38.04,
+    "lon": -76.3233
+  },
+  {
+    "id": "8578240",
+    "name": "Piney Point, Md.",
+    "lat": 38.1333333,
+    "lon": -76.5333333
+  },
+  {
+    "id": "8578465",
+    "name": "Colton Point, Md.",
+    "lat": 38.2233,
+    "lon": -76.7483
+  },
+  {
+    "id": "8578551",
+    "name": "Mills Point (south of), Wicomico Riv., Md.",
+    "lat": 38.3267,
+    "lon": -76.8333
+  },
+  {
+    "id": "8578693",
+    "name": "Lower Cedar Point, Md.",
+    "lat": 38.3417,
+    "lon": -76.9767
+  },
+  {
+    "id": "8578769",
+    "name": "Goose Creek, Port Tobacco River, Md.",
+    "lat": 38.4533,
+    "lon": -77.0533
+  },
+  {
+    "id": "8578853",
+    "name": "Riverside, Md.",
+    "lat": 38.3867,
+    "lon": -77.145
+  },
+  {
+    "id": "8578931",
+    "name": "Clifton Beach, Smith Point, Md.",
+    "lat": 38.41333333333299,
+    "lon": -77.266666666667
+  },
+  {
+    "id": "8655875",
+    "name": "Sea Level",
+    "lat": 34.875,
+    "lon": -76.3433
+  },
+  {
+    "id": "8659086",
+    "name": "Fort Caswell",
+    "lat": 33.8967,
+    "lon": -78.0167
+  },
+  {
+    "id": "8659182",
+    "name": "Oak Island, Yaupon Beach",
+    "lat": 33.9017,
+    "lon": -78.0817
+  },
+  {
+    "id": "8659414",
+    "name": "Varnamtown, Lockwoods Folly River",
+    "lat": 33.933101654052734,
+    "lon": -78.21890258789062
+  },
+  {
+    "id": "8659665",
+    "name": "Bowen Point, Shallotte Inlet",
+    "lat": 33.915000915527344,
+    "lon": -78.37329864501953
+  },
+  {
+    "id": "8659897",
+    "name": "Sunset Beach Pier",
+    "lat": 33.865,
+    "lon": -78.5067
+  },
+  {
+    "id": "8660147",
+    "name": "Dunn Sound, north end",
+    "lat": 33.86,
+    "lon": -78.58
+  },
+  {
+    "id": "8660754",
+    "name": "Carolina Forest, ICWW",
+    "lat": 33.734901428222656,
+    "lon": -78.88269805908203
+  },
+  {
+    "id": "8661493",
+    "name": "Wachesaw Landing, Waccamaw River",
+    "lat": 33.560001373291016,
+    "lon": -79.08499908447266
+  },
+  {
+    "id": "8664099",
+    "name": "Five Fathom Creek entrance",
+    "lat": 33,
+    "lon": -79.4967
+  },
+  {
+    "id": "8664131",
+    "name": "Back River Reservoir, West Branch",
+    "lat": 32.995,
+    "lon": -79.9367
+  },
+  {
+    "id": "8664442",
+    "name": "Moores Landing, ICWW, Sewee Bay",
+    "lat": 32.9367,
+    "lon": -79.655
+  },
+  {
+    "id": "8664515",
+    "name": "Snow Point, 0.4 mi. North of",
+    "lat": 32.9483,
+    "lon": -79.9317
+  },
+  {
+    "id": "8664531",
+    "name": "Bacon Bridge",
+    "lat": 32.9583,
+    "lon": -80.2033
+  },
+  {
+    "id": "8664532",
+    "name": "Greggs Landing, Mateeba Gardens",
+    "lat": 32.9317,
+    "lon": -80.1567
+  },
+  {
+    "id": "8664541",
+    "name": "Yeamans Hall, Goose Creek",
+    "lat": 32.925,
+    "lon": -79.9867
+  },
+  {
+    "id": "8664545",
+    "name": "Cainhoy",
+    "lat": 32.9267,
+    "lon": -79.83
+  },
+  {
+    "id": "8664582",
+    "name": "Woodville",
+    "lat": 32.92,
+    "lon": -79.7333
+  },
+  {
+    "id": "8664589",
+    "name": "Hanahan, Turkey Creek, Goose Creek",
+    "lat": 32.9183,
+    "lon": -80.0117
+  },
+  {
+    "id": "8664611",
+    "name": "Big Paradise Island",
+    "lat": 32.915,
+    "lon": -79.7467
+  },
+  {
+    "id": "8664621",
+    "name": "Wharf Creek entrance",
+    "lat": 32.9133,
+    "lon": -79.6167
+  },
+  {
+    "id": "8664699",
+    "name": "North Charleston, Ashley river",
+    "lat": 32.900299072265625,
+    "lon": -80.11750030517578
+  },
+  {
+    "id": "8666659",
+    "name": "U.S. 17 Bridge",
+    "lat": 32.6517,
+    "lon": -80.6833
+  },
+  {
+    "id": "8666699",
+    "name": "Bluff Point",
+    "lat": 32.6467,
+    "lon": -80.2567
+  },
+  {
+    "id": "8666749",
+    "name": "Airy Hall Plantation",
+    "lat": 32.6317,
+    "lon": -80.4717
+  },
+  {
+    "id": "8666767",
+    "name": "Snake Island",
+    "lat": 32.64,
+    "lon": -80.015
+  },
+  {
+    "id": "8666775",
+    "name": "Leadenwah Creek, 3 mi. above entrance",
+    "lat": 32.6367,
+    "lon": -80.2017
+  },
+  {
+    "id": "8666799",
+    "name": "Dawho Bridge, Dawho River",
+    "lat": 32.6367,
+    "lon": -80.3417
+  },
+  {
+    "id": "8666918",
+    "name": "Ho-Non-Wah Boy Scout Camp, Bohicket Creek",
+    "lat": 32.625,
+    "lon": -80.1667
+  },
+  {
+    "id": "8667017",
+    "name": "Brickyard Ferry, swing bridge",
+    "lat": 32.6133,
+    "lon": -80.4817
+  },
+  {
+    "id": "8667062",
+    "name": "Kiawah River Bridge",
+    "lat": 32.6033,
+    "lon": -80.1317
+  },
+  {
+    "id": "8667067",
+    "name": "Pine Landing",
+    "lat": 32.6033,
+    "lon": -80.3883
+  },
+  {
+    "id": "8667074",
+    "name": "Wiggins, Chehaw River",
+    "lat": 32.6017,
+    "lon": -80.5417
+  },
+  {
+    "id": "8667075",
+    "name": "Steamboat Landing, Steamboat Creek",
+    "lat": 32.6033,
+    "lon": -80.2867
+  },
+  {
+    "id": "8667076",
+    "name": "Tulifiny River, I-95 bridge",
+    "lat": 32.6017,
+    "lon": -80.9033
+  },
+  {
+    "id": "8667089",
+    "name": "Rockville, Bohicket Creek",
+    "lat": 32.5983,
+    "lon": -80.195
+  },
+  {
+    "id": "8667425",
+    "name": "Peters Point, St. Pierre Creek",
+    "lat": 32.54,
+    "lon": -80.34
+  },
+  {
+    "id": "8720051",
+    "name": "Lofton, Lanceford Creek",
+    "lat": 30.6433,
+    "lon": -81.5233
+  },
+  {
+    "id": "8720058",
+    "name": "Kingsley Creek, RR. bridge",
+    "lat": 30.6317,
+    "lon": -81.4767
+  },
+  {
+    "id": "8720059",
+    "name": "Vaughns Landing",
+    "lat": 30.63,
+    "lon": -81.5767
+  },
+  {
+    "id": "8720084",
+    "name": "Boggy Creek, 2 mi. above entrance",
+    "lat": 30.5883,
+    "lon": -81.6633
+  },
+  {
+    "id": "8720086",
+    "name": "Amelia City, South Amelia River",
+    "lat": 30.5867,
+    "lon": -81.4633
+  },
+  {
+    "id": "8720093",
+    "name": "Halfmoon Island, highway bridge",
+    "lat": 30.5767,
+    "lon": -81.6083
+  },
+  {
+    "id": "8722208",
+    "name": "North Beach Causeway",
+    "lat": 27.4717,
+    "lon": -80.325
+  },
+  {
+    "id": "8722471",
+    "name": "Conch Bar, Jupiter Sound",
+    "lat": 26.9883,
+    "lon": -80.0933
+  },
+  {
+    "id": "8722481",
+    "name": "3 miles above A1A highway bridge",
+    "lat": 26.97,
+    "lon": -80.1267
+  },
+  {
+    "id": "8723491",
+    "name": "Card Sound, western side",
+    "lat": 25.345,
+    "lon": -80.3317
+  },
+  {
+    "id": "8723808",
+    "name": "Islamorada, Upper Matecumbe Key, Florida Bay",
+    "lat": 24.925,
+    "lon": -80.6317
+  },
+  {
+    "id": "8723812",
+    "name": "Shell Key Channel, Florida Bay",
+    "lat": 24.9133,
+    "lon": -80.66
+  },
+  {
+    "id": "8723813",
+    "name": "Little Basin, Upper Matecumbe Key, Florida Bay",
+    "lat": 24.915,
+    "lon": -80.64
+  },
+  {
+    "id": "8723814",
+    "name": "Upper Matecumbe Key, Hawk Channel",
+    "lat": 24.915,
+    "lon": -80.6317
+  },
+  {
+    "id": "8723824",
+    "name": "Lignumvitae Key, NE side, Florida Bay",
+    "lat": 24.9033,
+    "lon": -80.695
+  },
+  {
+    "id": "8723825",
+    "name": "Lignumvitae Key, west side, Florida Bay",
+    "lat": 24.9,
+    "lon": -80.705
+  },
+  {
+    "id": "8723828",
+    "name": "Upper Matecumbe Key, west end, Hawk Channel",
+    "lat": 24.8967,
+    "lon": -80.6583
+  },
+  {
+    "id": "8724463",
+    "name": "Snipe Keys, Snipe Point",
+    "lat": 24.6917,
+    "lon": -81.6733
+  },
+  {
+    "id": "8726537",
+    "name": "APOLLO BEACH, HILLSBOROUGH BAY",
+    "lat": 27.786699295043945,
+    "lon": -82.42669677734375
+  },
+  {
+    "id": "8726539",
+    "name": "NEWMAN BRANCH",
+    "lat": 27.7833,
+    "lon": -82.4067
+  },
+  {
+    "id": "8726574",
+    "name": "Madeira Beach Causeway",
+    "lat": 27.8083,
+    "lon": -82.795
+  },
+  {
+    "id": "8726607",
+    "name": "Old Port Tampa",
+    "lat": 27.857799530029297,
+    "lon": -82.55280303955078
+  },
+  {
+    "id": "8726625",
+    "name": "Indian Rocks Beach (inside)",
+    "lat": 27.8767,
+    "lon": -82.85
+  },
+  {
+    "id": "8726639",
+    "name": "Ballast Point",
+    "lat": 27.89,
+    "lon": -82.48
+  },
+  {
+    "id": "8726641",
+    "name": "Gandy Bridge, Old Tampa Bay",
+    "lat": 27.8933,
+    "lon": -82.5383
+  },
+  {
+    "id": "8726651",
+    "name": "Pendola Point, Hillsborough Bay",
+    "lat": 27.8983,
+    "lon": -82.4267
+  },
+  {
+    "id": "8726657",
+    "name": "Davis Island, Hillsborough Bay",
+    "lat": 27.9083,
+    "lon": -82.4517
+  },
+  {
+    "id": "8762483",
+    "name": "I-10 BONNET CARRE FLOODWAY",
+    "lat": 30.067899703979492,
+    "lon": -90.38999938964844
+  },
+  {
+    "id": "8765785",
+    "name": "Intracoastal City",
+    "lat": 29.783000946044922,
+    "lon": -92.15560150146484
+  },
+  {
+    "id": "8765969",
+    "name": "Freshwater Bayou",
+    "lat": 29.655399322509766,
+    "lon": -92.25070190429688
+  },
+  {
+    "id": "8765994",
+    "name": "Schooner Bayou, Vermillion Bay",
+    "lat": 29.758100509643555,
+    "lon": -92.26380157470703
+  },
+  {
+    "id": "8766072",
+    "name": "Freshwater Canal Locks",
+    "lat": 29.55169444444444,
+    "lon": -92.30519444444444
+  },
+  {
+    "id": "8766941",
+    "name": "Joseph Harbor",
+    "lat": 29.637500762939453,
+    "lon": -92.76719665527344
+  },
+  {
+    "id": "8767095",
+    "name": "Catfish Point, Mermentau River",
+    "lat": 29.862899780273438,
+    "lon": -92.8488998413086
+  },
+  {
+    "id": "8767403",
+    "name": "Mermentau River, Grand Chenier",
+    "lat": 29.774999618530273,
+    "lon": -93.00830078125
+  },
+  {
+    "id": "9414509",
+    "name": "Dumbarton Highway Bridge",
+    "lat": 37.5067,
+    "lon": -122.115
+  },
+  {
+    "id": "9414519",
+    "name": "Mowry Slough",
+    "lat": 37.4933,
+    "lon": -122.042
+  },
+  {
+    "id": "9414632",
+    "name": "Alameda Creek",
+    "lat": 37.595,
+    "lon": -122.145
+  },
+  {
+    "id": "9415144",
+    "name": "PORT CHICAGO, SUISUN BAY",
+    "lat": 38.056,
+    "lon": -122.0395
+  },
+  {
+    "id": "9415145",
+    "name": "False River",
+    "lat": 38.055,
+    "lon": -121.657
+  },
+  {
+    "id": "9415149",
+    "name": "Prisoners Point",
+    "lat": 38.0617,
+    "lon": -121.555
+  },
+  {
+    "id": "9440171",
+    "name": "Knapp Landing, Willow Bar",
+    "lat": 45.74169921875,
+    "lon": -122.75499725341797
+  },
+  {
+    "id": "9440357",
+    "name": "Temco Kalama Terminal",
+    "lat": 45.986698150634766,
+    "lon": -122.83670043945312
+  },
+  {
+    "id": "9440422",
+    "name": "Longview",
+    "lat": 46.10609817504883,
+    "lon": -122.9542007446289
+  },
+  {
+    "id": "9440482",
+    "name": "Cape Horn",
+    "lat": 46.15169906616211,
+    "lon": -123.29000091552734
+  },
+  {
+    "id": "9440483",
+    "name": "Barlow Point",
+    "lat": 46.152198791503906,
+    "lon": -123.03919982910156
+  },
+  {
+    "id": "9440563",
+    "name": "Hungry Harbor, Wash.",
+    "lat": 46.2583,
+    "lon": -123.848
+  },
+  {
+    "id": "9440569",
+    "name": "Skamokawa",
+    "lat": 46.27030555555555,
+    "lon": -123.4565
+  },
+  {
+    "id": "9440572",
+    "name": "Fort Canby, Jetty 'A', Wash.",
+    "lat": 46.2683,
+    "lon": -124.037
+  },
+  {
+    "id": "9446638",
+    "name": "Longbranch, Filucy Bay",
+    "lat": 47.21,
+    "lon": -122.753
+  },
+  {
+    "id": "9446666",
+    "name": "Arcadia, Totten Inlet",
+    "lat": 47.1967,
+    "lon": -122.938
+  },
+  {
+    "id": "9446671",
+    "name": "Devils Head, Drayton Passage",
+    "lat": 47.1667,
+    "lon": -122.763
+  },
+  {
+    "id": "9446705",
+    "name": "Yoman Point, Anderson Island, Balch Passage",
+    "lat": 47.18,
+    "lon": -122.675
+  },
+  {
+    "id": "9446714",
+    "name": "Steilacoom, Cormorant Passage",
+    "lat": 47.1733,
+    "lon": -122.603
+  },
+  {
+    "id": "9446742",
+    "name": "Barron Point, Little Skookum Inlet Entrance",
+    "lat": 47.156700134277344,
+    "lon": -123.00800323486328
+  },
+  {
+    "id": "9446752",
+    "name": "Henderson Inlet",
+    "lat": 47.155,
+    "lon": -122.838
+  },
+  {
+    "id": "9446800",
+    "name": "Dofflemeyer Point, Boston Hbr., Budd Inlet",
+    "lat": 47.1417,
+    "lon": -122.903
+  },
+  {
+    "id": "9446804",
+    "name": "SANDY POINT ANDERSON ISLAND, PUGET SOUND",
+    "lat": 47.15299987792969,
+    "lon": -122.67510223388672
+  },
+  {
+    "id": "9446828",
+    "name": "Dupont Wharf, Nisqually Reach",
+    "lat": 47.1183,
+    "lon": -122.665
+  },
+  {
+    "id": "9450623",
+    "name": "Big Salt Lake",
+    "lat": 55.6,
+    "lon": -132.95
+  },
+  {
+    "id": "9452082",
+    "name": "Port Snettisham, Crib Point",
+    "lat": 58.0967,
+    "lon": -133.742
+  },
+  {
+    "id": "9452123",
+    "name": "Taku Harbor",
+    "lat": 58.0683,
+    "lon": -134.012
+  },
+  {
+    "id": "9452124",
+    "name": "Taku Point, Taku Inlet",
+    "lat": 58.4,
+    "lon": -134.015
+  },
+  {
+    "id": "9452128",
+    "name": "Rasp Ledge, Seymour Canal",
+    "lat": 57.6783,
+    "lon": -134.038
+  },
+  {
+    "id": "9452133",
+    "name": "Greely Point, Taku Inlet",
+    "lat": 58.2233,
+    "lon": -134.06
+  },
+  {
+    "id": "9452210",
+    "name": "JUNEAU",
+    "lat": 58.2988,
+    "lon": -134.4106
+  },
+  {
+    "id": "9452249",
+    "name": "Young Bay",
+    "lat": 58.1833,
+    "lon": -134.587
+  },
+  {
+    "id": "9452263",
+    "name": "Auke Bay",
+    "lat": 58.3817,
+    "lon": -134.645
+  },
+  {
+    "id": "9461292",
+    "name": "Shoal Point",
+    "lat": 51.87,
+    "lon": -177.068
+  },
+  {
+    "id": "9461337",
+    "name": "Bay of Waterfalls",
+    "lat": 51.6417,
+    "lon": -176.825
+  },
+  {
+    "id": "9461341",
+    "name": "Unalga Bight",
+    "lat": 51.78,
+    "lon": -176.807
+  },
+  {
+    "id": "9461380",
+    "name": "Sweeper Cove, Kuluk Bay, Adak Island",
+    "lat": 51.86063888888889,
+    "lon": -176.6375833333333
+  },
+  {
+    "id": "9461391",
+    "name": "Boot Bay",
+    "lat": 51.7133,
+    "lon": -176.53
+  },
+  {
+    "id": "9461406",
+    "name": "Adak Bight",
+    "lat": 51.77,
+    "lon": -176.435
+  },
+  {
+    "id": "9461411",
+    "name": "Laska Cove, Kagalaska Island",
+    "lat": 51.825,
+    "lon": -176.402
+  },
+  {
+    "id": "9461467",
+    "name": "Bugle Point, Great Sitkin Island",
+    "lat": 52.0383,
+    "lon": -175.98
+  },
+  {
+    "id": "TEC3407",
+    "name": "Thunderbolt",
+    "lat": 32.03333333333299,
+    "lon": -81.05
+  },
+  {
+    "id": "TEC3409",
+    "name": "North entrance",
+    "lat": 32.06666666666701,
+    "lon": -81
+  },
+  {
+    "id": "TEC3411",
+    "name": "Isle of Hope, Skidaway River",
+    "lat": 31.983333333332993,
+    "lon": -81.05
+  },
+  {
+    "id": "TEC3413",
+    "name": "Egg Islands",
+    "lat": 31.83333333333299,
+    "lon": -81.08333333333299
+  },
+  {
+    "id": "TEC3417",
+    "name": "Coffee Bluff, Forest River",
+    "lat": 31.933333333332993,
+    "lon": -81.15
+  },
+  {
+    "id": "TEC3419",
+    "name": "Fort McAllister, Ogeechee River",
+    "lat": 31.883333333332992,
+    "lon": -81.21666666666701
+  },
+  {
+    "id": "TEC3421",
+    "name": "Highway bridge, Ogeechee River",
+    "lat": 31.983333333332993,
+    "lon": -81.28333333333299
+  },
+  {
+    "id": "TEC3427",
+    "name": "Cane Patch Creek entrance",
+    "lat": 31.816666666667007,
+    "lon": -81.15
+  },
+  {
+    "id": "TEC3457",
+    "name": "Dallas Bluff, Julienton River",
+    "lat": 31.58333333333299,
+    "lon": -81.316666666667
+  },
+  {
+    "id": "TWC1173",
+    "name": "Point Migley",
+    "lat": 48.75,
+    "lon": -122.71666666666995
+  },
+  {
+    "id": "TWC1189",
+    "name": "Ferndale",
+    "lat": 48.83330154418945,
+    "lon": -122.7166976928711
+  },
+  {
+    "id": "TWC1487",
+    "name": "Tah Bay",
+    "lat": 54.833333333332995,
+    "lon": -132.33333333332993
+  },
+  {
+    "id": "TWC1513",
+    "name": "Kasook Inlet, Sukkwan Island",
+    "lat": 55.01666666666701,
+    "lon": -132.78333333332992
+  },
+  {
+    "id": "TWC1579",
+    "name": "Cyrus Cove, Sea Otter Sound",
+    "lat": 55.916666666667005,
+    "lon": -133.4
+  },
+  {
+    "id": "TWC1583",
+    "name": "Marble Island",
+    "lat": 56,
+    "lon": -133.46666666667008
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bba7f",
+    "name": "Port Leopold",
+    "lat": 73.833333,
+    "lon": -90.333333
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc3ba",
+    "name": "La Salle ",
+    "lat": 42.237174,
+    "lon": -83.106889
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc3d1",
+    "name": "Peace Bridge Below        ",
+    "lat": 42.911639,
+    "lon": -78.908667
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bba1a",
+    "name": "Houston Stewart Channel West",
+    "lat": 52.083333,
+    "lon": -131.116667
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb956",
+    "name": "Boom Islet",
+    "lat": 49.745223,
+    "lon": -123.903803
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb9f1",
+    "name": "Reversing Falls",
+    "lat": 45.2617,
+    "lon": -66.0883
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbf7f",
+    "name": "Entrance Island",
+    "lat": 69.9,
+    "lon": -85.6
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbcfd",
+    "name": "Kleybolte Peninsula",
+    "lat": 81.55,
+    "lon": -91.55
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb9d9",
+    "name": "Roberts Bay",
+    "lat": 68.21155,
+    "lon": -106.6775
+  },
+  {
+    "id": "5dd5a57fff231600015c1993",
+    "name": "Maccan",
+    "lat": 45.724667,
+    "lon": -64.259833
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bbfb4",
+    "name": "Truro",
+    "lat": 45.366667,
+    "lon": -63.316667
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb9db",
+    "name": "Quadyuk Island",
+    "lat": 66.91575,
+    "lon": -107.8125
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbf77",
+    "name": "Cape Liverpool",
+    "lat": 73.65,
+    "lon": -78.05
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bba93",
+    "name": "Saint-Irénée",
+    "lat": 47.558833,
+    "lon": -70.201833
+  },
+  {
+    "id": "5cebf1e03d0f4a073c4bbe95",
+    "name": "Indian Harbour",
+    "lat": 44.516667,
+    "lon": -63.95
+  },
+  {
+    "id": "5cebf1dd3d0f4a073c4bb8c9",
+    "name": "Diana Bay",
+    "lat": 60.866667,
+    "lon": -70.066667
+  },
+  {
+    "id": "5cebf1dd3d0f4a073c4bb8e3",
+    "name": "Flaherty Island",
+    "lat": 55.9,
+    "lon": -79.616667
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc02e",
+    "name": "Henslung Cove",
+    "lat": 54.191,
+    "lon": -133.002
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbf75",
+    "name": "Nuuk",
+    "lat": 64.183333,
+    "lon": -51.75
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bbfc9",
+    "name": "Qarqortoq",
+    "lat": 60.716667,
+    "lon": -46.033333
+  },
+  {
+    "id": "5dd5aa6aff231600015c1a03",
+    "name": "Maitland",
+    "lat": 45.251167,
+    "lon": -63.456
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc01d",
+    "name": "Rensselaer Bay",
+    "lat": 78.6258,
+    "lon": -70.9658
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc021",
+    "name": "Cape Bryant",
+    "lat": 82.338,
+    "lon": -55.2044
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbcfb",
+    "name": "Tanquary Camp",
+    "lat": 81.4,
+    "lon": -76.916667
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bbfcb",
+    "name": "North Star Bay",
+    "lat": 76.545,
+    "lon": -68.875
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbfa1",
+    "name": "Pelly Bay",
+    "lat": 68.55,
+    "lon": -89.883333
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bbfa5",
+    "name": "Povungnituk",
+    "lat": 60.0325,
+    "lon": -77.279167
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc3b8",
+    "name": "Tecumseh",
+    "lat": 42.340694,
+    "lon": -82.93069
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbc3c",
+    "name": "Moncton",
+    "lat": 46.083333,
+    "lon": -64.766667
+  },
+  {
+    "id": "5cebf1e43d0f4a073c4bc3f9",
+    "name": "Ogdensburg",
+    "lat": 44.709173,
+    "lon": -75.485592
+  },
+  {
+    "id": "5dd5abf2ff231600015c1a10",
+    "name": "Tidal View Farm",
+    "lat": 45.01,
+    "lon": -64.073
+  },
+  {
+    "id": "5dd30650e0fdc4b9b4be6dfe",
+    "name": "Pruth Bay",
+    "lat": 51.654504,
+    "lon": -128.129455
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc019",
+    "name": "Thule",
+    "lat": 76.533333,
+    "lon": -68.900002
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc01b",
+    "name": "Foulke Harbour",
+    "lat": 78.3,
+    "lon": -72.633333
+  },
+  {
+    "id": "5dd5a784ff231600015c199e",
+    "name": "River Hebert",
+    "lat": 45.690167,
+    "lon": -64.373833
+  },
+  {
+    "id": "5cebf1de3d0f4a073c4bb9d5",
+    "name": "Kean Point",
+    "lat": 68.955,
+    "lon": -102.361667
+  },
+  {
+    "id": "5cebf1df3d0f4a073c4bbbf7",
+    "name": "Aulatsivik Point",
+    "lat": 66.181086,
+    "lon": -65.636452
+  },
+  {
+    "id": "5cebf1e03d0f4a073c4bbd69",
+    "name": "Long Sault Dam",
+    "lat": 44.998333,
+    "lon": -74.861667
+  },
+  {
+    "id": "5cebf1e23d0f4a073c4bc01f",
+    "name": "Thank God Harbour",
+    "lat": 81.6,
+    "lon": -61.633333
+  },
+  {
+    "id": "5cebf1e13d0f4a073c4bbf9f",
+    "name": "Baychimo",
+    "lat": 67.698,
+    "lon": -107.9325
+  }
+]

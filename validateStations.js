@@ -77,7 +77,7 @@ function fetchOneYearData(station, region, attempt = 1) {
       }
       throw new Error(`HTTP ${response.status}`);
     }
-    const data = response.json();
+    const data = (region == 'usa'? response.json().predictions : response.json());
     // console.log(`Station ${station.name} (ID: ${station.id}) returned correctly.`);
     return Array.isArray(data) && data.length > 0;
   } catch (error) {
@@ -103,7 +103,8 @@ async function validateStations() {
       } else {
         failedStations.push(station);
       }
-      if (region == 'canada') await sleep(500);
+      await sleep(500); // 100ms too low. 500 good for canada.
+      // if (region == 'canada') await sleep(500);
     }
   }
 
