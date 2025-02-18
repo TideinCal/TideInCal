@@ -1,3 +1,6 @@
+// import L from 'leaflet';
+// import 'leaflet.markercluster';
+
 // Define the custom icon for tide stations
 const tideIcon = L.icon({
   iconUrl: 'img/waterdrop.png',

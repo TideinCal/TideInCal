@@ -6,15 +6,24 @@ import fetch from 'node-fetch';
 import cron from 'node-cron';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import mime from "mime-types";
+
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// const __dirname = dirname(__filename);
+const __dirname = path.resolve();
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.css')) {
+      res.setHeader('Content-Type', mime.lookup('css'));
+    }
+  }
+}));
 app.use(express.json());
 app.use('/tempICSFile', express.static(path.join(__dirname, 'tempICSFile')));
 
