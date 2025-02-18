@@ -23,9 +23,11 @@ async function testStation() {
     }
     const data = await response.json();
     console.log('Fetched Data:', JSON.stringify(data, null, 2));
+    console.log(apiUrl);
   } catch (error) {
     console.error('Unexpected error:', error.message);
   }
 }
+
 
 testStation();
