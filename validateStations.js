@@ -7,7 +7,6 @@ const today = new Date();
 const month2d = String(today.getMonth() + 1).padStart(2, '0');
 const day2d = String(today.getDate()).padStart(2, '0');
 
-// const queryFilter = `?time-series-code=wlp-hilo&from=${year}-${month2d}-${day2d}T00%3A00%3A00Z&to=${nextYr}-${month2d}-${day2d}T00%3A00%3A00Z`;
 const queryFilters = {
   canada: `?time-series-code=wlp-hilo&from=${year}-${month2d}-${day2d}T00%3A00%3A00Z&to=${nextYr}-${month2d}-${day2d}T00%3A00%3A00Z`,
   usa: `&begin_date=${year}${month2d}${day2d}&end_date=${nextYr}${month2d}${day2d}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=DataAPI_Sample&format=json`
@@ -22,9 +21,10 @@ const apiUrls = {
   usa: `https://api.tidesandcurrents.noaa.gov`
   // usa: `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${year}${month2d}${day2d}&end_date=${nextYr}${month2d}${day2d}&station=${id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=DataAPI_Sample&format=json`
 };
-
-const outputFile = './data/validated_stations.json';
-const outputFileFailed = './data/failed_stations.json';
+const DATA_PATH = './data/';
+const OUTPUT_SUFFIX = '_stations.json';
+// const outputFile = './data/validated_stations.json';
+// const outputFileFailed = './data/failed_stations.json';
 const maxRetries = 3;
 
 /**
@@ -78,7 +78,6 @@ function fetchOneYearData(station, region, attempt = 1) {
       throw new Error(`HTTP ${response.status}`);
     }
     const data = (region == 'usa'? response.json().predictions : response.json());
-    // console.log(`Station ${station.name} (ID: ${station.id}) returned correctly.`);
     return Array.isArray(data) && data.length > 0;
   } catch (error) {
     console.error(
@@ -88,11 +87,12 @@ function fetchOneYearData(station, region, attempt = 1) {
   }
 }
 
-async function validateStations() {
-  const validatedStations = [];
-  const failedStations = [];
-
-  for (const region of ['usa', 'canada']){
+async function validateStations(region) {
+  
+    const outputFile = `${DATA_PATH}${region}${OUTPUT_SUFFIX}`;
+    console.log(outputFile);
+    const validatedStations = [];
+    const failedStations = [];
     const metadata = fetchMetadata(region);
     console.log(`Unverified number of stations for region ${region}: ${metadata.length}`);
     for (const station of metadata){
@@ -106,14 +106,13 @@ async function validateStations() {
       await sleep(500); // 100ms too low. 500 good for canada.
       // if (region == 'canada') await sleep(500);
     }
-  }
+    console.log(`Validation complete. Valid stations: ${validatedStations.length}`);
+    console.log(`Failed stations: ${failedStations.length}`);
+    fs.writeFileSync(outputFile, JSON.stringify(validatedStations, null, 2));
+    console.log(`Validated stations saved to ${outputFile}`);
+    //   fs.writeFileSync(outputFileFailed, JSON.stringify(failedStations, null, 2));
+    // console.log(`Failed stations saved to ${outputFileFailed}`);
 
-  console.log(`Validation complete. Valid stations: ${validatedStations.length}`);
-  console.log(`Failed stations: ${failedStations.length}`);
-  fs.writeFileSync(outputFile, JSON.stringify(validatedStations, null, 2));
-  console.log(`Validated stations saved to ${outputFile}`);
-    fs.writeFileSync(outputFileFailed, JSON.stringify(failedStations, null, 2));
-  console.log(`Failed stations saved to ${outputFileFailed}`);
 }
 
 function testUSApi(region){
@@ -124,7 +123,9 @@ function testUSApi(region){
 }
 
 function main() {
-  validateStations();
+  for (const region of ['usa', 'canada']){
+    validateStations(region);
+  }
 }
 
 main();

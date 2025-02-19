@@ -64,7 +64,7 @@ app.get('/api/tide-stations', (req, res) => {
 // POST route for starting the data fetch process
 app.post('/startDataFetch', async (req, res) => {
   const { stationID, stationTitle, country, feet, userTimezone } = req.body;
-  console.log(`received: ${req.body}`);
+  console.log(`received: ${JSON.stringify(req.body)}`);
   console.log('Received request:', { stationID, stationTitle, country, feet, userTimezone });
 
   try {
@@ -113,10 +113,10 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
       : `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${year}${month2d}${day2d}&end_date=${nextYr}${month2d}${day2d}&station=${id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=DataAPI_Sample&format=json`;
 
   const response = await fetch(apiUrl);
-  const tideData = (country === 'canada'? response.json() : response.json().predictions);
-  // const data = await response.json();
-  // console.log(`data: ${data}`);
-  // const tideData = country === 'canada' ? data : data.predictions;
+  // const tideData = (country === 'canada'? response.json() : response.json().predictions);
+  const data = await response.json();
+  console.log(`data: ${data}`);
+  const tideData = country === 'canada' ? data : data.predictions;
 
   tideData.forEach((entry, i) => {
     const tide =
