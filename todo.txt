@@ -1,0 +1,18 @@
+A. Android import instruction text.
+    The default android import will import tide events to your default calendar, filling it with thousands of events that you might need to manually delete. We recommend the following steps:
+    1. Create a new calendar for your tides, in the calendar app of your choice. Google link: https://calendar.google.com/calendar/u/0/r/settings/createcalendar
+    2. If using Google, use the desktop site on your mobile browser to import the ICS file. Google link: https://calendar.google.com/calendar/u/0/r/settings/export
+        If you have your Google account tied to Outlook, you can open the ICS file with the Outlook app and will be able to choose the calendar to import to.
+
+
+B. Database.
+    MongoDB database.
+    schema:{
+        fName:
+        lName:
+        subscribed:
+        files:[]
+    }
+    1 year retention of file
+    zip file for storage and bandwidth
+    

@@ -19,6 +19,7 @@
     "express": "^4.19.2",
     "ical-generator": "^7.0.0",
     "ics": "^3.7.2",
+    "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
     "node-cron": "^3.0.3",

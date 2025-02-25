@@ -7,7 +7,7 @@ import cron from 'node-cron';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import mime from "mime-types";
-
+import JSZip from 'jszip';
 
 const __filename = fileURLToPath(import.meta.url);
 // const __dirname = dirname(__filename);
@@ -171,10 +171,18 @@ ${events.join('\n')}
 END:VCALENDAR`;
 
   const calendarFileNm = `${stationTitle}_${year}_${nextYr}.ics`;
-  const filePath = path.join(__dirname, 'tempICSFile', calendarFileNm);
-  fs.writeFileSync(filePath, icsContent);
+  const calendarZipNm = `${stationTitle}_${year}_${nextYr}.zip`;
+  const filePath = path.join(__dirname, 'tempICSFile', calendarZipNm);
 
-  return calendarFileNm;
+  // fs.writeFileSync(filePath, icsContent);
+
+  const zip = new JSZip();
+  zip.file(calendarFileNm, icsContent);
+  zip.generateAsync({type: 'nodebuffer', compression:'DEFLATE'}).then(function(content) {
+    fs.writeFileSync(filePath, content);
+  });
+  // return calendarFileNm;
+  return calendarZipNm;
 };
 
 // Format date for ICS
