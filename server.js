@@ -144,29 +144,31 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
     const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 minutes duration
 
     // Create ICS File
-    const eventContent = `BEGIN:VEVENT
-      UID:tide-event-${i}
-      DTSTAMP:${formatDateForICS(new Date())}
-      DTSTART:${formatDateForICS(startDate, userTimezone)}
-      DTEND:${formatDateForICS(endDate, userTimezone)}
-      SUMMARY:${tide} @ ${tideHeight}
-      DESCRIPTION:Tide at ${stationTitle}
-      LOCATION:${stationTitle}
-      STATUS:CONFIRMED
-      END:VEVENT`;
+    const eventContent = 
+`BEGIN:VEVENT
+UID:tide-event-${i}
+DTSTAMP:${formatDateForICS(new Date())}
+DTSTART:${formatDateForICS(startDate, userTimezone)}
+DTEND:${formatDateForICS(endDate, userTimezone)}
+SUMMARY:${tide} @ ${tideHeight}
+DESCRIPTION:Tide at ${stationTitle}
+LOCATION:${stationTitle}
+STATUS:CONFIRMED
+END:VEVENT`;
 
       events.push(eventContent);
   });
 
-  const icsContent = `BEGIN:VCALENDAR
-      VERSION:2.0
-      CALSCALE:GREGORIAN
-      PRODID:-//My Company//My Product//EN
-      METHOD:PUBLISH
-      X-WR-CALNAME:${stationTitle} Tides
-      X-WR-TIMEZONE:${userTimezone}
-      ${events.join('\n')}
-    END:VCALENDAR`;
+  const icsContent = 
+`BEGIN:VCALENDAR
+VERSION:2.0
+CALSCALE:GREGORIAN
+PRODID:-//My Company//My Product//EN
+METHOD:PUBLISH
+X-WR-CALNAME:${stationTitle} Tides
+X-WR-TIMEZONE:${userTimezone}
+${events.join('\n')}
+END:VCALENDAR`;
 
   const calendarFileNm = `${stationTitle}_${year}_${nextYr}.ics`;
   const filePath = path.join(__dirname, 'tempICSFile', calendarFileNm);
