@@ -144,13 +144,13 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
     const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 minutes duration
 
     // Create ICS File
-    const eventContent = 
-`BEGIN:VEVENT
-UID:tide-event-${i}
+    const eventContent =
+      `BEGIN:VEVENT
+UID:tide-${id}-${i}-${startDate.getTime()}-${Math.random().toString(36).substr(2, 8)}@tideincalendar.com
 DTSTAMP:${formatDateForICS(new Date())}
 DTSTART:${formatDateForICS(startDate, userTimezone)}
 DTEND:${formatDateForICS(endDate, userTimezone)}
-SUMMARY:${tide} @ ${tideHeight}
+SUMMARY:${stationTitle} ${tide} @ ${tideHeight}
 DESCRIPTION:Tide at ${stationTitle}
 LOCATION:${stationTitle}
 STATUS:CONFIRMED
@@ -159,7 +159,7 @@ END:VEVENT`;
       events.push(eventContent);
   });
 
-  const icsContent = 
+  const icsContent =
 `BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -172,17 +172,17 @@ END:VCALENDAR`;
 
   const calendarFileNm = `${stationTitle}_${year}_${nextYr}.ics`;
   const calendarZipNm = `${stationTitle}_${year}_${nextYr}.zip`;
-  const filePath = path.join(__dirname, 'tempICSFile', calendarZipNm);
+  const filePath = path.join(__dirname, 'tempICSFile', calendarFileNm);
 
-  // fs.writeFileSync(filePath, icsContent);
+  fs.writeFileSync(filePath, icsContent);
 
-  const zip = new JSZip();
-  zip.file(calendarFileNm, icsContent);
-  zip.generateAsync({type: 'nodebuffer', compression:'DEFLATE'}).then(function(content) {
-    fs.writeFileSync(filePath, content);
-  });
-  // return calendarFileNm;
-  return calendarZipNm;
+  // const zip = new JSZip();
+  // zip.file(calendarFileNm, icsContent);
+  // zip.generateAsync({type: 'nodebuffer', compression:'DEFLATE'}).then(function(content) {
+  //   fs.writeFileSync(filePath, content);
+  // });
+  return calendarFileNm;
+  // return calendarZipNm;
 };
 
 // Format date for ICS
