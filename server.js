@@ -98,7 +98,6 @@ app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
-// Function to fetch tidal data and create ICS content
 const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
   const year = new Date().getFullYear();
   const nextYr = year + 1;
@@ -113,9 +112,7 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
       : `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${year}${month2d}${day2d}&end_date=${nextYr}${month2d}${day2d}&station=${id}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=DataAPI_Sample&format=json`;
 
   const response = await fetch(apiUrl);
-  // const tideData = (country === 'canada'? response.json() : response.json().predictions);
   const data = await response.json();
-  console.log(`data: ${data}`);
   const tideData = country === 'canada' ? data : data.predictions;
 
   tideData.forEach((entry, i) => {
@@ -141,50 +138,46 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
       }M`;
 
     const startDate = new Date(country === 'canada' ? entry.eventDate : entry.t);
-    const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 minutes duration
+    const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 min duration
 
-    // Create ICS File
-    const eventContent =
-      `BEGIN:VEVENT
-UID:tide-${id}-${i}-${startDate.getTime()}-${Math.random().toString(36).substr(2, 8)}@tideincalendar.com
+    // ✅ Generate unique UID per event
+    const eventUID = `tide-${id}-${startDate.getTime()}-${Math.random().toString(36).substr(2, 6)}@tidecalendar.com`;
+
+    // ✅ ICS Event Content
+    const eventContent = `BEGIN:VEVENT
+UID:${eventUID}
+SEQUENCE:0
 DTSTAMP:${formatDateForICS(new Date())}
 DTSTART:${formatDateForICS(startDate, userTimezone)}
 DTEND:${formatDateForICS(endDate, userTimezone)}
-SUMMARY:${stationTitle} ${tide} @ ${tideHeight}
+SUMMARY:${tide} @ ${tideHeight}
 DESCRIPTION:Tide at ${stationTitle}
 LOCATION:${stationTitle}
 STATUS:CONFIRMED
 END:VEVENT`;
 
-      events.push(eventContent);
+    events.push(eventContent);
   });
 
-  const icsContent =
-`BEGIN:VCALENDAR
+  // ✅ Unique calendar name to avoid conflicts
+  const calendarName = `Tide - ${stationTitle} - ${year}-${month2d}-${day2d}`;
+  const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
-PRODID:-//My Company//My Product//EN
+PRODID:-//Tide In Calendar//TideCal//EN
 METHOD:PUBLISH
-X-WR-CALNAME:${stationTitle} Tides
+X-WR-CALNAME:${calendarName}
 X-WR-TIMEZONE:${userTimezone}
 ${events.join('\n')}
 END:VCALENDAR`;
 
   const calendarFileNm = `${stationTitle}_${year}_${nextYr}.ics`;
-  const calendarZipNm = `${stationTitle}_${year}_${nextYr}.zip`;
   const filePath = path.join(__dirname, 'tempICSFile', calendarFileNm);
 
   fs.writeFileSync(filePath, icsContent);
 
-  // const zip = new JSZip();
-  // zip.file(calendarFileNm, icsContent);
-  // zip.generateAsync({type: 'nodebuffer', compression:'DEFLATE'}).then(function(content) {
-  //   fs.writeFileSync(filePath, content);
-  // });
   return calendarFileNm;
-  // return calendarZipNm;
 };
-
 // Format date for ICS
 const formatDateForICS = (date, timezone) => {
   return new Date(date.toLocaleString('en-US', { timeZone: timezone }))
