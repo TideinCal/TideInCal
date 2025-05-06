@@ -10,9 +10,9 @@ B. Database.
     schema:{
         fName:
         lName:
+        username:
         subscribed:
         files:[]
     }
-    1 year retention of file
+    1 year retention of file, Done with a check box in mongo where it is stored.
     zip file for storage and bandwidth
-    

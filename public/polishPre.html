@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TideCal – Know the Tides Before You Go</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="css/preLaunch.css">
+  <!-- Stripe -->
+  <script defer src="https://js.stripe.com/v3/"></script>
+
+</head>
+<body>
+
+<header class="hero">
+  <div class="container hero-content">
+    <div class="hero-text">
+      <h1 class="hero-title">Tide In Calendar</h1>
+      <h1 id="preLaunch" class="underline">Pre-launch Special</h1>
+      <h1>Know the <span class="tides">TIDES</span> before you arrive<br> No App, No Clutter.</h1>
+      <p>TideCal gives you 12 months of tide times for your favorite location — added directly to your calendar</p>
+      <a href="https://buy.stripe.com/test_00g6rIbmh8x08KY9AA" target="_blank" class="cta-button">Get Early Access</a>
+      <p><em>Immediate download after purchase</em></p>
+    </div>
+    <div class="hero-image">
+      <img src="img/wave-png-optimized.png" alt="TideCal Preview">
+    </div>
+  </div>
+
+</header>
+
+
+<!-- HOW IT WORKS SECTION -->
+<section class="how-it-works">
+  <h2>How It Works</h2>
+  <div class="steps">
+    <!-- Card 1 -->
+    <div class="step-card " style="background-color: rgba(21, 27, 72, 1);">
+      <div class="card-inner fade-in-up">
+        <svg class="card-bg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+          <path d="M12.166 8.94c-.524 1.062-1.234 2.12-1.96 3.07A32 32 0 0 1 8 14.58a32 32 0 0 1-2.206-2.57c-.726-.95-1.436-2.008-1.96-3.07C3.304 7.867 3 6.862 3 6a5 5 0 0 1 10 0c0 .862-.305 1.867-.834 2.94M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10"/>
+          <path d="M8 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4m0 1a3 3 0 1 0 0-6 3 3 0 0 0 0 6"/>
+        </svg>
+        <div class="step-number one">1</div>
+        <h3>Choose Your Station</h3>
+        <div class="step-icon">📍</div>
+        <p>Pick your tide location from our supported list — beaches, harbors, or marinas.</p>
+      </div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="step-card " style="background-color: #0B62AC;">
+      <div class="card-inner fade-in-up">
+      <svg class="card-bg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+        <path fill-rule="evenodd" d="M3.5 10a.5.5 0 0 1-.5-.5v-8a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 0 0 1h2A1.5 1.5 0 0 0 14 9.5v-8A1.5 1.5 0 0 0 12.5 0h-9A1.5 1.5 0 0 0 2 1.5v8A1.5 1.5 0 0 0 3.5 11h2a.5.5 0 0 0 0-1z"/>
+        <path fill-rule="evenodd" d="M7.646 15.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 14.293V5.5a.5.5 0 0 0-1 0v8.793l-2.146-2.147a.5.5 0 0 0-.708.708z"/>
+      </svg>
+      <div class="step-number two">2</div>
+      <h3>Download Your Calendar</h3>
+      <div class="step-icon">⬇️</div>
+      <p>Get a 12-month .ics file with high and low tide times, formatted for Google, Apple, or Outlook.</p>
+    </div>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="step-card " style="background-color: #00c7e6;">
+      <div class="card-inner fade-in-up">
+
+      <svg class="card-bg-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
+        <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/>
+      </svg>
+      <div class="step-number three">3</div>
+      <h3>Add It Once,</br>That's It</h3>
+      <div class="step-icon">📆</div>
+      <p>Drop it into your calendar and you're set. No syncing. No app. No clutter.</p>
+    </div>
+  </div>
+  </div>
+
+
+  <section class="secondary-cta">
+    <a href="https://buy.stripe.com/test_00g6rIbmh8x08KY9AA" class="cta-button">Join the Early Wave</a>
+    <p><em>Get early access now — includes 12 months of tides for your spot.</em></p>
+  </section>
+
+  <section class="why-tidecal">
+    <h2 class="fade-in-up">Why People Love TideCal</h2>
+    <ul class="benefits-list">
+      <li class="fade-in-up"><i class="bi bi-check-circle-fill"></i> No app to install — just tides where you need them.</li>
+      <li class="fade-in-up"><i class="bi bi-check-circle-fill"></i> Instant download after payment.</li>
+      <li class="fade-in-up"><i class="bi bi-check-circle-fill"></i> Works offline, forever.</li>
+      <li class="fade-in-up"><i class="bi bi-check-circle-fill"></i> Trusted by surfers, sailors, freedivers & ocean lovers.</li>
+    </ul>
+  </section>
+
+  <footer class="footer">
+    Built by an ocean-loving developer tired of bloated tide apps<br>
+    🌊 Secure checkout with Stripe
+  </footer>
+
+
+  <div class="wave-trio">
+    <svg viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="wave-gradient1" x1="0" y1="1" x2="0" y2="0" gradientTransform="translate(0,0)">
+          <stop offset="0%" stop-color="rgba(21, 27, 72, 1)" />
+          <stop offset="100%" stop-color="#00e0ff" />
+          <animateTransform attributeName="gradientTransform"
+                            type="translate"
+                            values="0,0; 1,0; 0,0"
+                            dur="15s"
+                            repeatCount="indefinite"/>
+        </linearGradient>
+        <linearGradient id="wave-gradient1" x1="0" y1="1" x2="0" y2="0">
+          <stop id="stop1a" offset="0%" stop-color="rgba(21, 27, 72, 1)" />
+          <stop id="stop1b" offset="100%" stop-color="#00e0ff" />
+        </linearGradient>
+        <linearGradient id="wave-gradient2" x1="0" y1="1" x2="0" y2="0">
+          <stop id="stop2a" offset="0%" stop-color="rgba(21, 27, 72, 1)" />
+          <stop id="stop2b" offset="100%" stop-color="#00ccff" />
+        </linearGradient>
+        <linearGradient id="wave-gradient3" x1="0" y1="1" x2="0" y2="0">
+          <stop id="stop3a" offset="0%" stop-color="rgba(21, 27, 72, 1)" />
+          <stop id="stop3b" offset="100%" stop-color="#00bbff" />
+        </linearGradient>
+
+      </defs>
+      <path fill="url(#wave-gradient3)" d="M0,100 C480,180 960,20 1440,100 L1440,200 L0,200 Z"></path>
+      <path fill="url(#wave-gradient2)" d="M0,130 C480,210 960,50 1440,130 L1440,200 L0,200 Z" fill-opacity="0.85"></path>
+      <path fill="url(#wave-gradient1)" d="M0,160 C480,240 960,80 1440,160 L1440,200 L0,200 Z" fill-opacity="0.85"></path>
+    </svg>
+  </div>
+
+
+
+
+</section>
+
+
+<script>
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('show');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.5 // wait until 50% of the element is in view
+  });
+
+  document.querySelectorAll('.fade-in-up').forEach((el, index) => {
+    observer.observe(el);
+    el.style.transitionDelay = `${index * 0.15}s`; // stagger by 150ms each
+  });
+  document.querySelectorAll('.fade-in-up').forEach((el, index) => {
+    observer.observe(el);
+    el.style.transitionDelay = `${index * 0.15}s`;
+  });
+
+</script>
+
+</body>
+</html>
