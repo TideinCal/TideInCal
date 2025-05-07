@@ -16,6 +16,8 @@ const __dirname = path.resolve();
 const app = express();
 const port = process.env.PORT || 3000;
 
+
+
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, path) => {
@@ -94,6 +96,16 @@ cron.schedule('0 0 * * *', () => {
 });
 
 // Start the Server
+// Serve landing page at root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
+});
+
+// Serve full app at /app
+app.get('/app', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'home.html'));
+});
+
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
@@ -141,7 +153,7 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
     const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 min duration
 
     // ✅ Generate unique UID per event
-    const eventUID = `tide-${id}-${startDate.getTime()}-${Math.random().toString(36).substr(2, 6)}@tidecalendar.com`;
+    const eventUID = `tide-${id}-${startDate.getTime()}-${Math.random().toString(36).substr(2, 6)}@tideincal.com`;
 
     // ✅ ICS Event Content
     const eventContent = `BEGIN:VEVENT
