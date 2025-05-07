@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/polishPre.html"
+    },
+    {
+      "source": "/app",
+      "destination": "/index.html"
+    }
+  ]
+}

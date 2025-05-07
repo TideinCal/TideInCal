@@ -96,15 +96,18 @@ cron.schedule('0 0 * * *', () => {
 });
 
 // Start the Server
-// Serve landing page at root
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
+  console.log('Request hostname:', req.hostname); // Add this line
+
+  const host = req.hostname;
+
+  if (host === 'app.tideincal.com') {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  } else {
+    res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
+  }
 });
 
-// Serve full app at /app
-app.get('/app', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'home.html'));
-});
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
