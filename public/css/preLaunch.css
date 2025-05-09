@@ -6,6 +6,9 @@ body {
   padding: 0;
 }
 
+.hero-title {
+  font-family: 'Kanit', sans-serif !important;
+}
 .hero {
   background: linear-gradient(270deg, rgba(21, 27, 72), #f0f0f0, #0B62AC);
   background-size: 600% 600%;
@@ -111,6 +114,7 @@ body {
   background-position: 0% 50%;
   border: none;
   color: #fdfdfd;
+  margin-bottom: 1em;
   padding: 0.75em 2em;
   font-size: 1.1rem;
   font-weight: 600;
@@ -289,9 +293,6 @@ p {
 }
 
 
-.cta-button{
-  margin-bottom: 1em;
-}
 
 .footer {
   font-size: 0.85rem;
