@@ -9,7 +9,6 @@ body {
 }
 
 .section-header {
-  height: 90vh;
   background-color: #0d1b48;
   color: #f0f0f0;
   border-bottom-left-radius: 100% 20%;
@@ -40,7 +39,6 @@ body {
 }
 #mapRow{
   position: relative;
-  top: -20vh;
 }
 #map {
   height: 80vh;
