@@ -2,11 +2,23 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/polishPre.html"
+      "has": [
+        {
+          "type": "host",
+          "value": "www.tideincal.com"
+        }
+      ],
+      "destination": "/public/polishpre.html"
     },
     {
-      "source": "/app",
-      "destination": "/index.html"
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "app.tideincal.com"
+        }
+      ],
+      "destination": "/public/index.html"
     }
   ]
 }
