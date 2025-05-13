@@ -1,0 +1,24 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.tideincal.com"
+        }
+      ],
+      "destination": "/public/polishpre.html"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "app.tideincal.com"
+        }
+      ],
+      "destination": "/public/index.html"
+    }
+  ]
+}

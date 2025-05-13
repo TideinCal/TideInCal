@@ -1,0 +1,349 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #f8f9fa;
+  color: #222;
+  margin: 0;
+  padding: 0;
+}
+
+.hero-title {
+  font-family: 'Kanit', sans-serif !important;
+}
+.hero {
+  background: linear-gradient(270deg, rgba(21, 27, 72), #f0f0f0, #0B62AC);
+  background-size: 600% 600%;
+  animation: waveGradient 15s ease infinite;
+  color: white;
+  padding: 6em 1em;
+  position: relative;
+  overflow: hidden; /* Required for wave clipping */
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 150px;
+  background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1440 150" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M0,100 C480,0 960,200 1440,100 L1440,150 L0,150 Z"/></svg>') no-repeat bottom center;
+  background-size: cover;
+}
+
+@keyframes waveGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 3em;
+}
+
+@media (min-width: 768px) {
+  .hero-content {
+    flex-direction: row;
+  }
+}
+
+.hero-text {
+  flex: 1;
+  padding: 1em;
+  text-align: center;
+}
+
+.hero-text h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.hero-text .underline {
+  text-decoration: underline;
+  color: rgba(21, 27, 72, 0.7);
+  filter: drop-shadow(1px 1px 1px rgba(255, 255, 255, 0.9));
+
+}
+
+.hero-text p {
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.hero-text .tides {
+  background: linear-gradient(135deg, #f0f0f0, #00c7e6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+  text-shadow: none; /* <- explicitly cancel any inherited shadow */
+}
+
+.hero-image {
+  flex: 1;
+  text-align: center;
+}
+
+.hero-image img {
+  max-width: 90%;
+  height: auto;
+  padding: 0em 3em;
+}
+
+.hero-text .tides {
+  background: linear-gradient(135deg, #f0f0f0, #00c7e6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+  text-shadow: none;
+  filter: drop-shadow(0 1px 2px rgba(21, 27, 72, 0.6));
+}
+
+.cta-button {
+  background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 50%, #0B62AC 80%);
+  background-size: 300% 300%;
+  background-position: 0% 50%;
+  border: none;
+  color: #fdfdfd;
+  margin-bottom: 1em;
+  padding: 0.75em 2em;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 0.6em;
+  margin-top: 1.5em;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+  transition: background-position 0.8s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.cta-button:hover {
+  background-position: 100% 50%;
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+
+/***** HOW IT WORKS SECTION *****/
+
+
+.how-it-works {
+  background: white;
+  padding-top: 3em;
+  text-align: center;
+  position: relative;
+  top: -1px;
+}
+
+.how-it-works h2 {
+  font-size: 3rem;
+  color: #0B62AC;
+  margin-bottom: 1.5em;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2em;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.5em; /* Add horizontal padding */
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+@media (min-width: 768px) {
+  .steps {
+    flex-direction: row;
+  }
+}
+
+.step-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;        /* Keeps spacing even */
+  align-items: center;            /* Ensures horizontal centering */
+  text-align: center;             /* Align text inside each card */
+  position: relative;
+  padding: 2em 1.5em;
+  min-height: 350px;
+  width: 100%;
+  max-width: 280px;
+  border-radius: 1rem;
+  overflow: hidden;
+  color: #ffffff;
+  box-shadow: 0 10px 10px rgba(0, 0, 0, 0.5); /* Darker, lower shadow */
+  transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
+}
+
+.step-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 24px rgba(0, 200, 255, 0.45);
+  filter: brightness(1.05) saturate(1.1);
+}
+
+.card-bg-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 160px;
+  height: 160px;
+  opacity: 0.12;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  fill: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+.step-number,
+h3,
+.step-icon,
+p {
+  position: relative;
+  z-index: 1;
+}
+
+.step-number {
+  background-color: #ffffff;
+  width: 42px;
+  height: 42px;
+  line-height: 42px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border-radius: 50%;
+  text-align: center;
+  margin: 0 auto 1rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  z-index: 1;
+  position: relative;
+}
+.one{color: rgba(21, 27, 72, 1);}
+
+.two {color: #0B62AC;}
+.three {color: #00c7e6;}
+
+.step-icon {
+  font-size: 3rem;
+}
+
+.fade-in-up {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-in-up.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+
+
+.secondary-cta{
+  margin: 2em 0em;
+}
+ /***** Why Tide Cal *******/
+.why-tidecal {
+  background: #f8f9fa;
+  padding: 4em 1em;
+  text-align: center;
+}
+
+.why-tidecal h2 {
+  font-size: 2.5rem;
+  color: #0B62AC;
+  margin-bottom: 1.5em;
+}
+
+.benefits-list {
+  list-style: none;
+  padding: 0em 1em;
+  margin: 0 auto;
+  max-width: 600px;
+  text-align: left;
+}
+
+@media (min-width: 768px) {
+  .benefits-list {
+    padding: 0 5em;
+  }
+}
+.benefits-list li {
+  font-size: 1.1rem;
+  margin-bottom: 1em;
+  display: flex;
+  align-items: center;
+  color: #222;
+}
+
+.benefits-list i {
+  color: #00c7e6;
+  margin-right: 0.75em;
+  font-size: 1.3rem;
+}
+
+
+
+.footer {
+  font-size: 0.85rem;
+  color: #888;
+  text-align: center;
+  padding-top: 4em;
+}
+
+.wave-trio {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  background: none;
+  bottom: -25px;
+}
+
+.wave-trio svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+@keyframes pulseGradient {
+  0%, 100% {
+    stop-color: rgba(21, 27, 72, 1);
+  }
+  50% {
+    stop-color: #0B62AC;
+  }
+}
+
+@keyframes pulseLight {
+  0%, 100% {
+    stop-color: #00e0ff;
+  }
+  50% {
+    stop-color: #f0f0f0;
+  }
+}
+
+#stop1a, #stop2a, #stop3a {
+  animation: pulseGradient 10s ease-in-out infinite;
+}
+
+#stop1b, #stop2b, #stop3b {
+  animation: pulseLight 10s ease-in-out infinite;
+}
+#footer {
+  background-color: #0d1b48;
+  color: white;
+  font-weight: bold;
+}
+

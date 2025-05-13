@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>TideCal – Tide Times in Your Calendar, Not an App</title>
+  <meta name="description" content="Get 12 months of tide times from official stations—synced directly to your Google or Apple Calendar. No app. No clutter. Just tides." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta property="og:title" content="TideInCal – 12 Months of Tide Times in Your Calendar" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://www.tideincal.com" />
+  <meta property="og:description" content="No app, no clutter. TideCal adds official tide times directly to your calendar—Google, Apple, Outlook. One download. You're set." />
+  <meta property="og:image" content="https://www.tideincal.com/img/social-preview.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="en_US" />
+  <meta name="theme-color" content="#fafafa">
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="TideInCal – 12 Months of Tide Times in Your Calendar" />
+  <meta name="twitter:description" content="No app, no clutter. TideInCal adds official tide times directly to your calendar. Download once, stay ready." />
+  <meta name="twitter:image" content="https://www.tideincal.com/img/social-preview.jpg" />
+  <meta name="twitter:site" content="@TideInCal" /> <!-- optional -->
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Google font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@1,700&family=Open+Sans:wght@300;700&display=swap" rel="stylesheet">
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/main.css" type="text/css">
+  <!-- JQuery -->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <!-- Leaflet.js + css -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+  <!-- Stripe -->
+  <script defer src="https://js.stripe.com/v3/"></script>
+  <!-- MarkerCluster CSS -->
+  <link rel="stylesheet" type="text/css" href="css/leaflet.markercluster/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" type="text/css" href="css/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
+
+</head>
+
+<body>
+
+
+<!-- Instructions -->
+<section class="section-header py-5 pb-9 pb-lg-12 text-white">
+  <div class="container text-white">
+    <div class="row">
+      <div class="col-12 text-center pt-2 ps-5 pe-5">
+        <img src="img/logo.png" class="mb-4" id="logo" height="200" alt="TIC wave logo">
+        <h1 id="title">Tide In Calendar</h1>
+        <div class=" justify-content-center py-2">
+          <h3>12 Months of Tide Times, Seamlessly Integrated into Your Calendar</h3>
+          <h5>Use your current location or navigate the map to choose a station manually.</h5>
+          <h4>Select a nearby tide station from the map and download your personalized calendar file.</h4>
+          <h4>Simple. Efficient. App-free.</h4>
+        </div>
+        <div class="d-flex justify-content-center py-4">
+          <a href="#map" class="btn btn-outline-light" id="mapBtn">Find My Location</a>
+        </div>
+      </div>
+     </div>
+  </div>
+</section>
+
+<!-- Map Section -->
+<div class="container-fluid p-3" id="mapSection">
+  <div class="row justify-content-center" id="tideRow">
+    <div class="row d-flex justify-content-center" id="mapRow">
+      <div class="col-12 col-sm-10">
+        <div class="col-md-12" id="map"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="footer mt-4">
+  Built by an ocean-loving developer tired of bloated tide apps<br>
+  🌊 Secure checkout with Stripe
+</footer>
+
+<div class="wave-trio">
+  <svg viewBox="0 0 1440 200" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="wave-gradient1" x1="0" y1="1" x2="0" y2="0" gradientTransform="translate(0,0)">
+        <stop offset="0%" stop-color="rgba(21, 27, 72, 1)" />
+        <stop offset="100%" stop-color="#00e0ff" />
+        <animateTransform attributeName="gradientTransform"
+                          type="translate"
+                          values="0,0; 1,0; 0,0"
+                          dur="15s"
+                          repeatCount="indefinite"/>
+      </linearGradient>
+      <linearGradient id="wave-gradient1" x1="0" y1="1" x2="0" y2="0">
+        <stop id="stop1a" offset="0%" stop-color="rgba(21, 27, 72, 1)" />
+        <stop id="stop1b" offset="100%" stop-color="#00e0ff" />
+      </linearGradient>
+      <linearGradient id="wave-gradient2" x1="0" y1="1" x2="0" y2="0">
+        <stop id="stop2a" offset="0%" stop-color="rgba(21, 27, 72, 1)" />
+        <stop id="stop2b" offset="100%" stop-color="#00ccff" />
+      </linearGradient>
+      <linearGradient id="wave-gradient3" x1="0" y1="1" x2="0" y2="0">
+        <stop id="stop3a" offset="0%" stop-color="rgba(21, 27, 72, 1)" />
+        <stop id="stop3b" offset="100%" stop-color="#00bbff" />
+      </linearGradient>
+
+    </defs>
+    <path fill="url(#wave-gradient3)" d="M0,100 C480,180 960,20 1440,100 L1440,200 L0,200 Z"></path>
+    <path fill="url(#wave-gradient2)" d="M0,130 C480,210 960,50 1440,130 L1440,200 L0,200 Z" fill-opacity="0.85"></path>
+    <path fill="url(#wave-gradient1)" d="M0,160 C480,240 960,80 1440,160 L1440,200 L0,200 Z" fill-opacity="0.85"></path>
+  </svg>
+</div>
+</section>
+<!-- FOOTER -->
+<div class="container-fluid" id="footer">
+  <footer class=" text-center py-3 mt-4">
+    <p>© 2025 Tides in Calendar <br> All rights reserved.</p>
+  </footer>
+</div>
+
+
+<!-- Bootstrap Bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+<!-- MarkerCluster JS -->
+<script src="css/leaflet.markercluster/dist/leaflet.markerCluster.js"></script>
+<!-- Main JS File -->
+<!--<script type="module" src="/dist/home.e3540fc2.js"></script>-->
+<script src="js/main.js"></script>
+
+</body>
+</html>

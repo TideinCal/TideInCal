@@ -25,6 +25,8 @@ const myIcon = L.icon({
   riseOffset: 500,
 });
 
+
+
 // Declare the map variable at a global scope so it’s accessible throughout the file
 let map;
 
