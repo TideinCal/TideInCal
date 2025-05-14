@@ -97,15 +97,15 @@ cron.schedule('0 0 * * *', () => {
 
 // Start the Server
 app.get('/', (req, res) => {
-  console.log('Request hostname:', req.hostname); // Add this line
-
-  const host = req.hostname;
-
-  if (host === 'app.tideincal.com') {
+  // console.log('Request hostname:', req.hostname); // Add this line
+  //
+  // const host = req.hostname;
+  //
+  // if (host === 'app.tideincal.com') {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  } else {
-    res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
-  }
+  // } else {
+  //   res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
+  // }
 });
 
 
