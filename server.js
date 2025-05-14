@@ -97,16 +97,14 @@ cron.schedule('0 0 * * *', () => {
 
 // Start the Server
 app.get('/', (req, res) => {
-  console.log('Request hostname:', req.hostname); // Add this line
-
+  console.log('Request hostname:', req.hostname);
   const host = req.hostname;
-
-  if (host === 'app.tideincal.com') {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-   } else {
-     res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
-   }
-});
+    if (host.includes('app.')) {
+      res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    } else {
+      res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
+    }
+  });
 
 
 app.listen(port, () => {
