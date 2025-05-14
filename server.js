@@ -17,15 +17,15 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 
-
-// Serve static files from the 'public' directory
+app.use(express.static(path.join(__dirname, 'public')));
+/* Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, path) => {
     if (path.endsWith('.css')) {
       res.setHeader('Content-Type', mime.lookup('css'));
     }
   }
-}));
+})); */
 app.use(express.json());
 app.use('/tempICSFile', express.static(path.join(__dirname, 'tempICSFile')));
 

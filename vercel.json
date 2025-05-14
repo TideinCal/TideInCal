@@ -5,8 +5,8 @@
   ],
   "routes": [
     {
-      "src": "/(css|js|img|tempICSFile)/(.*)",
-      "dest": "/public/$1/$2"
+      "src": "/(.*\\.(css|js|png|jpg|jpeg|svg|webp|ico|woff2?))",
+      "dest": "/public/$1"
     },
     {
       "src": "/",
