@@ -27,6 +27,17 @@ app.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 app.use(express.json());
+
+app.get('/', (req, res) => {
+  const host = req.hostname;
+
+  if (host === 'app.tideincal.com') {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  } else {
+    res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
+  }
+});
+
 app.use('/tempICSFile', express.static(path.join(__dirname, 'tempICSFile')));
 
 // Ensure tempICSFile directory exists
@@ -105,15 +116,6 @@ cron.schedule('0 0 * * *', () => {
 //       res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
 //     }
 //   });
-app.get('/', (req, res) => {
-  const host = req.hostname;
-
-  if (host === 'app.tideincal.com') {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  } else {
-    res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
-  }
-});
 
 
 app.listen(port, () => {
