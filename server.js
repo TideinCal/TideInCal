@@ -28,6 +28,13 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 app.use(express.json());
 
+app.use((req, res, next) => {
+  if (req.hostname === 'www.tideincal.com') {
+    return res.redirect(301, 'https://tideincal.com' + req.originalUrl);
+  }
+  next();
+});
+
 app.get('/', (req, res) => {
   const host = req.hostname;
 
