@@ -102,7 +102,7 @@ body {
 }
 #iMonth {
   position: absolute;
-  top: 12%;
+  top: 9%;
   left: 8%;
   width: 100%;
   text-align: center;
@@ -111,7 +111,7 @@ body {
 }
 #gMonth{
   position: absolute;
-  top: 15%;
+  top: 12%;
   left: 8%;
   width: 100%;
   text-align: center;
@@ -125,12 +125,16 @@ body {
   left: 13px;
   font-size: 3.4em;
 }
-.dlBtn:hover > * {
-  transform: translateY(-5px);
+/* Ensure the wrapper fills the button area */
+.calWrapper {
+  height: 100%;
+  width: 100%;
+  transition: transform 0.3s ease;
+  position: relative;
 }
 
-.dlBtn > * {
-  transition: transform 0.3s ease;
+.dlBtn:hover .calWrapper {
+  transform: translateY(-5px);
 }
 
 /***** Weather Widget *****/
