@@ -37,7 +37,7 @@ app.use((req, res, next) => {
 
 app.get('/', (req, res) => {
   const host = req.hostname;
-
+  console.log('Requested from:', req.hostname); // 🔍 Add this temporarily
   if (host === 'app.tideincal.com') {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   } else {
