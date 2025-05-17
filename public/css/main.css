@@ -34,9 +34,32 @@ body {
 #title {
   font-family: 'Kanit', sans-serif !important;
 }
-#mapBtn{
+
+#mapBtn {
+  background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 50%, #0B62AC 80%);
+  background-size: 300% 300%;
+  background-position: 0% 50%;
+  border: none;
+  color: #fdfdfd;
+  margin-bottom: 1em;
+  padding: 0.75em 2em;
   font-family: 'Kanit', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 0.6em;
+  margin-top: 1.5em;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.8);
+  transition: background-position 0.8s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
 }
+
+#mapBtn:hover, #mapBtn:focus, #mapBtn:active  {
+  background-position: 100% 50%;
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
 #mapRow{
   position: relative;
 }
@@ -62,12 +85,13 @@ body {
   margin:0 auto;
 }
 
-.imgIcon {
+.imgIcon, #iCalDlBtn, #gCalDlBtn{
   height: 156px;
   width: 156px;
   cursor: pointer;
   position: relative;
 }
+
 #gDate {
   position: relative;
   top: -105px;
@@ -100,6 +124,13 @@ body {
   top: -109px;
   left: 13px;
   font-size: 3.4em;
+}
+.dlBtn:hover > * {
+  transform: translateY(-5px);
+}
+
+.dlBtn > * {
+  transition: transform 0.3s ease;
 }
 
 /***** Weather Widget *****/

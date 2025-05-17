@@ -79,12 +79,12 @@ let timerStart = () => {
       document.getElementById('getIt').addEventListener('click', function () {
         let isFeet = $('#feetCheck').is(":checked");
 
-        console.log({
-          stationID,
-          stationTitle,
-          country,
-          feet: isFeet
-        });
+        // console.log({
+        //   stationID,
+        //   stationTitle,
+        //   country,
+        //   feet: isFeet
+        // });
 
         fetch('/startDataFetch', {
           method: 'POST',
@@ -100,7 +100,7 @@ let timerStart = () => {
         })
           .then(response => response.json())
           .then(({ message, fileUrl }) => {
-            console.log('Data fetch initiated:', fileUrl);
+             console.log('Data fetch initiated:', fileUrl);
 
             // Trigger the download of the ICS file
             window.location.href = fileUrl;

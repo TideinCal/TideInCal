@@ -59,13 +59,13 @@ const loadTideStations = async () => {
     }
 
     const { regions } = await regionsResponse.json();
-    console.log('Fetched regions:', regions);
+    // console.log('Fetched regions:', regions);
 
     const stationMarkerGroup = L.markerClusterGroup();
 
     // Fetch and render stations for each region
     for (const region of regions) {
-      console.log(`Fetching stations for region: ${region}`);
+      // console.log(`Fetching stations for region: ${region}`);
 
       const response = await fetch(`/api/tide-stations?region=${region}`);
       if (!response.ok) {
@@ -74,7 +74,7 @@ const loadTideStations = async () => {
       }
 
       const stations = await response.json();
-      console.log(`Fetched ${stations.length} stations for region: ${region}`);
+      // console.log(`Fetched ${stations.length} stations for region: ${region}`);
 
       for (let i = 0; i < stations.length; i++) {
         const station = stations[i];

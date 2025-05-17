@@ -126,7 +126,7 @@ body {
   display: inline-block;
 }
 
-.cta-button:hover {
+.cta-button:hover, .cta-button:focus, .cta-button:active  {
   background-position: 100% 50%;
   transform: translateY(-5px);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);

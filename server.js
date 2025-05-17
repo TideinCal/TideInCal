@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 
 app.get('/', (req, res) => {
   const host = req.hostname;
-  console.log('Requested from:', req.hostname); // 🔍 Add this temporarily
+  // console.log('Requested from:', req.hostname); // 🔍 Add this temporarily
   if (host === 'app.tideincal.com') {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
   } else {
@@ -86,15 +86,15 @@ app.get('/api/tide-stations', (req, res) => {
 // POST route for starting the data fetch process
 app.post('/startDataFetch', async (req, res) => {
   const { stationID, stationTitle, country, feet, userTimezone } = req.body;
-  console.log(`received: ${JSON.stringify(req.body)}`);
-  console.log('Received request:', { stationID, stationTitle, country, feet, userTimezone });
+  // console.log(`received: ${JSON.stringify(req.body)}`);
+  // console.log('Received request:', { stationID, stationTitle, country, feet, userTimezone });
 
   try {
     const fileName = await getYearData(stationID, stationTitle, country, feet, userTimezone);
     const fileUrl = `/tempICSFile/${fileName}`;
     res.json({ message: 'Data fetching initiated', fileUrl });
   } catch (error) {
-    console.error('Error fetching data:', error);
+    // console.error('Error fetching data:', error);
     res.status(500).json({ error: error.toString() });
   }
 });
@@ -112,7 +112,7 @@ cron.schedule('0 0 * * *', () => {
       fs.unlinkSync(filePath);
     }
   });
-  console.log('Old ICS files cleaned up!');
+  // console.log('Old ICS files cleaned up!');
 });
 
 // Start the Server
@@ -128,7 +128,7 @@ cron.schedule('0 0 * * *', () => {
 
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  // console.log(`Server running on port ${port}`);
 });
 
 const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
