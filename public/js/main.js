@@ -36,15 +36,17 @@ const renderModalContent = (title, id, region, lat, lon, type) => {
   localStorage.setItem('longitude', lon);
 
   return `
-     <div class="card w-88">
+     <div class="card">
       <div class="card-body">
-        <p class="card-text text-decoration-underline">Tide Station:</p>
-        <h3 class="fw-bolder">${title}</h3>
+        <p class="card-label">Tide Station:</p>
+        <h2 class="fw-bolder">${title}</h2>
         <h6 class="card-text">
           Select "Download File" to get 1 Year Of Tide Data To Your Calendar from this station
         </h6>
-        <p class="card-text">${type}</p>
-        <a href="https://buy.stripe.com/test_00g6rIbmh8x08KY9AA" class="btn">Download File</a>
+        <p class="card-text">CANADA Tide Station</p>
+        <a href="https://buy.stripe.com/test_00g6rIbmh8x08KY9AA" class="btn">
+          <img src="/img/whiteLogo.png" alt="calendar icon">Download File
+        </a>
       </div>
     </div>`;
 };

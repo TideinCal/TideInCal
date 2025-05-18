@@ -137,59 +137,88 @@ body {
   transform: translateY(-5px);
 }
 
-/* Leaflet popup */
-
+/* Leaflet popup wrapper */
 .leaflet-popup-content {
+
   margin: 0;
   padding: 0;
-  width: 220px; /* Adjust width as needed */
+  width: min(84vw, 235px); /* responsive width */
   font-family: 'Inter', sans-serif;
   color: #151b48;
 }
 
+/* Card container */
 .leaflet-popup-content .card {
   border: none;
   border-radius: 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  padding: 1rem;
+  padding: 0.9rem;
   background-color: #ffffff;
 }
 
-.leaflet-popup-content .card-title {
-  font-size: 1.1rem;
-  font-weight: bold;
-  margin-bottom: 0.5rem;
+/* Soft label like "Tide Station:" */
+.leaflet-popup-content .card-label {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 0.25rem;
 }
 
-.leaflet-popup-content .card-text {
-  font-size: 0.9rem;
-  margin-bottom: 0.3rem;
+/* Station title (e.g., "Port Renfrew") */
+.leaflet-popup-content h3 {
+  font-weight: 800;
+  margin: 0 0 0.4rem 0;
+  font-size: 1.3rem;
+}
+
+/* Supporting description text */
+.leaflet-popup-content h6 {
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.4;
+  margin: 0 0 0.4rem 0;
   color: #333;
 }
 
+/* Location type text (e.g., "CANADA Tide Station") */
+.leaflet-popup-content .card-text:last-of-type {
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 0.8rem;
+}
+
+/* Download Button */
 .leaflet-popup-content .btn {
   display: inline-block;
-  margin-top: 0.5rem;
   background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 50%, #0B62AC 80%);
   background-size: 300% 300%;
-  background-position: 0% 50%;  color: #fdfdfd;
+  background-position: 0% 50%;
+  color: #fdfdfd;
   border: none;
-  padding: 0.5rem 0.9rem;
+  padding: 0.55rem 1rem;
   border-radius: 10px;
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-family: 'Kanit', sans-serif;
   text-decoration: none;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.8);
   transition: background-position 0.8s ease, transform 0.3s ease, box-shadow 0.3s ease;
-
 }
 
+/* Hover effect */
 .leaflet-popup-content .btn:hover {
   transform: translateY(-3px);
   background-position: 100% 50%;
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
+
+/* Optional calendar icon inside the button */
+.leaflet-popup-content .btn img {
+  height: 1em;
+  vertical-align: middle;
+  margin-right: 6px;
+  margin-bottom: 5px; /* aligns better with text */
+}
+
 
 
 .footer {
