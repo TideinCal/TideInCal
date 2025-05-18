@@ -183,8 +183,8 @@ SEQUENCE:0
 DTSTAMP:${formatDateForICS(new Date())}
 DTSTART:${formatDateForICS(startDate, userTimezone)}
 DTEND:${formatDateForICS(endDate, userTimezone)}
-SUMMARY:${tide} @ ${tideHeight}
-DESCRIPTION:Tide at ${stationTitle}
+SUMMARY:${stationTitle} ${tide} @ ${tideHeight}
+DESCRIPTION:${tideHeight}Tide at ${stationTitle}
 LOCATION:${stationTitle}
 STATUS:CONFIRMED
 END:VEVENT`;
