@@ -137,36 +137,60 @@ body {
   transform: translateY(-5px);
 }
 
-/***** Weather Widget *****/
-#weather{
+/* Leaflet popup */
 
-}
-.weather-card {
-  color: white;
-  border-radius: 10px;
-  background-color: #0d1b48;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  padding: 20px;
-}
-.weather-card img {
-  margin-top: 0px !important;
+.leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+  width: 220px; /* Adjust width as needed */
+  font-family: 'Inter', sans-serif;
+  color: #151b48;
 }
 
-.weather-card .card-title {
-  font-size: 24px;
+.leaflet-popup-content .card {
+  border: none;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 1rem;
+  background-color: #ffffff;
+}
+
+.leaflet-popup-content .card-title {
+  font-size: 1.1rem;
   font-weight: bold;
-  margin-bottom: 10px;
-  text-align: center;
+  margin-bottom: 0.5rem;
 }
 
-.weather-card .card-text {
-  font-size: 16px;
-  margin-bottom: 5px;
+.leaflet-popup-content .card-text {
+  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
+  color: #333;
 }
 
-.weather-card img {
-  margin-top: 10px;
+.leaflet-popup-content .btn {
+  display: inline-block;
+  margin-top: 0.5rem;
+  background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 50%, #0B62AC 80%);
+  background-size: 300% 300%;
+  background-position: 0% 50%;  color: #fdfdfd;
+  border: none;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  font-family: 'Kanit', sans-serif;
+  text-decoration: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.8);
+  transition: background-position 0.8s ease, transform 0.3s ease, box-shadow 0.3s ease;
+
 }
+
+.leaflet-popup-content .btn:hover {
+  transform: translateY(-3px);
+  background-position: 100% 50%;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
 
 .footer {
   font-size: 0.85rem;
@@ -224,30 +248,4 @@ body {
 }
 
 
-/*.form-horizontal{*/
-/*  display:block;*/
-/*  margin:0 auto;*/
-/*}*/
 
-/*!* Modal and Map *!*/
-/*.modal-body {*/
-/*  padding: 0rem;*/
-/*}*/
-
-/*#map { */
-/*  position:absolute; top:0; bottom:0; width:100%; }*/
-/*@media only screen and (min-width: 360px) {*/
-/*  .title {*/
-/*    width: 93%;*/
-/*  }*/
-/*}*/
-/*@media only screen and (min-width: 800px) {*/
-/*  label {*/
-/*  }*/
-/*  input {*/
-/*    height: 3rem;*/
-/*  }*/
-/*  #openModal{*/
-/*    font-size: 1.5rem;*/
-/*  }*/
-/*}*/
