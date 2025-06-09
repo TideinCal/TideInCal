@@ -165,7 +165,7 @@ body {
 }
 
 /* Station title (e.g., "Port Renfrew") */
-.leaflet-popup-content h3 {
+.leaflet-popup-content h2 {
   font-weight: 800;
   margin: 0 0 0.4rem 0;
   font-size: 1.3rem;

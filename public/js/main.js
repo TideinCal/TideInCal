@@ -39,7 +39,7 @@ const renderModalContent = (title, id, region, lat, lon, type) => {
      <div class="card">
       <div class="card-body">
         <p class="card-label">Tide Station:</p>
-        <h3 class="fw-bolder">${title}</h3>
+        <h2 class="fw-bolder">${title}</h2>
         <h6 class="card-text">
           Select "Download File" to get 1 Year Of Tide Data To Your Calendar from this station
         </h6>
