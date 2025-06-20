@@ -139,6 +139,10 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
   const tideData = country === 'canada' ? data : data.predictions;
 
   tideData.forEach((entry, i) => {
+    if (stationTitle.includes('Destruction')) {
+      console.log('DEBUG Destruction Entry:', JSON.stringify(entry, null, 2));
+      console.log('DEBUG COUNTRY:', country);
+    }
     const tide =
       country === 'canada'
         ? entry.eventType === 'High' ? 'High Tide' : 'Low Tide'
