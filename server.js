@@ -139,10 +139,7 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
   const tideData = country === 'canada' ? data : data.predictions;
 
   tideData.forEach((entry, i) => {
-    if (stationTitle.includes('Destruction')) {
-      console.log('DEBUG Destruction Entry:', JSON.stringify(entry, null, 2));
-      console.log('DEBUG COUNTRY:', country);
-    }
+
     const tide =
       country === 'canada'
         ? entry.eventType === 'High' ? 'High Tide' : 'Low Tide'
@@ -161,8 +158,14 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
           : (entry.v / 3.2808399).toFixed(2)
       }M`;
 
-    const startDate = new Date(country === 'canada' ? entry.eventDate : entry.t);
-    const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 min duration
+    const rawTime = country === 'canada' ? entry.eventDate : `${entry.t}:00`; // NOAA gives no seconds
+
+    const startDate = new Date(
+      new Date(rawTime).toLocaleString('en-US', { timeZone: userTimezone })
+    );
+
+    const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 minutes later
+    console.log(`[DEBUG] ${stationTitle} | ${entry.t || entry.eventDate} → ${startDate.toISOString()} (${tide})`);
 
     // ✅ Generate unique UID per event
     const eventUID = `tide-${id}-${startDate.getTime()}-${Math.random().toString(36).substr(2, 6)}@tideincal.com`;
