@@ -38,6 +38,7 @@ app.get('/', (req, res) => {
 
 
 app.use(express.static(path.join(__dirname, 'public')));
+
 //serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, path) => {
@@ -115,17 +116,6 @@ cron.schedule('0 0 * * *', () => {
   // console.log('Old ICS files cleaned up!');
 });
 
-// Start the Server
-// app.get('/', (req, res) => {
-//   console.log('Request hostname:', req.hostname);
-//   const host = req.hostname;
-//     if (host.includes('app.')) {
-//       res.sendFile(path.join(__dirname, 'public', 'index.html'));
-//     } else {
-//       res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
-//     }
-//   });
-
 
 app.listen(port, () => {
   // console.log(`Server running on port ${port}`);
@@ -151,12 +141,9 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
   tideData.forEach((entry, i) => {
     const tide =
       country === 'canada'
-        ? entry.value > (tideData[i + 1]?.value || entry.value)
-          ? 'High Tide'
-          : 'Low Tide'
-        : entry.type === 'L'
-          ? 'Low Tide'
-          : 'High Tide';
+        ? entry.eventType === 'High' ? 'High Tide' : 'Low Tide'
+        : entry.type === 'L' ? 'Low Tide' : 'High Tide';
+
 
     const tideHeight = feet
       ? `${

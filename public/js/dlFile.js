@@ -10,11 +10,7 @@ const tideIcon = L.icon({
 });
 
 // Grab LocalStorage values
-// let country = "canada";
-// let stationTitle = "Nanaimo Harbour";
-// let stationID = "5cebf1de3d0f4a073c4bb96d";
-// let lat = 49.1628;
-// let long = -123.9235;
+
 let country = localStorage.getItem("region");
 let stationTitle = localStorage.getItem("stationTitle");
 let stationID = localStorage.getItem("stationID");
@@ -52,6 +48,7 @@ L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_toke
 }).addTo(map);
 
 $(window).trigger('resize');
+
 // Set the Tide Station to the new map
 const userLocation = L.marker([lat, long], {icon: tideIcon}).addTo(map);
 userLocation.setLatLng([lat, long]);
@@ -78,13 +75,6 @@ let timerStart = () => {
       // make the call to get the file.
       document.getElementById('getIt').addEventListener('click', function () {
         let isFeet = $('#feetCheck').is(":checked");
-
-        // console.log({
-        //   stationID,
-        //   stationTitle,
-        //   country,
-        //   feet: isFeet
-        // });
 
         fetch('/startDataFetch', {
           method: 'POST',
@@ -119,23 +109,6 @@ document.getElementById('iCalDlBtn').addEventListener('click', function () {
 document.getElementById('gCalDlBtn').addEventListener('click', function () {
   timerStart();
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
