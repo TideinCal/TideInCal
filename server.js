@@ -158,7 +158,7 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
           : (entry.v / 3.2808399).toFixed(2)
       }M`;
 
-    const rawTime = country === 'canada' ? entry.eventDate : `${entry.t}:00`; // NOAA gives no seconds
+    const rawTime = country === 'canada' ? entry.eventDate : `${entry.t}:00`; // ensure seconds are present
 
     const startDate = new Date(
       new Date(rawTime).toLocaleString('en-US', { timeZone: userTimezone })
