@@ -43,7 +43,7 @@ const renderModalContent = (title, id, region, lat, lon, type) => {
         <h6 class="card-text">
           Select "Download File" to get 1 Year Of Tide Data To Your Calendar from this station
         </h6>
-        <a href="https://buy.stripe.com/test_00g6rIbmh8x08KY9AA" class="btn">
+        <a href="https://buy.stripe.com/28E14o1xvc4vcyZbaY5Rm01" class="btn">
           <img src="/img/whiteLogo.png" alt="calendar icon">Download File
         </a>
       </div>
