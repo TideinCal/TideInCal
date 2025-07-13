@@ -77,7 +77,6 @@ const loadTideStations = async () => {
       }
 
       const stations = await response.json();
-      // console.log(`Fetched ${stations.length} stations for region: ${region}`);
 
       for (let i = 0; i < stations.length; i++) {
         const station = stations[i];

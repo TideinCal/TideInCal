@@ -142,9 +142,12 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
 
     const tide =
       country === 'canada'
-        ? entry.eventType === 'High' ? 'High Tide' : 'Low Tide'
-        : entry.type === 'L' ? 'Low Tide' : 'High Tide';
-
+        ? entry.eventType === 'HL'
+          ? 'High Tide'
+          : 'Low Tide'
+        : entry.type === 'L'
+          ? 'Low Tide'
+          : 'High Tide';
 
     const tideHeight = feet
       ? `${
@@ -175,8 +178,8 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
 UID:${eventUID}
 SEQUENCE:0
 DTSTAMP:${formatDateForICS(new Date())}
-DTSTART:${formatDateForICS(startDate, userTimezone)}
-DTEND:${formatDateForICS(endDate, userTimezone)}
+DTSTART:${formatDateForICS(startDate, country, userTimezone)}
+DTEND:${formatDateForICS(endDate, country, userTimezone)}
 SUMMARY:${stationTitle} ${tide} @ ${tideHeight}
 DESCRIPTION:${tideHeight}Tide at ${stationTitle}
 LOCATION:${stationTitle}
@@ -206,13 +209,22 @@ END:VCALENDAR`;
   return calendarFileNm;
 };
 // Format date for ICS
-const formatDateForICS = (date, timezone) => {
-  const local = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
-  const year = local.getFullYear();
-  const month = String(local.getMonth() + 1).padStart(2, '0');
-  const day = String(local.getDate()).padStart(2, '0');
-  const hours = String(local.getHours()).padStart(2, '0');
-  const minutes = String(local.getMinutes()).padStart(2, '0');
-  const seconds = String(local.getSeconds()).padStart(2, '0');
-  return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+const formatDateForICS = (date, country, timezone) => {
+  if (country === 'canada') {
+    // Use UTC formatting without any conversion
+    return new Date(date)
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .split('.')[0] + 'Z';
+  } else {
+    // Convert to local time for USA (or other)
+    const local = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
+    const year = local.getFullYear();
+    const month = String(local.getMonth() + 1).padStart(2, '0');
+    const day = String(local.getDate()).padStart(2, '0');
+    const hours = String(local.getHours()).padStart(2, '0');
+    const minutes = String(local.getMinutes()).padStart(2, '0');
+    const seconds = String(local.getSeconds()).padStart(2, '0');
+    return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+  }
 };
