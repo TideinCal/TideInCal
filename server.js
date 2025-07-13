@@ -140,14 +140,27 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
 
   tideData.forEach((entry, i) => {
 
-    const tide =
-      country === 'canada'
-        ? entry.eventType === 'HL'
-          ? 'High Tide'
-          : 'Low Tide'
-        : entry.type === 'L'
-          ? 'Low Tide'
-          : 'High Tide';
+    let tide;
+
+    if (country === 'canada') {
+      const currentHeight = parseFloat(entry.value);
+      const prev = tideData[i - 1] ? parseFloat(tideData[i - 1].value) : null;
+      const next = tideData[i + 1] ? parseFloat(tideData[i + 1].value) : null;
+
+      if (prev === null) {
+        tide = currentHeight > next ? 'High Tide' : 'Low Tide';
+      } else if (next === null) {
+        tide = currentHeight > prev ? 'High Tide' : 'Low Tide';
+      } else {
+        tide =
+          currentHeight > prev && currentHeight > next
+            ? 'High Tide'
+            : 'Low Tide';
+      }
+    } else {
+      // USA logic
+      tide = entry.type === 'L' ? 'Low Tide' : 'High Tide';
+    }
 
     const tideHeight = feet
       ? `${
