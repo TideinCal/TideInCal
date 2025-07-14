@@ -222,22 +222,15 @@ END:VCALENDAR`;
   return calendarFileNm;
 };
 // Format date for ICS
-const formatDateForICS = (date, country, timezone) => {
+const formatDateForICS = (date, country, userTimezone) => {
   if (country === 'canada') {
-    // Use UTC formatting without any conversion
     return new Date(date)
       .toISOString()
       .replace(/[-:]/g, '')
       .split('.')[0] + 'Z';
   } else {
-    // Convert to local time for USA (or other)
-    const local = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
-    const year = local.getFullYear();
-    const month = String(local.getMonth() + 1).padStart(2, '0');
-    const day = String(local.getDate()).padStart(2, '0');
-    const hours = String(local.getHours()).padStart(2, '0');
-    const minutes = String(local.getMinutes()).padStart(2, '0');
-    const seconds = String(local.getSeconds()).padStart(2, '0');
-    return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+    const local = new Date(date.toLocaleString('en-US', { timeZone: userTimezone }));
+    return `${local.getFullYear()}${String(local.getMonth() + 1).padStart(2, '0')}${String(local.getDate()).padStart(2, '0')}T${String(local.getHours()).padStart(2, '0')}${String(local.getMinutes()).padStart(2, '0')}${String(local.getSeconds()).padStart(2, '0')}`;
   }
+
 };
