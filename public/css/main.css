@@ -100,6 +100,7 @@ canvas#rippleCanvas {
   width: 156px;
   cursor: pointer;
   position: relative;
+  left: -3%; /* centering while gCal is dNone */
 }
 
 #gDate {
