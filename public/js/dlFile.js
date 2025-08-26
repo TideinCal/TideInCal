@@ -100,6 +100,37 @@ let timerStart = () => {
     }
   }, interval);
 }
+ /*Carousel for warning */
+const tutorialImages = [
+  'tut1.jpg',
+  'tut2.jpg',
+  'tut3.jpg',
+  'tut4.png',
+  'tut5.jpg',
+  'tut6.jpg'
+];
+
+const totalSlides = tutorialImages.length;
+let currentSlide = 1;
+
+function updateCarousel() {
+  const img = document.getElementById('carouselImage');
+  const counter = document.getElementById('carouselCounter');
+  img.src = `/img/tutorial/${tutorialImages[currentSlide - 1]}`;
+  counter.textContent = `${currentSlide} / ${totalSlides}`;
+}
+
+function nextSlide() {
+  currentSlide = currentSlide === totalSlides ? 1 : currentSlide + 1;
+  updateCarousel();
+}
+
+function prevSlide() {
+  currentSlide = currentSlide === 1 ? totalSlides : currentSlide - 1;
+  updateCarousel();
+}
+
+document.addEventListener('DOMContentLoaded', updateCarousel);
 
 
 document.getElementById('iCalDlBtn').addEventListener('click', function () {

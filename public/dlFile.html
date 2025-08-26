@@ -64,7 +64,24 @@
 
       </div>
       <div class="modal-body">
-        <div class="progress">
+
+        <!-- TideInCal Tutorial Notice -->
+        <div id="tideInstallNotice" class="install-warning">
+          <h5 class="text-danger fw-bold">🛑 STOP BEFORE YOU DOWNLOAD</h5>
+          <p>Learn how to install tides into your calendar the <strong>right way</strong>!</p>
+
+          <div class="carousel">
+            <img id="carouselImage" src="/tutorial/slide1.png" alt="Tutorial Step" class="img-fluid rounded shadow-sm" />
+            <div class="carousel-controls mt-2 d-flex justify-content-center align-items-center gap-3">
+              <button onclick="prevSlide()" class="btn btn-outline-warning btn-sm px-3">‹</button>
+              <span id="carouselCounter" class="text-dark small">1 / 5</span>
+              <button onclick="nextSlide()" class="btn btn-outline-warning btn-sm px-3">›</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress mt-4">
           <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
         </div>
       </div>

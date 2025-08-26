@@ -148,6 +148,21 @@ canvas#rippleCanvas {
   transform: translateY(-5px);
 }
 
+/* Warning for Download */
+.install-warning {
+  background: #fff7ed;
+  border: 2px solid #fdba74;
+  padding: 1rem;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.install-warning img {
+  max-height: 300px;
+  object-fit: contain;
+}
+
+
 /* Leaflet popup wrapper */
 .leaflet-popup-content {
 
