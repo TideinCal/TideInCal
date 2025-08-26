@@ -158,7 +158,7 @@ canvas#rippleCanvas {
 }
 
 .install-warning img {
-  max-height: 300px;
+  max-height: 550px;
   object-fit: contain;
 }
 
