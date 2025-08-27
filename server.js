@@ -234,3 +234,20 @@ const formatDateForICS = (date, country, userTimezone) => {
   }
 
 };
+
+//
+//     //--------------------- FOR UK -------------------------//
+//     // } else if ( country ==="uk") {
+//     //
+//     //   const uk_year =`http://environment.data.gov.uk/flood-monitoring/id/stations/${id}/readings?startdate=${year}-${month2d}-${day2d}&enddate=${nextYr}-${month2d}-${day2d}`;
+//     //   //const uk_year1 =`http://environment.data.gov.uk/flood-monitoring/id/stations/`;
+//     //   const respYearUK = await fetch(uk_year);
+//     //   const oneYearUK = await respYearUK.json();
+//     //   console.log(oneYearUK);
+//     //   console.log('cherio');
+//     //
+//   } else {
+//     console.error("Oh shit! You got nothing!")
+//   }
+// };
+
