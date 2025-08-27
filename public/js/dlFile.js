@@ -18,21 +18,6 @@ let lat = localStorage.getItem("latitude");
 let long = localStorage.getItem("longitude");
 
 
-let year = new Date().getFullYear();
-let nextYr = year+1;
-let months = new Date();
-let month = months.toLocaleString('en-US', { month: 'short' }).toUpperCase();
-let day = new Date().getDate();
-let hours = new Date().getUTCHours();
-
-// set ICS function to variable for ICE File creation
-
-
-document.getElementById('stnName').innerHTML=`Your station is: <b>${stationTitle}</b>`;
-document.getElementById('iDate').innerHTML=`${day}`;
-document.getElementById('gDate').innerHTML=`${day}`;
-document.getElementById('iMonth').innerHTML=`${month}`;
-document.getElementById('gMonth').innerHTML=`${month}`;
 
 // Create Leaflet Map
 
@@ -130,16 +115,20 @@ function prevSlide() {
   updateCarousel();
 }
 
+setTimeout(() => {
+  map.invalidateSize();
+}, 200);
+
 document.addEventListener('DOMContentLoaded', updateCarousel);
 
 
 document.getElementById('iCalDlBtn').addEventListener('click', function () {
   timerStart();
 });
-
-document.getElementById('gCalDlBtn').addEventListener('click', function () {
-  timerStart();
-});
+//
+// document.getElementById('gCalDlBtn').addEventListener('click', function () {
+//   timerStart();
+// });
 
 
 
