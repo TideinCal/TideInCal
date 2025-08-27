@@ -105,7 +105,7 @@ const tutorialImages = [
   'tut1.jpg',
   'tut2.jpg',
   'tut3.jpg',
-  'tut4.png',
+  'tut4.jpg',
   'tut5.jpg',
   'tut6.jpg'
 ];
