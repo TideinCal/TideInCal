@@ -100,20 +100,21 @@
       <h1 id="title">Tide In Calendar</h1>
       <h2 class="stnName" id="stnName"></h2>
       <p>Download 12 months of tide times directly to your calendar.</p>
-      <p>Choose your preferred calendar format below.</p>
+     <!-- <p>Choose your preferred calendar format below.</p>-->
       <div class="row mt-3">
         <div class="col">
           <h3>Select Your Preferred Measurement Unit:</h3>
 
           <div class="btn-group mt-1" role="group" aria-label="Basic radio toggle button group">
             <input type="radio" class="btn-check" name="btnradio" id="feetCheck" autocomplete="off" checked>
-            <label class="btn btn-outline-primary" for="feetCheck">Feet</label>
+            <label class="btn tide-toggle" for="feetCheck">Feet</label>
 
             <input type="radio" class="btn-check" name="btnradio" id="meterCheck" autocomplete="off">
-            <label class="btn btn-outline-primary" for="meterCheck">Meters</label>
+            <label class="btn tide-toggle" for="meterCheck">Meters</label>
           </div>
         </div>
       </div>
+      <p class="mt-3 mb-0">Touch the iCalendar Icon Below.</p>
       <a id="iCalDlBtn" class="btn dlBtn">
         <div class="calWrapper">
           <img src="/img/iCalBlank.png" alt="iCalendar icon" class="imgIcon">
@@ -121,6 +122,7 @@
           <span id="iDate"></span>
         </div>
       </a>
+      <p>Google Calendar Soon</p>
 
       <a id="gCalDlBtn" class="btn dlBtn d-none">
         <div class="calWrapper">
@@ -143,6 +145,7 @@
 <!-- FOOTER -->
 <div class="container-fluid" id="footer">
   <footer class=" text-center py-3 mt-4">
+    <p>Problems or Concerns? Email us: TideInCal@gmail.com</p>
     <p>© 2025 Tides in Calendar <br> All rights reserved.</p>
   </footer>
 </div>
