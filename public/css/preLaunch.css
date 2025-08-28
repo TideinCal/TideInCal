@@ -103,7 +103,7 @@ canvas#rippleCanvas {
 }
 
 .hero-image img {
-  max-width: 90%;
+  max-width: 80%;
   height: auto;
   padding: 0em 3em;
 }
@@ -130,6 +130,8 @@ canvas#rippleCanvas {
   font-weight: 600;
   border-radius: 0.6em;
   margin-top: 1.5em;
+  position: relative;
+  z-index: 999;
   box-shadow: 0 4px 8px rgba(0,0,0,0.12);
   transition: background-position 0.8s ease, transform 0.3s ease, box-shadow 0.3s ease;
   text-decoration: none;
@@ -191,6 +193,8 @@ canvas#rippleCanvas {
   border-radius: 1rem;
   overflow: hidden;
   color: #ffffff;
+  position: relative;
+  z-index: 10000;
   box-shadow: 0 10px 10px rgba(0, 0, 0, 0.5); /* Darker, lower shadow */
   transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
 }
@@ -256,11 +260,10 @@ p {
   transform: translateY(0);
 }
 
-
-
-
 .secondary-cta{
   margin: 2em 0em;
+  position: relative;
+  z-index: 10000;
 }
  /***** Why Tide Cal *******/
 .why-tidecal {

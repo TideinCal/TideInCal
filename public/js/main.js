@@ -112,7 +112,7 @@ const loadTideStations = async () => {
 // Initialize the map
 const initMap = () => {
   // Initialize the Leaflet map and assign it to the global `map` variable
-  map = L.map('map').setView([49.26083, -123.11389], 9);
+  map = L.map('map').setView([49.26083, -123.11389], 3);
 
   L.tileLayer(
     'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',

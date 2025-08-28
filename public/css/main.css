@@ -11,9 +11,10 @@ canvas#rippleCanvas {
   width: 100vw;
   height: 100vh;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 10;
   mix-blend-mode: difference;
 }
+
 
 #navBar, dark-bg{
   background-color: #0d1b48;
@@ -43,6 +44,10 @@ canvas#rippleCanvas {
 
 #title {
   font-family: 'Kanit', sans-serif !important;
+}
+#mapSection {
+  position: relative;
+  z-index: 10000;
 }
 
 #mapBtn {
@@ -151,8 +156,6 @@ input:checked + .tide-toggle {
   display: inline-block;
 }
 
-
-
 /* Warning for Download */
 .install-warning {
   background: #fff7ed;
@@ -209,7 +212,6 @@ input:checked + .tide-toggle {
 
 /* MAP: Leaflet popup wrapper */
 .leaflet-popup-content {
-
   margin: 0;
   padding: 0;
   width: min(84vw, 235px); /* responsive width */
@@ -348,9 +350,9 @@ input:checked + .tide-toggle {
 }
 
 /* Responsive fix for map on small screens */
-@media (max-width: 768px) {
+@media (max-width: 8208px) {
   #map {
-    height: 50vh; /* reduce height for mobile */
+    height: 70vh; /* reduce height for mobile */
   }
 
   .section-header-dl {
@@ -358,9 +360,8 @@ input:checked + .tide-toggle {
     padding-bottom: 2rem; /* add breathing room */
   }
 
-  #footer {
-    margin-top: 2rem; /* push footer down if needed */
-  }
+  #contact { padding-top: 1rem;}
+  #foot {margin-top: 1rem!important;}
 }
 
 
