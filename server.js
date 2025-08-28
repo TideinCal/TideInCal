@@ -19,6 +19,7 @@ const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
+// Redirect www → apex
 app.use((req, res, next) => {
   if (req.hostname === 'www.tideincal.com') {
     return res.redirect(301, 'https://tideincal.com' + req.originalUrl);
@@ -26,15 +27,24 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/', (req, res) => {
-  const host = req.hostname;
-  // console.log('Requested from:', req.hostname); // 🔍 Add this temporarily
-  if (host === 'app.tideincal.com') {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-  } else {
-    res.sendFile(path.join(__dirname, 'public', 'polishPre.html'));
-  }
+// Serve static assets from /public
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve the new homepage from root (your merged index.html in repo root)
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+// Redirect old/removed pages to homepage
+app.get(['/polishPre.html', '/newIndex.html', '/prelaunch', '/pre-launch'], (_req, res) => {
+  res.redirect(301, '/');
+});
+
+// Optional: catch-all so unknown routes still show homepage
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 
 
 app.use(express.static(path.join(__dirname, 'public')));
