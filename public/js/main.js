@@ -1,6 +1,6 @@
 // Define the custom icon for tide stations
 const tideIcon = L.icon({
-  iconUrl: 'img/waterdrop.png',
+  iconUrl: '/img/waterdrop.png',
   iconSize: [36, 59],
   iconAnchor: [22, 50],
   clickable: true,
@@ -10,9 +10,11 @@ const tideIcon = L.icon({
   riseOffset: 250,
 });
 
+console.log('Tide icon created:', tideIcon);
+
 // Define the custom icon for the user location
 const myIcon = L.icon({
-  iconUrl: 'img/redPin.png',
+  iconUrl: '/img/redPin.png',
   iconSize: [36, 59],
   iconAnchor: [22, 50],
   clickable: true,
@@ -21,6 +23,8 @@ const myIcon = L.icon({
   riseOnHover: true,
   riseOffset: 500,
 });
+
+console.log('User location icon created:', myIcon);
 
 
 
@@ -111,8 +115,12 @@ const loadTideStations = async () => {
 
 // Initialize the map
 const initMap = () => {
+  console.log('Initializing map...');
+  console.log('Map element:', document.getElementById('map'));
+  
   // Initialize the Leaflet map and assign it to the global `map` variable
   map = L.map('map').setView([49.26083, -123.11389], 3);
+  console.log('Map created:', map);
 
   L.tileLayer(
     'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
@@ -144,5 +152,7 @@ const initMap = () => {
   loadTideStations();
 };
 
-// Call the initMap function to start
-initMap();
+// Wait for DOM to be ready before initializing the map
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+});

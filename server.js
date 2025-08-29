@@ -10,16 +10,14 @@ import mime from "mime-types";
 import JSZip from 'jszip';
 
 const __filename = fileURLToPath(import.meta.url);
-// const __dirname = dirname(__filename);
-const __dirname = path.resolve();
+const __dirname = dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-
 app.use(express.json());
 
-// Redirect www → apex
+// www → apex redirect
 app.use((req, res, next) => {
   if (req.hostname === 'www.tideincal.com') {
     return res.redirect(301, 'https://tideincal.com' + req.originalUrl);
@@ -27,56 +25,26 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static assets from /public
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Serve the new homepage from root (your merged index.html in repo root)
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-// Redirect old/removed pages to homepage
-app.get(['/polishPre.html', '/newIndex.html', '/prelaunch', '/pre-launch'], (_req, res) => {
-  res.redirect(301, '/');
-});
-
-// Optional: catch-all so unknown routes still show homepage
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
-
-
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-//serve static files from the 'public' directory
+// Serve static files from the 'public' directory FIRST (before API routes)
 app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.css')) {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.css')) {
       res.setHeader('Content-Type', mime.lookup('css'));
     }
   }
 }));
 
-app.use('/tempICSFile', express.static(path.join(__dirname, 'tempICSFile')));
-
-// Ensure tempICSFile directory exists
-const ensureDirExists = (dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir);
-  }
-};
-ensureDirExists(path.join(__dirname, 'tempICSFile'));
-
 // Available regions with functional APIs or data
 const availableRegions = ['canada', 'usa']; // Add 'uk', 'australia' when ready
 
-// Route to provide the list of supported regions
+// Serve tempICSFile directory
+app.use('/tempICSFile', express.static(path.join(__dirname, 'tempICSFile')));
+
+// API routes
 app.get('/api/tide-regions', (req, res) => {
   res.json({ regions: availableRegions });
 });
 
-// Route to fetch tide stations for a specific region
 app.get('/api/tide-stations', (req, res) => {
   const region = req.query.region;
   const filePath = path.join(__dirname, 'data', `${region}_stations.json`);
@@ -93,7 +61,6 @@ app.get('/api/tide-stations', (req, res) => {
   }
 });
 
-
 // POST route for starting the data fetch process
 app.post('/startDataFetch', async (req, res) => {
   const { stationID, stationTitle, country, feet, userTimezone } = req.body;
@@ -108,6 +75,11 @@ app.post('/startDataFetch', async (req, res) => {
     // console.error('Error fetching data:', error);
     res.status(500).json({ error: error.toString() });
   }
+});
+
+// Homepage route (serves / only) - should be LAST
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Cleanup old ICS files daily ( WILL NEED TO CHANGE THIS)

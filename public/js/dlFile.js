@@ -16,6 +16,7 @@ let stationTitle = localStorage.getItem("stationTitle");
 let stationID = localStorage.getItem("stationID");
 let lat = localStorage.getItem("latitude");
 let long = localStorage.getItem("longitude");
+document.getElementById('stnName').textContent = stationTitle;
 
 
 
