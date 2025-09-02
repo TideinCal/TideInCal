@@ -314,6 +314,8 @@ input:checked + .tide-toggle {
 
 /* pill */
 .leaflet-control-geocoder .leaflet-control-geocoder-form {
+  width: 220px;                 /* smaller by default */
+  transition: width 0.3s ease, box-shadow 0.3s ease;
   position: relative;
   display: flex; align-items: center; gap: 8px;
   min-height: 42px !important;
@@ -323,6 +325,12 @@ input:checked + .tide-toggle {
   border-radius: 999px;
   padding: 4px 14px 4px 42px;      /* room for icon */
   box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+}
+
+/* === ON FOCUS / ACTIVE === */
+.leaflet-control-geocoder .leaflet-control-geocoder-form:focus-within {
+  width: 280px;                 /* grows when active */
+  box-shadow: 0 0 12px rgba(0,199,230,0.6); /* glow effect */
 }
 
 /* draw the magnifier INSIDE the pill */
