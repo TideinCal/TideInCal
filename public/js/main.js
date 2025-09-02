@@ -67,42 +67,57 @@ const loadTideStations = async () => {
     }
 
     const { regions } = await regionsResponse.json();
-    // console.log('Fetched regions:', regions);
 
     const stationMarkerGroup = L.markerClusterGroup();
 
     // Fetch and render stations for each region
     for (const region of regions) {
-      // console.log(`Fetching stations for region: ${region}`);
+      try {
+        const response = await fetch(`/api/tide-stations?region=${region}`);
+        if (!response.ok) {
+          console.warn(`Could not load stations for region: ${region}`);
+          continue;
+        }
 
-      const response = await fetch(`/api/tide-stations?region=${region}`);
-      if (!response.ok) {
-        console.warn(`Could not load stations for region: ${region}`);
-        continue;
-      }
-
-      const stations = await response.json();
+        const stations = await response.json();
 
       for (let i = 0; i < stations.length; i++) {
         const station = stations[i];
-        const marker = L.marker([station.lat, station.lon], { icon: tideIcon });
+
+        // Extract coordinates with fallback for different property names
+        const lat = station.lat || station.latitude || station.Latitude;
+        const lon = station.lon || station.lng || station.longitude || station.Longitude;
+
+        // Skip stations without valid numeric coordinates
+        if (typeof lat !== 'number' || typeof lon !== 'number' ||
+            isNaN(lat) || isNaN(lon) ||
+            lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+          console.warn(`Skipping station with invalid coordinates:`, station);
+          continue;
+        }
+
+        const marker = L.marker([lat, lon], { icon: tideIcon });
 
         marker.on('click', () => {
           const content = renderModalContent(
             station.name,
             station.id,
             region,
-            station.lat,
-            station.lon,
+            lat,
+            lon,
             `${region.toUpperCase()} Tide Station`
           );
           L.popup()
-            .setLatLng([station.lat, station.lon])
+            .setLatLng([lat, lon])
             .setContent(content)
             .openOn(map);
         });
 
         stationMarkerGroup.addLayer(marker);
+      }
+      } catch (error) {
+        console.error(`Error loading stations for region ${region}:`, error);
+        continue;
       }
     }
 
@@ -117,7 +132,7 @@ const loadTideStations = async () => {
 const initMap = () => {
   console.log('Initializing map...');
   console.log('Map element:', document.getElementById('map'));
-  
+
   // Initialize the Leaflet map and assign it to the global `map` variable
   map = L.map('map').setView([49.26083, -123.11389], 3);
   console.log('Map created:', map);
@@ -134,6 +149,47 @@ const initMap = () => {
       accessToken: 'pk.eyJ1Ijoiam5lbHNvbjMzIiwiYSI6ImNqODIxZGpsNjcycnYzMnFueGlkdWQ0a3IifQ.TF0Kw6EQM-dt6bc4EGKM6g',
     }
   ).addTo(map);
+
+  // Add geocoder control with Nominatim provider
+  const provider = new L.Control.Geocoder.Nominatim({
+    geocodingQueryParams: {
+      countrycodes: 'us,ca',
+      limit: 5
+    }
+  });
+
+  const geocoder = L.Control.geocoder({
+    position: 'topright',
+    placeholder: 'Search for a place...',
+    defaultMarkGeocode: false,
+    geocoder: provider
+  }).addTo(map);
+
+  // Handle geocoder results
+  geocoder.on('markgeocode', function(e) {
+    const result = e.geocode;
+    const latlng = result.center;
+
+    // Pan to the result location with zoom level 12
+    map.setView(latlng, 12);
+
+    // Add a temporary marker at the searched location
+    const searchMarker = L.marker(latlng, {
+      icon: L.divIcon({
+        className: 'search-marker',
+        html: '<div style="background-color: #007bff; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      })
+    }).addTo(map);
+
+    // Remove the marker after 5 seconds
+    setTimeout(() => {
+      map.removeLayer(searchMarker);
+    }, 5000);
+  });
+
+
 
   // Enable finding and displaying the user's location
   document.getElementById('mapBtn').addEventListener('click', () => {
