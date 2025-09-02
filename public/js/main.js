@@ -183,11 +183,14 @@ const initMap = () => {
       })
     }).addTo(map);
 
+
+
     // Remove the marker after 5 seconds
     setTimeout(() => {
       map.removeLayer(searchMarker);
     }, 5000);
   });
+
 
 
 
