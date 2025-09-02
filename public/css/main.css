@@ -319,7 +319,7 @@ input:checked + .tide-toggle {
   position: relative;
   display: flex; align-items: center; gap: 8px;
   min-height: 42px !important;
-  background: #0B62C7;
+  background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 80%);
   backdrop-filter: blur(6px);
   border: 1px solid rgba(255,255,255,0.18);
   border-radius: 999px;
