@@ -1,7 +1,7 @@
 // Define the custom icon for tide stations
 const tideIcon = L.icon({
-  iconUrl: '/img/waterdrop.png',
-  iconSize: [36, 59],
+  iconUrl: '/img/tideStations.png',
+  iconSize: [59, 59],
   iconAnchor: [22, 50],
   clickable: true,
   title: 'Tide Station',
@@ -14,8 +14,8 @@ console.log('Tide icon created:', tideIcon);
 
 // Define the custom icon for the user location
 const myIcon = L.icon({
-  iconUrl: '/img/redPin.png',
-  iconSize: [36, 59],
+  iconUrl: '/img/homeIcon.png',
+  iconSize: [59, 59],
   iconAnchor: [22, 50],
   clickable: true,
   title: 'Current Location',

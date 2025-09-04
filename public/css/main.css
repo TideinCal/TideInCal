@@ -50,6 +50,10 @@ canvas#rippleCanvas {
   font-size: 1.2em;
 }
 
+.stationIcon {
+  height: 1.3em;
+}
+
 #mapSection {
   position: relative;
   z-index: 10000;
@@ -347,24 +351,49 @@ input:checked + .tide-toggle {
   display: none !important;
 }
 
-/* input */
+/* Form Input */
 .leaflet-control-geocoder-form input {
   border: 0 !important; outline: none !important;
   background: transparent !important;
   color: #eaf2ff !important; font-weight: 600; font-size: 16px;
   width: 260px;
+  -webkit-appearance: none;        /* iOS: keep styling consistent */
+  caret-color: #eaf2ff;            /* visible caret on dark bg */
 }
 .leaflet-control-geocoder-form input::placeholder {
   color: rgba(234,242,255,0.7) !important;
 }
 
-/* clear (X) */
-.leaflet-control-geocoder-clear {
-  display: inline-flex !important;
-  justify-content: center; align-items: center;
-  width: 26px; height: 26px; border-radius: 50%;
+/* clear (X) — force-render on iOS & make tappable */
+.leaflet-control-geocoder .leaflet-control-geocoder-clear {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 30px;               /* bigger hit area */
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 50%;
   border: 1px solid rgba(255,255,255,0.25);
-  background: rgba(255,255,255,0.08); color: #eaf2ff;
+  background: rgba(255,255,255,0.10);
+  color: #fff;
+  cursor: pointer;
+  z-index: 1000;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* draw the X explicitly so Safari can’t drop it */
+.leaflet-control-geocoder .leaflet-control-geocoder-clear::before {
+  content: '✕';
+  font-size: 18px;
+  line-height: 1;
+  display: block;
+  transform: translateY(-1px);
+}
+
+/* hide when empty (the plugin toggles this class) */
+.leaflet-control-geocoder .leaflet-control-geocoder-clear.leaflet-control-geocoder-clear-disabled {
+  display: none !important;
 }
 
 /* results panel */
