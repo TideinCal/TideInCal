@@ -52,6 +52,8 @@ canvas#rippleCanvas {
 
 .stationIcon {
   height: 1.3em;
+  margin-bottom: 10px;
+
 }
 
 #mapSection {
