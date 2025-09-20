@@ -8,12 +8,69 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import mime from "mime-types";
 import JSZip from 'jszip';
+import session from 'express-session';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import cors from 'cors';
+
+// Import our modules
+import { connectToDatabase } from './server/db/index.js';
+import authRoutes from './server/routes/auth.js';
+import checkoutRoutes from './server/routes/checkout.js';
+import webhookRoutes from './server/routes/webhook.js';
+import filesRoutes from './server/routes/files.js';
+import { attachUser } from './server/auth/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      scriptSrc: ["'self'", "https://unpkg.com"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https://api.tidesandcurrents.noaa.gov", "https://api-iwls.dfo-mpo.gc.ca"]
+    }
+  }
+}));
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.APP_URL || 'http://localhost:3000',
+  credentials: true
+}));
+
+// Rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 requests per window
+  message: 'Too many authentication attempts, please try again later.'
+});
+
+const checkoutLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 requests per window
+  message: 'Too many checkout attempts, please try again later.'
+});
+
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'fallback-secret-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
 
 app.use(express.json());
 
@@ -36,6 +93,9 @@ app.use(express.static(path.join(__dirname, 'public'), {
 
 // Available regions with functional APIs or data
 const availableRegions = ['canada', 'usa']; // Add 'uk', 'australia' when ready
+
+// Attach user to all requests
+app.use(attachUser);
 
 // Serve tempICSFile directory
 app.use('/tempICSFile', express.static(path.join(__dirname, 'tempICSFile')));
@@ -60,6 +120,18 @@ app.get('/api/tide-stations', (req, res) => {
     res.status(404).json({ error: `Tide station data for "${region}" is not available` });
   }
 });
+
+// Authentication routes
+app.use('/api/auth', authLimiter, authRoutes);
+
+// Checkout routes
+app.use('/api/checkout', checkoutLimiter, checkoutRoutes);
+
+// Stripe webhook (no rate limiting for webhooks)
+app.use('/api/stripe', webhookRoutes);
+
+// Files routes
+app.use('/api/files', filesRoutes);
 
 // POST route for starting the data fetch process
 app.post('/startDataFetch', async (req, res) => {
@@ -99,9 +171,20 @@ cron.schedule('0 0 * * *', () => {
 });
 
 
-app.listen(port, () => {
-  // console.log(`Server running on port ${port}`);
-});
+// Initialize database connection and start server
+async function startServer() {
+  try {
+    await connectToDatabase();
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
   const year = new Date().getFullYear();

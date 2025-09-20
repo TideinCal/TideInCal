@@ -3,7 +3,28 @@ body {
   font-family: 'Open Sans', sans-serif;
   background-color: #f0f0f0;
   color: #424767;
+  padding-top: 56px; } /* navbar height */
+@media (max-width: 576px) { body { padding-top: 56px; }
 }
+/* dark navy */
+.bg-deepnav { background-color: #0d1b48 !important; }
+
+/* gradient primary button */
+.btn-gradient {
+  background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 80%);
+  color: #fff; border: 0;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.35);
+  font-family: 'Kanit', sans-serif;
+}
+.btn-gradient:hover { filter: brightness(1.05); }
+
+
+/* keep offcanvas above the map & ripple */
+.offcanvas { z-index: 11000; }
+#topNav     { z-index: 11001; }
+
+
+
 canvas#rippleCanvas {
   position: fixed;
   top: 0;

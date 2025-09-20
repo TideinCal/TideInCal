@@ -26,6 +26,192 @@ const myIcon = L.icon({
 
 console.log('User location icon created:', myIcon);
 
+async function refreshAuthUI() {
+  try {
+    const r = await fetch('/api/auth/me', { credentials: 'include' });
+    const { user } = r.ok ? await r.json() : { user: null };
+
+    const navLoginBtn    = document.getElementById('navLoginBtn');
+    const menuLoginBtn   = document.getElementById('menuLoginBtn');
+    const menuLogoutBtn  = document.getElementById('menuLogoutBtn');
+    const menuAccountLink= document.getElementById('menuAccountLink');
+
+    if (user) {
+      navLoginBtn?.classList.add('d-none');
+      menuLoginBtn && (menuLoginBtn.style.display = 'none');
+      menuLogoutBtn && (menuLogoutBtn.style.display = 'block');
+      menuAccountLink && (menuAccountLink.style.display = 'block');
+    } else {
+      navLoginBtn?.classList.remove('d-none');
+      menuLoginBtn && (menuLoginBtn.style.display = 'block');
+      menuLogoutBtn && (menuLogoutBtn.style.display = 'none');
+      menuAccountLink && (menuAccountLink.style.display = 'none');
+    }
+  } catch (e) {
+    console.warn('auth state check failed', e);
+  }
+}
+
+// Auth modal functions
+function openAuthModal(mode = 'login') {
+  const modal = document.getElementById('authModal');
+  if (!modal) {
+    console.error('Auth modal not found');
+    return;
+  }
+  
+  // Set active tab
+  const loginTab = document.getElementById('loginTab');
+  const signupTab = document.getElementById('signupTab');
+  const loginPane = document.getElementById('loginPane');
+  const signupPane = document.getElementById('signupPane');
+  
+  if (mode === 'login') {
+    loginTab.classList.add('active');
+    signupTab.classList.remove('active');
+    loginPane.classList.add('active', 'show');
+    signupPane.classList.remove('active', 'show');
+  } else {
+    signupTab.classList.add('active');
+    loginTab.classList.remove('active');
+    signupPane.classList.add('active', 'show');
+    loginPane.classList.remove('active', 'show');
+  }
+  
+  // Show modal
+  if (window.bootstrap?.Modal) {
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+  } else {
+    modal.style.display = 'block';
+    modal.classList.add('show');
+  }
+}
+
+async function handleAuth(formData, isSignup = false) {
+  try {
+    const endpoint = isSignup ? '/api/auth/signup' : '/api/auth/login';
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Authentication failed');
+    }
+    
+    const { user } = await response.json();
+    console.log('Authentication successful:', user);
+    
+    // Close modal
+    const modal = document.getElementById('authModal');
+    if (window.bootstrap?.Modal) {
+      const bsModal = bootstrap.Modal.getInstance(modal);
+      bsModal?.hide();
+    } else {
+      modal.style.display = 'none';
+      modal.classList.remove('show');
+    }
+    
+    // Refresh auth UI
+    refreshAuthUI();
+    
+    return true;
+  } catch (error) {
+    console.error('Authentication error:', error);
+    alert(error.message);
+    return false;
+  }
+}
+
+// click handlers
+document.getElementById('navLoginBtn')?.addEventListener('click', () => openAuthModal('login'));
+document.getElementById('menuLoginBtn')?.addEventListener('click', () => openAuthModal('login'));
+
+document.getElementById('menuLogoutBtn')?.addEventListener('click', async () => {
+  await fetch('/api/auth/logout', { method:'POST', credentials:'include' });
+  refreshAuthUI();
+});
+
+// Auth form handlers
+document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = {
+    email: formData.get('email'),
+    password: formData.get('password')
+  };
+  await handleAuth(data, false);
+});
+
+document.getElementById('signupForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = {
+    email: formData.get('email'),
+    password: formData.get('password'),
+    firstName: formData.get('firstName') || undefined,
+    lastName: formData.get('lastName') || undefined
+  };
+  await handleAuth(data, true);
+});
+
+// initial paint
+document.addEventListener('DOMContentLoaded', refreshAuthUI);
+
+// Offcanvas: close on click; smooth-scroll to anchors AFTER it closes
+window.addEventListener('DOMContentLoaded', () => {
+  const offcanvasEl = document.getElementById('mainOffcanvas');
+  if (!offcanvasEl) return;
+
+  const NAV_OFFSET = 56; // your fixed navbar height
+
+  // 1) Force-close on any link/button inside the offcanvas
+  offcanvasEl.addEventListener('click', (e) => {
+    const item = e.target.closest('a,button');
+    if (!item) return;
+
+    // If it's a hash link, we’ll handle scroll below.
+    const href = item.getAttribute('href') || '';
+    const isHash = href.startsWith('#');
+
+    // Use Bootstrap API if available; otherwise fall back to removing classes
+    const hideOffcanvas = () => {
+      if (window.bootstrap?.Offcanvas) {
+        const oc = bootstrap.Offcanvas.getInstance(offcanvasEl) || new bootstrap.Offcanvas(offcanvasEl);
+        oc.hide();
+      } else {
+        offcanvasEl.classList.remove('show');
+        document.body.classList.remove('offcanvas-backdrop'); // best-effort fallback
+      }
+    };
+
+    // If it’s a hash link, we prevent default and scroll after hidden
+    if (isHash) {
+      e.preventDefault();
+      const id = href.slice(1);
+      const target = document.getElementById(id);
+      if (!target) { hideOffcanvas(); return; }
+
+      const onHidden = () => {
+        offcanvasEl.removeEventListener('hidden.bs.offcanvas', onHidden);
+        const y = target.getBoundingClientRect().top + window.pageYOffset - NAV_OFFSET;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      };
+
+      offcanvasEl.addEventListener('hidden.bs.offcanvas', onHidden);
+      hideOffcanvas();
+      return;
+    }
+
+    // Non-hash items (e.g., /account) → just close
+    hideOffcanvas();
+  });
+});
+
 
 
 // Declare the map variable at a global scope so it’s accessible throughout the file
@@ -47,12 +233,67 @@ const renderModalContent = (title, id, region, lat, lon, type) => {
         <h6 class="card-text">
           Select "Download File" to get 1 Year Of Tide Data To Your Calendar from this station
         </h6>
-        <a href="https://buy.stripe.com/28E14o1xvc4vcyZbaY5Rm01" class="btn">
+        <button class="btn download-btn" onclick="handleDownloadClick('${id}', '${title}', '${region}')">
           <img src="/img/whiteLogo.png" alt="calendar icon">Download File
-        </a>
+        </button>
       </div>
     </div>`;
 };
+
+// Handle download button click
+async function handleDownloadClick(stationID, stationTitle, country) {
+  try {
+    // Check if user is authenticated
+    const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
+    
+    if (!authResponse.ok) {
+      // User not authenticated, show auth modal
+      openAuthModal('login');
+      return;
+    }
+    
+    const { user } = await authResponse.json();
+    
+    if (!user) {
+      // User not authenticated, show auth modal
+      openAuthModal('login');
+      return;
+    }
+    
+    // User is authenticated, proceed to checkout
+    const checkoutData = {
+      stationID,
+      stationTitle,
+      country,
+      includeMoon: false, // Default to false, can be made configurable later
+      unlimited: false    // Default to false, can be made configurable later
+    };
+    
+    const response = await fetch('/api/checkout/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(checkoutData),
+      credentials: 'include'
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create checkout session');
+    }
+    
+    const { url } = await response.json();
+    
+    // Redirect to Stripe checkout
+    window.location.href = url;
+    
+  } catch (error) {
+    console.error('Download error:', error);
+    alert('Failed to start checkout process. Please try again.');
+  }
+}
+
+// Make handleDownloadClick globally available
+window.handleDownloadClick = handleDownloadClick;
 
 //https://buy.stripe.com/test_00g6rIbmh8x08KY9AA <-- Test Link
 
