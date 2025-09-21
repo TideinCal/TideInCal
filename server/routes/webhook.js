@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { getDatabase } from '../db/index.js';
-import { Resend } from 'resend';
+import { sendDownloadReady } from '../auth/email.js';
 import { generateICS } from '../ics/index.js';
 import fs from 'fs/promises';
 import path from 'path';
@@ -10,7 +10,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -134,16 +133,10 @@ async function handleCheckoutCompleted(session) {
       // Send email with download link
       const downloadUrl = `${process.env.APP_URL}/api/files/${fileRecord.insertedId}/download`;
       
-      await resend.emails.send({
-        from: 'TideInCal <noreply@tideincal.com>',
+      await sendDownloadReady({
         to: session.customer_email,
-        subject: 'Your tide calendar is ready!',
-        html: `
-          <h2>Your tide calendar is ready!</h2>
-          <p>Thank you for your purchase. Your personalized tide calendar for <strong>${stationTitle}</strong> has been generated and is ready for download.</p>
-          <p><a href="${downloadUrl}" style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">Download Calendar File</a></p>
-          <p><small>This file will be available for download for 365 days.</small></p>
-        `
+        stationTitle,
+        link: downloadUrl
       });
 
       console.log(`File generated and email sent for session ${session.id}`);
