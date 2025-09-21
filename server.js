@@ -9,6 +9,7 @@ import { dirname } from 'path';
 import mime from "mime-types";
 import JSZip from 'jszip';
 import session from 'express-session';
+import MongoStore from 'connect-mongo';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import cors from 'cors';
@@ -59,8 +60,8 @@ const checkoutLimiter = rateLimit({
   message: 'Too many checkout attempts, please try again later.'
 });
 
-// Session configuration
-app.use(session({
+// Session configuration - will be updated after DB connection
+let sessionConfig = {
   secret: process.env.SESSION_SECRET || 'fallback-secret-change-in-production',
   resave: false,
   saveUninitialized: false,
@@ -70,8 +71,15 @@ app.use(session({
     sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
-}));
+};
 
+// Stripe webhook MUST be mounted before express.json() and use raw body
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const webhookHandler = (await import('./server/routes/webhook.js')).default;
+  return webhookHandler(req, res);
+});
+
+// Now we can safely use express.json() for other routes
 app.use(express.json());
 
 // www → apex redirect
@@ -127,9 +135,6 @@ app.use('/api/auth', authLimiter, authRoutes);
 // Checkout routes
 app.use('/api/checkout', checkoutLimiter, checkoutRoutes);
 
-// Stripe webhook (no rate limiting for webhooks)
-app.use('/api/stripe', webhookRoutes);
-
 // Files routes
 app.use('/api/files', filesRoutes);
 
@@ -174,7 +179,19 @@ cron.schedule('0 0 * * *', () => {
 // Initialize database connection and start server
 async function startServer() {
   try {
-    await connectToDatabase();
+    const { client } = await connectToDatabase();
+    
+    // Configure session store with MongoDB after connection
+    sessionConfig.store = MongoStore.create({
+      client: client,
+      dbName: 'tideincal',
+      collectionName: 'sessions',
+      ttl: 14 * 24 * 3600 // 14 days
+    });
+    
+    // Apply session middleware after DB connection
+    app.use(session(sessionConfig));
+    
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);
     });
