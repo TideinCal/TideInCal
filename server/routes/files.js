@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getDatabase } from '../db/index.js';
 import { attachUser, requireAuth } from '../auth/index.js';
+import { z } from 'zod';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,6 +13,9 @@ const router = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Validation schemas
+const fileIdSchema = z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid file ID format');
+
 // Apply middleware
 router.use(attachUser);
 router.use(requireAuth);
@@ -20,19 +24,26 @@ router.use(requireAuth);
 router.get('/', async (req, res) => {
   try {
     const db = getDatabase();
+    const { ObjectId } = await import('mongodb');
     
     const files = await db.collection('files')
-      .find({ userId: req.user._id })
+      .find({ userId: new ObjectId(req.user._id) })
       .sort({ createdAt: -1 })
       .project({
         userId: 0,
-        storagePath: 0
+        storagePath: 0 // Mask internal paths from responses
       })
       .toArray();
     
-    // Add download URLs
+    // Add download URLs and format response
     const filesWithUrls = files.map(file => ({
-      ...file,
+      id: file._id,
+      stationTitle: file.stationTitle,
+      region: file.region,
+      includesMoon: file.includesMoon,
+      createdAt: file.createdAt,
+      retainUntil: file.retainUntil,
+      lastDownloadedAt: file.lastDownloadedAt,
       downloadUrl: `${process.env.APP_URL}/api/files/${file._id}/download`
     }));
     
@@ -46,20 +57,30 @@ router.get('/', async (req, res) => {
 // GET /api/files/:id/download - Download file (auth & owner required)
 router.get('/:id/download', async (req, res) => {
   try {
+    // Validate file ID parameter
+    const validation = fileIdSchema.safeParse(req.params.id);
+    if (!validation.success) {
+      return res.status(400).json({ 
+        error: 'Invalid file ID', 
+        details: validation.error.errors 
+      });
+    }
+    
     const db = getDatabase();
-    const fileId = req.params.id;
+    const { ObjectId } = await import('mongodb');
+    const fileId = validation.data;
     
     // Find file and verify ownership
     const file = await db.collection('files').findOne({
-      _id: fileId,
-      userId: req.user._id
+      _id: new ObjectId(fileId),
+      userId: new ObjectId(req.user._id)
     });
     
     if (!file) {
       return res.status(404).json({ error: 'File not found or access denied' });
     }
     
-    // Construct full file path
+    // Construct full file path (mask internal paths from responses)
     const filePath = path.join(__dirname, '../../', file.storagePath);
     
     // Check if file exists on disk
@@ -72,7 +93,7 @@ router.get('/:id/download', async (req, res) => {
     
     // Update last downloaded timestamp
     await db.collection('files').updateOne(
-      { _id: fileId },
+      { _id: new ObjectId(fileId) },
       { $set: { lastDownloadedAt: new Date() } }
     );
     
