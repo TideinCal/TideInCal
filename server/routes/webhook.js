@@ -1,4 +1,3 @@
-import express from 'express';
 import Stripe from 'stripe';
 import { getDatabase } from '../db/index.js';
 import { Resend } from 'resend';
@@ -10,15 +9,14 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// POST /api/stripe/webhook
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+// Webhook handler function (called directly from server.js)
+export default async function webhookHandler(req, res) {
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -40,7 +38,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     console.error('Webhook processing error:', error);
     res.status(500).json({ error: 'Webhook processing failed' });
   }
-});
+}
 
 async function handleCheckoutCompleted(session) {
   const db = getDatabase();
@@ -61,8 +59,9 @@ async function handleCheckoutCompleted(session) {
 
   try {
     // Update user with Stripe customer ID
+    const { ObjectId } = await import('mongodb');
     await db.collection('users').updateOne(
-      { _id: userId },
+      { _id: new ObjectId(userId) },
       { 
         $set: { 
           stripeCustomerId: session.customer,
@@ -73,7 +72,7 @@ async function handleCheckoutCompleted(session) {
 
     // Create purchase record
     await db.collection('purchases').insertOne({
-      userId,
+      userId: new ObjectId(userId),
       stripeSessionId: session.id,
       stripePaymentIntentId: session.payment_intent,
       product: unlimitedBool ? 'unlimited' : (includeMoonBool ? 'lunar-addon' : 'single'),
@@ -90,7 +89,7 @@ async function handleCheckoutCompleted(session) {
     if (unlimitedBool) {
       // Set unlimited entitlement
       await db.collection('users').updateOne(
-        { _id: userId },
+        { _id: new ObjectId(userId) },
         { 
           $set: { 
             unlimited: true,
@@ -121,7 +120,7 @@ async function handleCheckoutCompleted(session) {
       const retainUntil = new Date(now.getTime() + (365 * 24 * 60 * 60 * 1000)); // 365 days
       
       const fileRecord = await db.collection('files').insertOne({
-        userId,
+        userId: new ObjectId(userId),
         stationId: stationID,
         stationTitle,
         region: country,
