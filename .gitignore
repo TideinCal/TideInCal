@@ -3,3 +3,6 @@
 # Useful .gitignore templates: https://github.com/github/gitignore
 node_modules
 .cache
+.env
+tempICSFile/
+*.ics
