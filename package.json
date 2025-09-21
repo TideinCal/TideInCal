@@ -6,8 +6,11 @@
   "author": "Joe Nelo",
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "node server.js",
+    "start": "NODE_ENV=production node server.js",
+    "ngrok": "ngrok http 3000",
+    "test": "node --test",
+    "lint": "eslint ."
   },
   "directories": {
     "doc": "doc"
