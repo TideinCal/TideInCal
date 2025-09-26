@@ -6,10 +6,11 @@
   "author": "Joe Nelo",
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
-    "start": "NODE_ENV=production node server.js",
+    "dev": "node --watch server.js",
+    "start": "node server.js",
     "ngrok": "ngrok http 3000",
-    "test": "node --test",
+    "test": "vitest run",
+    "test:ui": "vitest",
     "lint": "eslint ."
   },
   "directories": {
@@ -39,5 +40,9 @@
     "sync-fetch": "^0.6.0-2",
     "zod": "^4.1.11"
   },
-  "description": "Getting High and Low Tides into your Calendar"
+  "description": "Getting High and Low Tides into your Calendar",
+  "devDependencies": {
+    "supertest": "^7.1.4",
+    "vitest": "^3.2.4"
+  }
 }

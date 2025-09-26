@@ -1,4 +1,5 @@
-import 'dotenv/config.js'
+// server.js
+import 'dotenv/config.js';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -6,7 +7,7 @@ import fetch from 'node-fetch';
 import cron from 'node-cron';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import mime from "mime-types";
+import mime from 'mime-types';
 import JSZip from 'jszip';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
@@ -14,13 +15,17 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import cors from 'cors';
 
-// Import our modules
+// Internal modules
 import { connectToDatabase } from './server/db/index.js';
 import authRoutes from './server/routes/auth.js';
 import checkoutRoutes from './server/routes/checkout.js';
-import webhookRoutes from './server/routes/webhook.js';
+// NOTE: do NOT import webhook as a router; we mount a raw handler inline
 import filesRoutes from './server/routes/files.js';
 import { attachUser } from './server/auth/index.js';
+import { assertStripeEnv } from './server/bootstrap/envGuard.js';
+
+// Validate required environment variables
+assertStripeEnv();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -28,39 +33,52 @@ const __dirname = dirname(__filename);
 const app = express();
 const port = process.env.PORT || 3000;
 
+// If behind a proxy/CDN in prod, needed for secure cookies
+app.set('trust proxy', 1);
+
+// ─────────────────────────────────────────────────────────────
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
-      scriptSrc: ["'self'", "https://unpkg.com"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "https://api.tidesandcurrents.noaa.gov", "https://api-iwls.dfo-mpo.gc.ca"]
-    }
-  }
-}));
+// ─────────────────────────────────────────────────────────────
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com'],
+        scriptSrc: ["'self'", 'https://unpkg.com'],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: [
+          "'self'",
+          'https://api.tidesandcurrents.noaa.gov',
+          'https://api-iwls.dfo-mpo.gc.ca',
+        ],
+      },
+    },
+  })
+);
 
-// CORS configuration
-app.use(cors({
-  origin: process.env.APP_URL || 'http://localhost:3000',
-  credentials: true
-}));
+// CORS (allow your own origin)
+app.use(
+  cors({
+    origin: process.env.APP_URL || 'http://localhost:3000',
+    credentials: true,
+  })
+);
 
-// Rate limiting
+// Rate limits
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 requests per window
-  message: 'Too many authentication attempts, please try again later.'
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: 'Too many authentication attempts, please try again later.',
 });
 
 const checkoutLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 requests per window
-  message: 'Too many checkout attempts, please try again later.'
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: 'Too many checkout attempts, please try again later.',
 });
 
-// Session configuration - will be updated after DB connection
+// Session config (store added after DB connects)
 let sessionConfig = {
   secret: process.env.SESSION_SECRET || 'fallback-secret-change-in-production',
   resave: false,
@@ -69,17 +87,24 @@ let sessionConfig = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
+    maxAge: 24 * 60 * 60 * 1000, // 24h
+  },
 };
 
-// Stripe webhook MUST be mounted before express.json() and use raw body
-app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const webhookHandler = (await import('./server/routes/webhook.js')).default;
-  return webhookHandler(req, res);
-});
+// ─────────────────────────────────────────────────────────────
+// Stripe webhook MUST be mounted BEFORE express.json() using raw body
+// ─────────────────────────────────────────────────────────────
+app.post(
+  '/api/stripe/webhook',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    // dynamic import to avoid raw-body conflicts
+    const webhookHandler = (await import('./server/routes/webhook.js')).default;
+    return webhookHandler(req, res);
+  }
+);
 
-// Now we can safely use express.json() for other routes
+// Now safe to use JSON parser for normal routes
 app.use(express.json());
 
 // www → apex redirect
@@ -90,29 +115,29 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files from the 'public' directory FIRST (before API routes)
-app.use(express.static(path.join(__dirname, 'public'), {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.css')) {
-      res.setHeader('Content-Type', mime.lookup('css'));
-    }
-  }
-}));
+// Static files FIRST
+app.use(
+  express.static(path.join(__dirname, 'public'), {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.css')) {
+        res.setHeader('Content-Type', mime.lookup('css'));
+      }
+    },
+  })
+);
 
-// Available regions with functional APIs or data
-const availableRegions = ['canada', 'usa']; // Add 'uk', 'australia' when ready
-
-// Attach user to all requests
-app.use(attachUser);
-
-// Serve tempICSFile directory
+// Temporary ICS hosting
 app.use('/tempICSFile', express.static(path.join(__dirname, 'tempICSFile')));
 
-// API routes
-app.get('/api/tide-regions', (req, res) => {
+// Available regions
+const availableRegions = ['canada', 'usa'];
+
+// API: regions
+app.get('/api/tide-regions', (_req, res) => {
   res.json({ regions: availableRegions });
 });
 
+// API: stations by region
 app.get('/api/tide-stations', (req, res) => {
   const region = req.query.region;
   const filePath = path.join(__dirname, 'data', `${region}_stations.json`);
@@ -123,86 +148,91 @@ app.get('/api/tide-stations', (req, res) => {
 
   if (fs.existsSync(filePath)) {
     const tideStations = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-    res.json(tideStations);
-  } else {
-    res.status(404).json({ error: `Tide station data for "${region}" is not available` });
+    return res.json(tideStations);
   }
+
+  return res
+    .status(404)
+    .json({ error: `Tide station data for "${region}" is not available` });
 });
 
-// Authentication routes
-app.use('/api/auth', authLimiter, authRoutes);
-
-// Checkout routes
-app.use('/api/checkout', checkoutLimiter, checkoutRoutes);
-
-// Files routes
-app.use('/api/files', filesRoutes);
-
-// POST route for starting the data fetch process
-app.post('/startDataFetch', async (req, res) => {
-  const { stationID, stationTitle, country, feet, userTimezone } = req.body;
-  // console.log(`received: ${JSON.stringify(req.body)}`);
-  // console.log('Received request:', { stationID, stationTitle, country, feet, userTimezone });
-
-  try {
-    const fileName = await getYearData(stationID, stationTitle, country, feet, userTimezone);
-    const fileUrl = `/tempICSFile/${fileName}`;
-    res.json({ message: 'Data fetching initiated', fileUrl });
-  } catch (error) {
-    // console.error('Error fetching data:', error);
-    res.status(500).json({ error: error.toString() });
-  }
-});
-
-// Homepage route (serves / only) - should be LAST
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Cleanup old ICS files daily ( WILL NEED TO CHANGE THIS)
-cron.schedule('0 0 * * *', () => {
-  const dir = './tempICSFile';
-  const files = fs.readdirSync(dir);
-
-  files.forEach((file) => {
-    const filePath = path.join(dir, file);
-    const stats = fs.statSync(filePath);
-
-    if (Date.now() - stats.mtimeMs > 24 * 60 * 60 * 1000) {
-      fs.unlinkSync(filePath);
-    }
-  });
-  // console.log('Old ICS files cleaned up!');
-});
-
-
-// Initialize database connection and start server
+// ─────────────────────────────────────────────────────────────
+// Routes that don’t require DB (webhook/static) are already above.
+// Everything that needs sessions/user comes after DB connection.
+// ─────────────────────────────────────────────────────────────
 async function startServer() {
   try {
     const { client } = await connectToDatabase();
-    
-    // Configure session store with MongoDB after connection
+
+    // Session store
     sessionConfig.store = MongoStore.create({
-      client: client,
+      client,
       dbName: 'tideincal',
       collectionName: 'sessions',
-      ttl: 14 * 24 * 3600 // 14 days
+      ttl: 14 * 24 * 3600, // 14 days
     });
-    
-    // Apply session middleware after DB connection
+
+    // Sessions FIRST…
     app.use(session(sessionConfig));
-    
+    // …then middleware that relies on req.session
+    app.use(attachUser);
+
+    // Auth/checkout/file routes (rate-limited where appropriate)
+    app.use('/api/auth', authLimiter, authRoutes);
+    app.use('/api/checkout', checkoutLimiter, checkoutRoutes);
+    app.use('/api/files', filesRoutes);
+
+    // Legacy data generation endpoint (kept for compatibility)
+    app.post('/startDataFetch', async (req, res) => {
+      const { stationID, stationTitle, country, feet, userTimezone } = req.body;
+      try {
+        const fileName = await getYearData(
+          stationID,
+          stationTitle,
+          country,
+          feet,
+          userTimezone
+        );
+        const fileUrl = `/tempICSFile/${fileName}`;
+        res.json({ message: 'Data fetching initiated', fileUrl });
+      } catch (error) {
+        res.status(500).json({ error: error.toString() });
+      }
+    });
+
+    // Home LAST
+    app.get('/', (_req, res) => {
+      res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    });
+
+    // Daily cleanup of old files (legacy; webhook/TTL handles new flow)
+    cron.schedule('0 0 * * *', () => {
+      const dir = './tempICSFile';
+      if (!fs.existsSync(dir)) return;
+      const files = fs.readdirSync(dir);
+      files.forEach((file) => {
+        const filePath = path.join(dir, file);
+        const stats = fs.statSync(filePath);
+        if (Date.now() - stats.mtimeMs > 24 * 60 * 60 * 1000) {
+          fs.unlinkSync(filePath);
+        }
+      });
+    });
+
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);
     });
-  } catch (error) {
-    console.error('Failed to start server:', error);
+  } catch (err) {
+    console.error('Failed to start server:', err);
     process.exit(1);
   }
 }
 
 startServer();
 
+// ─────────────────────────────────────────────────────────────
+// ICS generator (existing logic preserved)
+// ─────────────────────────────────────────────────────────────
 const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
   const year = new Date().getFullYear();
   const nextYr = year + 1;
@@ -221,7 +251,6 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
   const tideData = country === 'canada' ? data : data.predictions;
 
   tideData.forEach((entry, i) => {
-
     let tide;
 
     if (country === 'canada') {
@@ -240,15 +269,12 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
             : 'Low Tide';
       }
     } else {
-      // USA logic
       tide = entry.type === 'L' ? 'Low Tide' : 'High Tide';
     }
 
     const tideHeight = feet
       ? `${
-        country === 'canada'
-          ? (entry.value * 3.2808399).toFixed(2)
-          : entry.v
+        country === 'canada' ? (entry.value * 3.2808399).toFixed(2) : entry.v
       }Ft`
       : `${
         country === 'canada'
@@ -256,19 +282,18 @@ const getYearData = async (id, stationTitle, country, feet, userTimezone) => {
           : (entry.v / 3.2808399).toFixed(2)
       }M`;
 
-    const rawTime = country === 'canada' ? entry.eventDate : `${entry.t}:00`; // ensure seconds are present
+    const rawTime =
+      country === 'canada' ? entry.eventDate : `${entry.t}:00`; // add seconds for NOAA
 
     const startDate = new Date(
       new Date(rawTime).toLocaleString('en-US', { timeZone: userTimezone })
     );
+    const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // +30 min
 
-    const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // 30 minutes later
-    console.log(`[DEBUG] ${stationTitle} | ${entry.t || entry.eventDate} → ${startDate.toISOString()} (${tide})`);
+    const eventUID = `tide-${id}-${startDate.getTime()}-${Math.random()
+      .toString(36)
+      .substr(2, 6)}@tideincal.com`;
 
-    // ✅ Generate unique UID per event
-    const eventUID = `tide-${id}-${startDate.getTime()}-${Math.random().toString(36).substr(2, 6)}@tideincal.com`;
-
-    // ✅ ICS Event Content
     const eventContent = `BEGIN:VEVENT
 UID:${eventUID}
 SEQUENCE:0
@@ -284,7 +309,6 @@ END:VEVENT`;
     events.push(eventContent);
   });
 
-  // ✅ Unique calendar name to avoid conflicts
   const calendarName = `Tide - ${stationTitle} - ${year}-${month2d}-${day2d}`;
   const icsContent = `BEGIN:VCALENDAR
 VERSION:2.0
@@ -298,24 +322,28 @@ END:VCALENDAR`;
 
   const calendarFileNm = `${stationTitle}_${year}_${nextYr}.ics`;
   const filePath = path.join(__dirname, 'tempICSFile', calendarFileNm);
-
   fs.writeFileSync(filePath, icsContent);
-
   return calendarFileNm;
 };
-// Format date for ICS
+
 const formatDateForICS = (date, country, userTimezone) => {
   if (country === 'canada') {
-    return new Date(date)
-      .toISOString()
-      .replace(/[-:]/g, '')
-      .split('.')[0] + 'Z';
+    return new Date(date).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
   } else {
-    const local = new Date(date.toLocaleString('en-US', { timeZone: userTimezone }));
-    return `${local.getFullYear()}${String(local.getMonth() + 1).padStart(2, '0')}${String(local.getDate()).padStart(2, '0')}T${String(local.getHours()).padStart(2, '0')}${String(local.getMinutes()).padStart(2, '0')}${String(local.getSeconds()).padStart(2, '0')}`;
+    const local = new Date(
+      date.toLocaleString('en-US', { timeZone: userTimezone })
+    );
+    return `${local.getFullYear()}${String(local.getMonth() + 1).padStart(
+      2,
+      '0'
+    )}${String(local.getDate()).padStart(2, '0')}T${String(
+      local.getHours()
+    ).padStart(2, '0')}${String(local.getMinutes()).padStart(2, '0')}${String(
+      local.getSeconds()
+    ).padStart(2, '0')}`;
   }
-
 };
+
 
 //
 //     //--------------------- FOR UK -------------------------//

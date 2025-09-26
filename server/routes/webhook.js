@@ -1,150 +1,32 @@
+// server/routes/webhook.js (ESM)
 import Stripe from 'stripe';
-import { getDatabase } from '../db/index.js';
-import { sendDownloadReady } from '../auth/email.js';
-import { generateICS } from '../ics/index.js';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Webhook handler function (called directly from server.js)
+// Main webhook handler (mount with express.raw in server.js)
 export default async function webhookHandler(req, res) {
   const sig = req.headers['stripe-signature'];
-  let event;
 
+  let event;
   try {
+    // req.body MUST be the raw buffer from express.raw({ type: 'application/json' })
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
+    console.error('[webhook] signature verification failed:', err?.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
   try {
+    console.log('[webhook] event:', event.type, event.id);
     if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
+      const session = event.data.object; // { id, customer_email, metadata, ... }
+      // Call existing logic to update user, create purchase, generate ICS, email via Resend
+      const { handleCheckoutCompleted } = await import('../services/checkoutCompleted.js');
       await handleCheckoutCompleted(session);
     }
-
-    res.json({ received: true });
-  } catch (error) {
-    console.error('Webhook processing error:', error);
-    res.status(500).json({ error: 'Webhook processing failed' });
+    return res.status(200).json({ received: true });
+  } catch (e) {
+    console.error('[webhook] processing error:', e);
+    return res.status(500).json({ error: 'Webhook processing failed' });
   }
 }
-
-async function handleCheckoutCompleted(session) {
-  const db = getDatabase();
-  const { metadata } = session;
-  
-  // Extract metadata
-  const {
-    userId,
-    stationID,
-    stationTitle,
-    country,
-    includeMoon,
-    unlimited
-  } = metadata;
-
-  const includeMoonBool = includeMoon === 'true';
-  const unlimitedBool = unlimited === 'true';
-
-  try {
-    // Update user with Stripe customer ID
-    const { ObjectId } = await import('mongodb');
-    await db.collection('users').updateOne(
-      { _id: new ObjectId(userId) },
-      { 
-        $set: { 
-          stripeCustomerId: session.customer,
-          updatedAt: new Date()
-        }
-      }
-    );
-
-    // Create purchase record
-    await db.collection('purchases').insertOne({
-      userId: new ObjectId(userId),
-      stripeSessionId: session.id,
-      stripePaymentIntentId: session.payment_intent,
-      product: unlimitedBool ? 'unlimited' : (includeMoonBool ? 'lunar-addon' : 'single'),
-      metadata: {
-        stationId: stationID,
-        stationTitle,
-        country,
-        includeMoon: includeMoonBool,
-        unlimited: unlimitedBool
-      },
-      createdAt: new Date()
-    });
-
-    if (unlimitedBool) {
-      // Set unlimited entitlement
-      await db.collection('users').updateOne(
-        { _id: new ObjectId(userId) },
-        { 
-          $set: { 
-            unlimited: true,
-            updatedAt: new Date()
-          }
-        }
-      );
-    } else {
-      // Generate ICS file for single download
-      const stationData = {
-        id: stationID,
-        title: stationTitle,
-        country,
-        includeMoon: includeMoonBool
-      };
-
-      // Generate ICS content
-      const icsContent = await generateICS(stationData);
-      
-      // Save file to tempICSFile directory
-      const fileName = `${stationTitle.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.ics`;
-      const filePath = path.join(__dirname, '../../tempICSFile', fileName);
-      
-      await fs.writeFile(filePath, icsContent, 'utf8');
-
-      // Create file record with 365-day retention
-      const now = new Date();
-      const retainUntil = new Date(now.getTime() + (365 * 24 * 60 * 60 * 1000)); // 365 days
-      
-      const fileRecord = await db.collection('files').insertOne({
-        userId: new ObjectId(userId),
-        stationId: stationID,
-        stationTitle,
-        region: country,
-        includesMoon: includeMoonBool,
-        storagePath: `tempICSFile/${fileName}`,
-        createdAt: now,
-        retainUntil,
-        lastDownloadedAt: null
-      });
-
-      // Send email with download link
-      const downloadUrl = `${process.env.APP_URL}/api/files/${fileRecord.insertedId}/download`;
-      
-      await sendDownloadReady({
-        to: session.customer_email,
-        stationTitle,
-        link: downloadUrl
-      });
-
-      console.log(`File generated and email sent for session ${session.id}`);
-    }
-  } catch (error) {
-    console.error('Error processing checkout completion:', error);
-    throw error;
-  }
-}
-
-export default router;

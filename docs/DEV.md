@@ -13,6 +13,29 @@
    ```
    Then set Stripe webhook endpoint to: `https://<ngrok-url>/api/stripe/webhook`
 
+## Local Webhook Testing (Stripe CLI)
+
+1. Start the app:
+   ```bash
+   npm run dev
+   ```
+
+2. In a separate terminal, start Stripe CLI and forward webhooks to localhost (use 127.0.0.1 to avoid IPv6 issues):
+
+   ```bash
+   stripe listen --forward-to 127.0.0.1:3000/api/stripe/webhook
+   ```
+
+   Copy the printed `whsec_...` and ensure it matches `STRIPE_WEBHOOK_SECRET` in `.env`.
+
+3. Trigger a checkout completion test event:
+
+   ```bash
+   stripe trigger checkout.session.completed
+   ```
+
+4. Expected: server logs event; DB updated; (if configured) ICS file and email are handled.
+
 ## Environment Configuration
 
 Create `.env` file with the following variables:
@@ -38,6 +61,9 @@ STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
 STRIPE_PRICE_SINGLE_DOWNLOAD=price_xxx
 STRIPE_PRICE_LUNAR_ADDON=price_xxx
 STRIPE_PRICE_UNLIMITED=price_xxx
+
+# Optional: Skip sending emails in development
+MOCK_EMAILS=true
 ```
 
 ## Stripe Setup
@@ -69,15 +95,23 @@ node scripts/ensure-indexes.js
 
 ## Testing
 
+### Offline Tests (No Network Required)
 ```bash
 npm test
 ```
 
+### Interactive Test UI
+```bash
+npm run test:ui
+```
+
+The offline tests use mocked Stripe webhooks and don't require external services.
+
 ## Development Workflow
 
 1. Start the dev server: `npm run dev`
-2. For webhook testing: `npm run ngrok`
-3. Set Stripe webhook to ngrok URL
+2. For webhook testing: `npm run ngrok` OR use Stripe CLI
+3. Set Stripe webhook to ngrok URL or use Stripe CLI forwarding
 4. Test the complete flow:
    - Sign up → Checkout → Payment → Webhook → File generation → Email
 
@@ -87,3 +121,5 @@ npm test
 - **Email not sending**: Check Resend API key and domain verification
 - **Database connection issues**: Verify MONGO_URI format and network access
 - **Session issues**: Ensure SESSION_SECRET is set and consistent
+- **Stripe CLI issues**: Make sure you're using `127.0.0.1` instead of `localhost`
+- **Test failures**: Ensure `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are set in `.env`
