@@ -29,26 +29,55 @@ console.log('User location icon created:', myIcon);
 async function refreshAuthUI() {
   try {
     const r = await fetch('/api/auth/me', { credentials: 'include' });
-    const { user } = r.ok ? await r.json() : { user: null };
+    let user = null;
+    
+    if (r.ok) {
+      const data = await r.json();
+      user = data.user;
+      console.log('[refreshAuthUI] User authenticated:', user?.email);
+    } else {
+      console.log('[refreshAuthUI] User not authenticated:', r.status);
+    }
 
     const navLoginBtn    = document.getElementById('navLoginBtn');
     const menuLoginBtn   = document.getElementById('menuLoginBtn');
     const menuLogoutBtn  = document.getElementById('menuLogoutBtn');
     const menuAccountLink= document.getElementById('menuAccountLink');
 
+    console.log('[refreshAuthUI] Found elements:', {
+      navLoginBtn: !!navLoginBtn,
+      menuLoginBtn: !!menuLoginBtn,
+      menuLogoutBtn: !!menuLogoutBtn,
+      menuAccountLink: !!menuAccountLink
+    });
+
     if (user) {
+      // User is logged in - hide login, show logout
       navLoginBtn?.classList.add('d-none');
-      menuLoginBtn && (menuLoginBtn.style.display = 'none');
-      menuLogoutBtn && (menuLogoutBtn.style.display = 'block');
-      menuAccountLink && (menuAccountLink.style.display = 'block');
+      if (menuLoginBtn) menuLoginBtn.style.display = 'none';
+      if (menuLogoutBtn) menuLogoutBtn.style.display = 'block';
+      if (menuAccountLink) menuAccountLink.style.display = 'block';
+      console.log('[refreshAuthUI] Showing logout UI');
     } else {
+      // User is not logged in - show login, hide logout
       navLoginBtn?.classList.remove('d-none');
-      menuLoginBtn && (menuLoginBtn.style.display = 'block');
-      menuLogoutBtn && (menuLogoutBtn.style.display = 'none');
-      menuAccountLink && (menuAccountLink.style.display = 'none');
+      if (menuLoginBtn) menuLoginBtn.style.display = 'block';
+      if (menuLogoutBtn) menuLogoutBtn.style.display = 'none';
+      if (menuAccountLink) menuAccountLink.style.display = 'none';
+      console.log('[refreshAuthUI] Showing login UI');
     }
   } catch (e) {
-    console.warn('auth state check failed', e);
+    console.warn('[refreshAuthUI] Auth state check failed:', e);
+    // On error, assume not logged in
+    const navLoginBtn    = document.getElementById('navLoginBtn');
+    const menuLoginBtn   = document.getElementById('menuLoginBtn');
+    const menuLogoutBtn  = document.getElementById('menuLogoutBtn');
+    const menuAccountLink= document.getElementById('menuAccountLink');
+    
+    navLoginBtn?.classList.remove('d-none');
+    if (menuLoginBtn) menuLoginBtn.style.display = 'block';
+    if (menuLogoutBtn) menuLogoutBtn.style.display = 'none';
+    if (menuAccountLink) menuAccountLink.style.display = 'none';
   }
 }
 
@@ -99,8 +128,20 @@ async function handleAuth(formData, isSignup = false) {
     });
     
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Authentication failed');
+      let errorMessage = 'Authentication failed';
+      
+      if (response.status === 429) {
+        errorMessage = 'Too many requests. Please wait a moment and try again.';
+      } else {
+        try {
+          const error = await response.json();
+          errorMessage = error.error || 'Authentication failed';
+        } catch (e) {
+          errorMessage = `Server error (${response.status})`;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
     
     const { user } = await response.json();
