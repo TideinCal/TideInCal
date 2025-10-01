@@ -57,6 +57,14 @@ app.use(
           'https://cdn.jsdelivr.net',
           'https://js.stripe.com'
         ],
+        scriptSrcAttr: [
+          "'unsafe-inline'"
+        ],
+        frameSrc: [
+          "'self'",
+          'https://js.stripe.com',
+          'https://hooks.stripe.com'
+        ],
         imgSrc: ["'self'", 'data:', 'https:'],
         fontSrc: [
           "'self'",
@@ -67,6 +75,7 @@ app.use(
           "'self'",
           'https://api.tidesandcurrents.noaa.gov',
           'https://api-iwls.dfo-mpo.gc.ca',
+          'https://api.stripe.com'
         ],
       },
     },
