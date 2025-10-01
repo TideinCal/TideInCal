@@ -31,8 +31,10 @@ export async function attachUser(req, res, next) {
   try {
     if (req.session && req.session.userId) {
       const db = getDatabase();
+      const { ObjectId } = await import('mongodb');
+      
       const user = await db.collection('users').findOne(
-        { _id: req.session.userId },
+        { _id: new ObjectId(req.session.userId) },
         { projection: { passwordHash: 0 } }
       );
       req.user = user;

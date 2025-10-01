@@ -116,6 +116,8 @@ let sessionConfig = {
   },
 };
 
+// Session middleware will be applied after DB connection
+
 // ─────────────────────────────────────────────────────────────
 // Stripe webhook MUST be mounted BEFORE express.json() using raw body
 // ─────────────────────────────────────────────────────────────
@@ -189,7 +191,7 @@ async function startServer() {
   try {
     const { client } = await connectToDatabase();
 
-    // Session store
+    // Configure session store with MongoDB
     sessionConfig.store = MongoStore.create({
       client,
       dbName: 'tideincal',
@@ -197,9 +199,10 @@ async function startServer() {
       ttl: 14 * 24 * 3600, // 14 days
     });
 
-    // Sessions FIRST…
+    // Apply session middleware with MongoDB store
     app.use(session(sessionConfig));
-    // …then middleware that relies on req.session
+    
+    // Apply middleware that relies on req.session
     app.use(attachUser);
 
     // Auth/checkout/file routes (rate-limited where appropriate)
