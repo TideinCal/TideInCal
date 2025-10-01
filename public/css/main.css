@@ -23,6 +23,9 @@ body {
 .offcanvas { z-index: 11000; }
 #topNav     { z-index: 11001; }
 
+/* keep auth modal above the map */
+#authModal { z-index: 11002; }
+
 
 
 canvas#rippleCanvas {
