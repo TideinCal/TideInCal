@@ -43,27 +43,43 @@ async function refreshAuthUI() {
     const menuLoginBtn   = document.getElementById('menuLoginBtn');
     const menuLogoutBtn  = document.getElementById('menuLogoutBtn');
     const menuAccountLink= document.getElementById('menuAccountLink');
+    const menuUserGreeting = document.getElementById('menuUserGreeting');
+    const menuUserName = document.getElementById('menuUserName');
 
     console.log('[refreshAuthUI] Found elements:', {
       navLoginBtn: !!navLoginBtn,
       menuLoginBtn: !!menuLoginBtn,
       menuLogoutBtn: !!menuLogoutBtn,
-      menuAccountLink: !!menuAccountLink
+      menuAccountLink: !!menuAccountLink,
+      menuUserGreeting: !!menuUserGreeting,
+      menuUserName: !!menuUserName
     });
 
     if (user) {
-      // User is logged in - hide login, show logout
+      // User is logged in - hide login, show logout and greeting
       navLoginBtn?.classList.add('d-none');
       if (menuLoginBtn) menuLoginBtn.style.display = 'none';
-      if (menuLogoutBtn) menuLogoutBtn.style.display = 'block';
+      if (menuLogoutBtn) {
+        menuLogoutBtn.style.display = 'block';
+        menuLogoutBtn.classList.add('show');
+      }
       if (menuAccountLink) menuAccountLink.style.display = 'block';
-      console.log('[refreshAuthUI] Showing logout UI');
+      if (menuUserGreeting) menuUserGreeting.style.display = 'block';
+      if (menuUserName) {
+        const displayName = user.firstName || user.email.split('@')[0];
+        menuUserName.textContent = displayName;
+      }
+      console.log('[refreshAuthUI] Showing logout UI for user:', user.email);
     } else {
-      // User is not logged in - show login, hide logout
+      // User is not logged in - show login, hide logout and greeting
       navLoginBtn?.classList.remove('d-none');
       if (menuLoginBtn) menuLoginBtn.style.display = 'block';
-      if (menuLogoutBtn) menuLogoutBtn.style.display = 'none';
+      if (menuLogoutBtn) {
+        menuLogoutBtn.style.display = 'none';
+        menuLogoutBtn.classList.remove('show');
+      }
       if (menuAccountLink) menuAccountLink.style.display = 'none';
+      if (menuUserGreeting) menuUserGreeting.style.display = 'none';
       console.log('[refreshAuthUI] Showing login UI');
     }
   } catch (e) {
@@ -73,11 +89,16 @@ async function refreshAuthUI() {
     const menuLoginBtn   = document.getElementById('menuLoginBtn');
     const menuLogoutBtn  = document.getElementById('menuLogoutBtn');
     const menuAccountLink= document.getElementById('menuAccountLink');
+    const menuUserGreeting = document.getElementById('menuUserGreeting');
     
     navLoginBtn?.classList.remove('d-none');
     if (menuLoginBtn) menuLoginBtn.style.display = 'block';
-    if (menuLogoutBtn) menuLogoutBtn.style.display = 'none';
+    if (menuLogoutBtn) {
+      menuLogoutBtn.style.display = 'none';
+      menuLogoutBtn.classList.remove('show');
+    }
     if (menuAccountLink) menuAccountLink.style.display = 'none';
+    if (menuUserGreeting) menuUserGreeting.style.display = 'none';
   }
 }
 
