@@ -29,7 +29,7 @@ router.post('/session', async (req, res) => {
     const { stationID, stationTitle, country, includeMoon, unlimited } = validated;
     
     // Determine price based on options
-    let priceId = process.env.STRIPE_PRICE_SINGLE_DOWNLOAD;
+    let priceId = process.env.STRIPE_PRICE_SINGLE;
     let productName = 'Single Download';
     
     if (unlimited) {
@@ -39,6 +39,11 @@ router.post('/session', async (req, res) => {
       // For single download with moon, we'll need to handle this in webhook
       // For now, use single download price
       productName = 'Single Download + Moon';
+    }
+    
+    // Validate that we have a valid price ID
+    if (!priceId) {
+      throw new Error(`Missing Stripe price configuration for ${unlimited ? 'unlimited' : 'single'} purchase`);
     }
     
     // Create Stripe checkout session
