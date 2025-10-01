@@ -44,9 +44,25 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://unpkg.com'],
-        scriptSrc: ["'self'", 'https://unpkg.com'],
+        styleSrc: [
+          "'self'", 
+          "'unsafe-inline'", 
+          'https://unpkg.com',
+          'https://cdn.jsdelivr.net',
+          'https://fonts.googleapis.com'
+        ],
+        scriptSrc: [
+          "'self'", 
+          'https://unpkg.com',
+          'https://cdn.jsdelivr.net',
+          'https://js.stripe.com'
+        ],
         imgSrc: ["'self'", 'data:', 'https:'],
+        fontSrc: [
+          "'self'",
+          'https://fonts.gstatic.com',
+          'https://cdn.jsdelivr.net'
+        ],
         connectSrc: [
           "'self'",
           'https://api.tidesandcurrents.noaa.gov',
