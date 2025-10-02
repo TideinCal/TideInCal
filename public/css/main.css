@@ -81,6 +81,13 @@ body {
   line-height: 1.5 !important; /* Match Bootstrap btn-sm line-height */
 }
 
+/* Mobile logout button styling - larger font size */
+@media (max-width: 575px) {
+  #menuLogoutBtn {
+    font-size: 1.1rem !important;
+  }
+}
+
 #navLogoutBtn:hover, #menuLogoutBtn:hover {
   background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 80%) !important;
   color: #fff !important;
