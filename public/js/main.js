@@ -41,6 +41,7 @@ async function refreshAuthUI() {
 
                 const navLoginBtn    = document.getElementById('navLoginBtn');
                 const navLogoutBtn   = document.getElementById('navLogoutBtn');
+                const navAccountLink = document.getElementById('navAccountLink');
                 const navUserGreeting = document.getElementById('navUserGreeting');
                 const navUserName    = document.getElementById('navUserName');
                 const menuLoginBtn   = document.getElementById('menuLoginBtn');
@@ -52,6 +53,7 @@ async function refreshAuthUI() {
                 console.log('[refreshAuthUI] Found elements:', {
                   navLoginBtn: !!navLoginBtn,
                   navLogoutBtn: !!navLogoutBtn,
+                  navAccountLink: !!navAccountLink,
                   navUserGreeting: !!navUserGreeting,
                   navUserName: !!navUserName,
                   menuLoginBtn: !!menuLoginBtn,
@@ -65,6 +67,7 @@ async function refreshAuthUI() {
                   // User is logged in - hide login, show logout and greeting
                   // Desktop navigation
                   navLoginBtn?.classList.add('d-none');
+                  if (navAccountLink) navAccountLink.style.display = 'block';
                   if (navLogoutBtn) navLogoutBtn.style.display = 'block';
                   if (navUserGreeting) navUserGreeting.style.display = 'block';
                   if (navUserName) {
@@ -88,6 +91,7 @@ async function refreshAuthUI() {
                   // User is not logged in - show login, hide logout and greeting
                   // Desktop navigation
                   navLoginBtn?.classList.remove('d-none');
+                  if (navAccountLink) navAccountLink.style.display = 'none';
                   if (navLogoutBtn) navLogoutBtn.style.display = 'none';
                   if (navUserGreeting) navUserGreeting.style.display = 'none';
                   
@@ -105,6 +109,7 @@ async function refreshAuthUI() {
                 // On error, assume not logged in
                 const navLoginBtn    = document.getElementById('navLoginBtn');
                 const navLogoutBtn   = document.getElementById('navLogoutBtn');
+                const navAccountLink = document.getElementById('navAccountLink');
                 const navUserGreeting = document.getElementById('navUserGreeting');
                 const menuLoginBtn   = document.getElementById('menuLoginBtn');
                 const menuLogoutContainer = document.getElementById('menuLogoutContainer');
@@ -112,6 +117,7 @@ async function refreshAuthUI() {
 
                 // Desktop navigation
                 navLoginBtn?.classList.remove('d-none');
+                if (navAccountLink) navAccountLink.style.display = 'none';
                 if (navLogoutBtn) navLogoutBtn.style.display = 'none';
                 if (navUserGreeting) navUserGreeting.style.display = 'none';
                 
