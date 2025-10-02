@@ -19,7 +19,7 @@ body {
 }
 .btn-gradient:hover { filter: brightness(1.05); }
 
-/* Find My Location button styling for desktop */
+/* Desktop navigation button styling - consistent heights */
 @media (min-width: 576px) {
   .btn-outline-light {
     background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 50%, #0B62AC 80%) !important;
@@ -30,7 +30,7 @@ body {
     font-family: 'Kanit', sans-serif !important;
     font-weight: 600 !important;
     transition: all 0.3s ease !important;
-    padding: 0.5rem 1rem !important; /* Match logout button height */
+    padding: 0.5rem 1rem !important; /* Match other buttons */
   }
   
   .btn-outline-light:hover {
@@ -38,6 +38,11 @@ body {
     transform: translateY(-2px) !important;
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15) !important;
     color: #fff !important;
+  }
+  
+  /* Make login button same height as other buttons */
+  .btn-gradient {
+    padding: 0.5rem 1rem !important; /* Override btn-sm padding */
   }
 }
 
