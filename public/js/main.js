@@ -39,66 +39,93 @@ async function refreshAuthUI() {
       console.log('[refreshAuthUI] User not authenticated:', r.status);
     }
 
-    const navLoginBtn    = document.getElementById('navLoginBtn');
-    const menuLoginBtn   = document.getElementById('menuLoginBtn');
-    const menuLogoutBtn  = document.getElementById('menuLogoutBtn');
-    const menuAccountLink= document.getElementById('menuAccountLink');
-    const menuUserGreeting = document.getElementById('menuUserGreeting');
-    const menuUserName = document.getElementById('menuUserName');
+                const navLoginBtn    = document.getElementById('navLoginBtn');
+                const navLogoutBtn   = document.getElementById('navLogoutBtn');
+                const navUserGreeting = document.getElementById('navUserGreeting');
+                const navUserName    = document.getElementById('navUserName');
+                const menuLoginBtn   = document.getElementById('menuLoginBtn');
+                const menuLogoutBtn  = document.getElementById('menuLogoutBtn');
+                const menuAccountLink= document.getElementById('menuAccountLink');
+                const menuUserGreeting = document.getElementById('menuUserGreeting');
+                const menuUserName = document.getElementById('menuUserName');
 
-    console.log('[refreshAuthUI] Found elements:', {
-      navLoginBtn: !!navLoginBtn,
-      menuLoginBtn: !!menuLoginBtn,
-      menuLogoutBtn: !!menuLogoutBtn,
-      menuAccountLink: !!menuAccountLink,
-      menuUserGreeting: !!menuUserGreeting,
-      menuUserName: !!menuUserName
-    });
+                console.log('[refreshAuthUI] Found elements:', {
+                  navLoginBtn: !!navLoginBtn,
+                  navLogoutBtn: !!navLogoutBtn,
+                  navUserGreeting: !!navUserGreeting,
+                  navUserName: !!navUserName,
+                  menuLoginBtn: !!menuLoginBtn,
+                  menuLogoutBtn: !!menuLogoutBtn,
+                  menuAccountLink: !!menuAccountLink,
+                  menuUserGreeting: !!menuUserGreeting,
+                  menuUserName: !!menuUserName
+                });
 
-    if (user) {
-      // User is logged in - hide login, show logout and greeting
-      navLoginBtn?.classList.add('d-none');
-      if (menuLoginBtn) menuLoginBtn.style.display = 'none';
-      if (menuLogoutBtn) {
-        menuLogoutBtn.style.display = 'block';
-        menuLogoutBtn.classList.add('show');
-      }
-      if (menuAccountLink) menuAccountLink.style.display = 'block';
-      if (menuUserGreeting) menuUserGreeting.style.display = 'block';
-      if (menuUserName) {
-        const displayName = user.firstName || user.email.split('@')[0];
-        menuUserName.textContent = displayName;
-      }
-      console.log('[refreshAuthUI] Showing logout UI for user:', user.email);
-    } else {
-      // User is not logged in - show login, hide logout and greeting
-      navLoginBtn?.classList.remove('d-none');
-      if (menuLoginBtn) menuLoginBtn.style.display = 'block';
-      if (menuLogoutBtn) {
-        menuLogoutBtn.style.display = 'none';
-        menuLogoutBtn.classList.remove('show');
-      }
-      if (menuAccountLink) menuAccountLink.style.display = 'none';
-      if (menuUserGreeting) menuUserGreeting.style.display = 'none';
-      console.log('[refreshAuthUI] Showing login UI');
-    }
+                if (user) {
+                  // User is logged in - hide login, show logout and greeting
+                  // Desktop navigation
+                  navLoginBtn?.classList.add('d-none');
+                  if (navLogoutBtn) navLogoutBtn.style.display = 'block';
+                  if (navUserGreeting) navUserGreeting.style.display = 'block';
+                  if (navUserName) {
+                    const displayName = user.firstName || user.email.split('@')[0];
+                    navUserName.textContent = displayName;
+                  }
+                  
+                  // Mobile navigation
+                  if (menuLoginBtn) menuLoginBtn.style.display = 'none';
+                  if (menuLogoutBtn) {
+                    menuLogoutBtn.style.display = 'block';
+                    menuLogoutBtn.classList.add('show');
+                  }
+                  if (menuAccountLink) menuAccountLink.style.display = 'block';
+                  if (menuUserGreeting) menuUserGreeting.style.display = 'block';
+                  if (menuUserName) {
+                    const displayName = user.firstName || user.email.split('@')[0];
+                    menuUserName.textContent = displayName;
+                  }
+                  console.log('[refreshAuthUI] Showing logout UI for user:', user.email);
+                } else {
+                  // User is not logged in - show login, hide logout and greeting
+                  // Desktop navigation
+                  navLoginBtn?.classList.remove('d-none');
+                  if (navLogoutBtn) navLogoutBtn.style.display = 'none';
+                  if (navUserGreeting) navUserGreeting.style.display = 'none';
+                  
+                  // Mobile navigation
+                  if (menuLoginBtn) menuLoginBtn.style.display = 'block';
+                  if (menuLogoutBtn) {
+                    menuLogoutBtn.style.display = 'none';
+                    menuLogoutBtn.classList.remove('show');
+                  }
+                  if (menuAccountLink) menuAccountLink.style.display = 'none';
+                  if (menuUserGreeting) menuUserGreeting.style.display = 'none';
+                  console.log('[refreshAuthUI] Showing login UI');
+                }
   } catch (e) {
     console.warn('[refreshAuthUI] Auth state check failed:', e);
-    // On error, assume not logged in
-    const navLoginBtn    = document.getElementById('navLoginBtn');
-    const menuLoginBtn   = document.getElementById('menuLoginBtn');
-    const menuLogoutBtn  = document.getElementById('menuLogoutBtn');
-    const menuAccountLink= document.getElementById('menuAccountLink');
-    const menuUserGreeting = document.getElementById('menuUserGreeting');
-    
-    navLoginBtn?.classList.remove('d-none');
-    if (menuLoginBtn) menuLoginBtn.style.display = 'block';
-    if (menuLogoutBtn) {
-      menuLogoutBtn.style.display = 'none';
-      menuLogoutBtn.classList.remove('show');
-    }
-    if (menuAccountLink) menuAccountLink.style.display = 'none';
-    if (menuUserGreeting) menuUserGreeting.style.display = 'none';
+                // On error, assume not logged in
+                const navLoginBtn    = document.getElementById('navLoginBtn');
+                const navLogoutBtn   = document.getElementById('navLogoutBtn');
+                const navUserGreeting = document.getElementById('navUserGreeting');
+                const menuLoginBtn   = document.getElementById('menuLoginBtn');
+                const menuLogoutBtn  = document.getElementById('menuLogoutBtn');
+                const menuAccountLink= document.getElementById('menuAccountLink');
+                const menuUserGreeting = document.getElementById('menuUserGreeting');
+
+                // Desktop navigation
+                navLoginBtn?.classList.remove('d-none');
+                if (navLogoutBtn) navLogoutBtn.style.display = 'none';
+                if (navUserGreeting) navUserGreeting.style.display = 'none';
+                
+                // Mobile navigation
+                if (menuLoginBtn) menuLoginBtn.style.display = 'block';
+                if (menuLogoutBtn) {
+                  menuLogoutBtn.style.display = 'none';
+                  menuLogoutBtn.classList.remove('show');
+                }
+                if (menuAccountLink) menuAccountLink.style.display = 'none';
+                if (menuUserGreeting) menuUserGreeting.style.display = 'none';
   }
 }
 
@@ -193,6 +220,13 @@ async function handleAuth(formData, isSignup = false) {
 document.getElementById('navLoginBtn')?.addEventListener('click', () => openAuthModal('login'));
 document.getElementById('menuLoginBtn')?.addEventListener('click', () => openAuthModal('login'));
 
+// Desktop logout button
+document.getElementById('navLogoutBtn')?.addEventListener('click', async () => {
+  await fetch('/api/auth/logout', { method:'POST', credentials:'include' });
+  refreshAuthUI();
+});
+
+// Mobile logout button
 document.getElementById('menuLogoutBtn')?.addEventListener('click', async () => {
   await fetch('/api/auth/logout', { method:'POST', credentials:'include' });
   refreshAuthUI();
