@@ -34,24 +34,37 @@ export async function handleCheckoutCompleted(session) {
 
   console.log('[webhook] Customer email:', customerEmail || 'none');
 
-  // 1) Persist Stripe customer id on user
+  // 1) Persist Stripe customer id and billing info on user
+  const updateData = {
+    stripeCustomerId: session.customer,
+    updatedAt: new Date(),
+  };
+
+  // Add billing information if available from Stripe
+  if (session.customer_details) {
+    if (session.customer_details.name) {
+      updateData.billingName = session.customer_details.name;
+    }
+    if (session.customer_details.address) {
+      updateData.billingAddress = session.customer_details.address;
+    }
+  }
+
   await db.collection('users').updateOne(
     { _id: new ObjectId(userId) },
-    {
-      $set: {
-        stripeCustomerId: session.customer,
-        updatedAt: new Date(),
-      },
-    }
+    { $set: updateData }
   );
-  console.log('[webhook] Updated user with Stripe customer ID');
+  console.log('[webhook] Updated user with Stripe customer ID and billing info');
 
-  // 2) Record purchase
-  await db.collection('purchases').insertOne({
+  // 2) Record purchase with detailed information
+  const purchaseData = {
     userId: new ObjectId(userId),
     stripeSessionId: session.id,
     stripePaymentIntentId: session.payment_intent ?? null,
     product: plan,
+    amount: session.amount_total,
+    currency: session.currency,
+    customerEmail: customerEmail,
     metadata: {
       stationId: stationID,
       stationTitle,
@@ -59,8 +72,18 @@ export async function handleCheckoutCompleted(session) {
       plan,
     },
     createdAt: new Date(),
-  });
-  console.log('[webhook] Created purchase record');
+  };
+
+  // Add customer billing details if available
+  if (session.customer_details) {
+    purchaseData.customerDetails = {
+      name: session.customer_details.name,
+      address: session.customer_details.address,
+    };
+  }
+
+  await db.collection('purchases').insertOne(purchaseData);
+  console.log('[webhook] Created purchase record with customer details');
 
   // 3) Handle based on plan type
   if (plan === 'unlimited') {

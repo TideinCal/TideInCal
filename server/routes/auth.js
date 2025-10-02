@@ -141,4 +141,25 @@ router.get('/me/entitlements', requireAuth, (req, res) => {
   res.json(entitlements);
 });
 
+// GET /api/auth/me/purchases
+router.get('/me/purchases', requireAuth, async (req, res) => {
+  try {
+    const db = getDatabase();
+    const { ObjectId } = await import('mongodb');
+    
+    const purchases = await db.collection('purchases')
+      .find({ userId: new ObjectId(req.user._id) })
+      .sort({ createdAt: -1 })
+      .project({
+        userId: 0 // Don't include userId in response
+      })
+      .toArray();
+    
+    res.json({ purchases });
+  } catch (error) {
+    console.error('Error fetching purchases:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
