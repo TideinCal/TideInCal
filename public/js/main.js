@@ -126,7 +126,7 @@ async function refreshAuthUI() {
 }
 
 // Auth modal functions
-function openAuthModal(mode = 'login') {
+function openAuthModal(mode = 'signup') {
   const modal = document.getElementById('authModal');
   if (!modal) {
     console.error('Auth modal not found');

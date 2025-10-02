@@ -270,20 +270,20 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="authModalLabel">Sign In to Download</h5>
+        <h5 class="modal-title" id="authModalLabel">Create Account to Download</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
         <ul class="nav nav-tabs" id="authTabs" role="tablist">
           <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="loginTab" data-bs-toggle="tab" data-bs-target="#loginPane" type="button" role="tab" aria-controls="loginPane" aria-selected="true">Log In</button>
+            <button class="nav-link" id="loginTab" data-bs-toggle="tab" data-bs-target="#loginPane" type="button" role="tab" aria-controls="loginPane" aria-selected="false">Log In</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" id="signupTab" data-bs-toggle="tab" data-bs-target="#signupPane" type="button" role="tab" aria-controls="signupPane" aria-selected="false">Sign Up</button>
+            <button class="nav-link active" id="signupTab" data-bs-toggle="tab" data-bs-target="#signupPane" type="button" role="tab" aria-controls="signupPane" aria-selected="true">Sign Up</button>
           </li>
         </ul>
         <div class="tab-content" id="authTabContent">
-          <div class="tab-pane fade show active" id="loginPane" role="tabpanel" aria-labelledby="loginTab">
+          <div class="tab-pane fade" id="loginPane" role="tabpanel" aria-labelledby="loginTab">
             <form id="loginForm" class="mt-3">
               <div class="mb-3">
                 <label for="loginEmail" class="form-label">Email</label>
@@ -296,7 +296,7 @@
               <button type="submit" class="btn btn-primary w-100">Log In</button>
             </form>
           </div>
-          <div class="tab-pane fade" id="signupPane" role="tabpanel" aria-labelledby="signupTab">
+          <div class="tab-pane fade show active" id="signupPane" role="tabpanel" aria-labelledby="signupTab">
             <form id="signupForm" class="mt-3">
               <div class="mb-3">
                 <label for="signupEmail" class="form-label">Email</label>
