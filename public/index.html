@@ -97,11 +97,6 @@
       <a class="list-group-item list-group-item-action bg-transparent text-white"
          href="#why-people-love" data-bs-dismiss="offcanvas">⭐ Why People Love It</a>
 
-      <!-- User greeting when logged in -->
-      <div class="list-group-item bg-transparent text-white border-0" id="menuUserGreeting" style="display:none">
-        <small class="text-muted">Hello, <span id="menuUserName"></span>!</small>
-      </div>
-
       <a class="list-group-item list-group-item-action bg-transparent text-white" href="/account" id="menuAccountLink"
          style="display:none" data-bs-dismiss="offcanvas">👤 My Account</a>
 
@@ -109,10 +104,12 @@
               id="menuLoginBtn" data-bs-dismiss="offcanvas">
         🔐 Log in
       </button>
-      <button class="list-group-item list-group-item-action bg-transparent text-start text-white"
-              id="menuLogoutBtn" style="display:none !important" data-bs-dismiss="offcanvas">
-        🚪 Log out
-      </button>
+      <div class="list-group-item bg-transparent text-white border-0 d-flex justify-content-between align-items-center" id="menuLogoutContainer" style="display:none !important">
+        <small class="text-muted">Hello, <span id="menuUserName"></span>!</small>
+        <button class="btn btn-outline-light btn-sm" id="menuLogoutBtn" data-bs-dismiss="offcanvas">
+          🚪 Log out
+        </button>
+      </div>
       <div class="mt-3 small opacity-75">
         <a href="/terms" class="text-decoration-underline text-white me-3">Terms</a>
         <a href="/privacy" class="text-decoration-underline text-white">Privacy</a>

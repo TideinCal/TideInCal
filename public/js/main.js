@@ -45,8 +45,8 @@ async function refreshAuthUI() {
                 const navUserName    = document.getElementById('navUserName');
                 const menuLoginBtn   = document.getElementById('menuLoginBtn');
                 const menuLogoutBtn  = document.getElementById('menuLogoutBtn');
+                const menuLogoutContainer = document.getElementById('menuLogoutContainer');
                 const menuAccountLink= document.getElementById('menuAccountLink');
-                const menuUserGreeting = document.getElementById('menuUserGreeting');
                 const menuUserName = document.getElementById('menuUserName');
 
                 console.log('[refreshAuthUI] Found elements:', {
@@ -56,8 +56,8 @@ async function refreshAuthUI() {
                   navUserName: !!navUserName,
                   menuLoginBtn: !!menuLoginBtn,
                   menuLogoutBtn: !!menuLogoutBtn,
+                  menuLogoutContainer: !!menuLogoutContainer,
                   menuAccountLink: !!menuAccountLink,
-                  menuUserGreeting: !!menuUserGreeting,
                   menuUserName: !!menuUserName
                 });
 
@@ -74,12 +74,11 @@ async function refreshAuthUI() {
                   
                   // Mobile navigation
                   if (menuLoginBtn) menuLoginBtn.style.display = 'none';
-                  if (menuLogoutBtn) {
-                    menuLogoutBtn.style.display = 'block';
-                    menuLogoutBtn.classList.add('show');
+                  if (menuLogoutContainer) {
+                    menuLogoutContainer.style.display = 'flex';
+                    menuLogoutContainer.classList.add('show');
                   }
                   if (menuAccountLink) menuAccountLink.style.display = 'block';
-                  if (menuUserGreeting) menuUserGreeting.style.display = 'block';
                   if (menuUserName) {
                     const displayName = user.firstName || user.email.split('@')[0];
                     menuUserName.textContent = displayName;
@@ -94,12 +93,11 @@ async function refreshAuthUI() {
                   
                   // Mobile navigation
                   if (menuLoginBtn) menuLoginBtn.style.display = 'block';
-                  if (menuLogoutBtn) {
-                    menuLogoutBtn.style.display = 'none';
-                    menuLogoutBtn.classList.remove('show');
+                  if (menuLogoutContainer) {
+                    menuLogoutContainer.style.display = 'none';
+                    menuLogoutContainer.classList.remove('show');
                   }
                   if (menuAccountLink) menuAccountLink.style.display = 'none';
-                  if (menuUserGreeting) menuUserGreeting.style.display = 'none';
                   console.log('[refreshAuthUI] Showing login UI');
                 }
   } catch (e) {
@@ -109,9 +107,8 @@ async function refreshAuthUI() {
                 const navLogoutBtn   = document.getElementById('navLogoutBtn');
                 const navUserGreeting = document.getElementById('navUserGreeting');
                 const menuLoginBtn   = document.getElementById('menuLoginBtn');
-                const menuLogoutBtn  = document.getElementById('menuLogoutBtn');
+                const menuLogoutContainer = document.getElementById('menuLogoutContainer');
                 const menuAccountLink= document.getElementById('menuAccountLink');
-                const menuUserGreeting = document.getElementById('menuUserGreeting');
 
                 // Desktop navigation
                 navLoginBtn?.classList.remove('d-none');
@@ -120,12 +117,11 @@ async function refreshAuthUI() {
                 
                 // Mobile navigation
                 if (menuLoginBtn) menuLoginBtn.style.display = 'block';
-                if (menuLogoutBtn) {
-                  menuLogoutBtn.style.display = 'none';
-                  menuLogoutBtn.classList.remove('show');
+                if (menuLogoutContainer) {
+                  menuLogoutContainer.style.display = 'none';
+                  menuLogoutContainer.classList.remove('show');
                 }
                 if (menuAccountLink) menuAccountLink.style.display = 'none';
-                if (menuUserGreeting) menuUserGreeting.style.display = 'none';
   }
 }
 

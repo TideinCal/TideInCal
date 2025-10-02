@@ -26,26 +26,22 @@ body {
 /* keep auth modal above the map */
 #authModal { z-index: 11002; }
 
-/* Ensure logout button is visible on all screen sizes */
-#menuLogoutBtn {
+/* Ensure logout container is visible on all screen sizes */
+#menuLogoutContainer {
   display: none !important;
   z-index: 1000;
 }
 
-#menuLogoutBtn.show {
-  display: block !important;
+#menuLogoutContainer.show {
+  display: flex !important;
 }
 
 /* User greeting styling */
-#menuUserGreeting {
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.5rem;
-}
-
-#menuUserGreeting small {
+#menuLogoutContainer small {
   color: rgba(255, 255, 255, 0.8) !important;
   font-size: 0.875rem;
   font-weight: 500;
+  margin: 0;
 }
 
 
