@@ -90,16 +90,16 @@ app.use(
   })
 );
 
-// Rate limits
+// Rate limits - more generous for development
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 10 : 100, // 100 in dev, 10 in prod
   message: 'Too many authentication attempts, please try again later.',
 });
 
 const checkoutLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 5 : 50, // 50 in dev, 5 in prod
   message: 'Too many checkout attempts, please try again later.',
 });
 
