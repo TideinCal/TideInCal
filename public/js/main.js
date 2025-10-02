@@ -527,8 +527,8 @@ const initMap = () => {
 
 
 
-  // Enable finding and displaying the user's location
-  document.getElementById('mapBtn').addEventListener('click', () => {
+  // Function to find and display user's location
+  function findMyLocation() {
     navigator.geolocation.getCurrentPosition((position) => {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
@@ -538,6 +538,21 @@ const initMap = () => {
       userLocation.setZIndexOffset(50);
       map.panTo(new L.LatLng(latitude, longitude));
     });
+  }
+
+  // Connect all "Find My Location" buttons to the location functionality
+  document.getElementById('mapBtn')?.addEventListener('click', findMyLocation);
+  
+  // Desktop menu "Find My Location" button
+  document.querySelector('a[href="#map"]')?.addEventListener('click', (e) => {
+    e.preventDefault(); // Prevent default anchor behavior
+    findMyLocation();
+  });
+  
+  // Mobile menu "Find My Location" button  
+  document.querySelector('a[href="#mapSection"]')?.addEventListener('click', (e) => {
+    e.preventDefault(); // Prevent default anchor behavior
+    findMyLocation();
   });
 
   // Load tide stations onto the map
