@@ -86,6 +86,11 @@ body {
   #menuLogoutBtn {
     font-size: 1.1rem !important;
   }
+  
+  /* Mobile menu Find My Location button padding to match logout button height */
+  .list-group-item[href="#mapSection"] {
+    padding: 0.75rem 1rem !important;
+  }
 }
 
 #navLogoutBtn:hover, #menuLogoutBtn:hover {
