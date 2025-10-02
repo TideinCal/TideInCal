@@ -2,9 +2,6 @@ import { Router } from 'express';
 import Stripe from 'stripe';
 import { z } from 'zod';
 import { attachUser, requireAuth } from '../auth/index.js';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -47,6 +44,7 @@ router.post('/session', async (req, res) => {
       productName = 'Single Station';
     }
     
+    
     // Validate that we have a valid price ID
     if (!priceId) {
       throw new Error(`Missing Stripe price configuration for ${plan} plan`);
@@ -74,7 +72,7 @@ router.post('/session', async (req, res) => {
           quantity: 1,
         },
       ],
-      mode: 'payment',
+      mode: plan === 'unlimited' ? 'subscription' : 'payment',
       customer_email: req.user.email,
       metadata,
       success_url: `${process.env.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
