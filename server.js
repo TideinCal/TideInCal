@@ -228,6 +228,11 @@ async function startServer() {
       }
     });
 
+    // Account page
+    app.get('/account', (_req, res) => {
+      res.sendFile(path.join(__dirname, 'public', 'account.html'));
+    });
+
     // Home LAST
     app.get('/', (_req, res) => {
       res.sendFile(path.join(__dirname, 'public', 'index.html'));
