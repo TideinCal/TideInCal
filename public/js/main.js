@@ -204,6 +204,13 @@ async function handleAuth(formData, isSignup = false) {
     // Refresh auth UI
     refreshAuthUI();
     
+    // If we have pending station context, show plan chooser
+    if (pendingStationContext) {
+      setTimeout(() => {
+        openPlanModal();
+      }, 300); // Small delay to ensure modal closes properly
+    }
+    
     return true;
   } catch (error) {
     console.error('Authentication error:', error);
@@ -333,51 +340,34 @@ const renderModalContent = (title, id, region, lat, lon, type) => {
 };
 
 // Handle download button click
+// Global variables to store station context for plan chooser
+let pendingStationContext = null;
+
 async function handleDownloadClick(stationID, stationTitle, country) {
   try {
+    // Store station context for later use
+    pendingStationContext = { stationID, stationTitle, country };
+
     // Check if user is authenticated
     const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
-    
+
     if (!authResponse.ok) {
       // User not authenticated, show auth modal
-      openAuthModal('login');
+      openAuthModal('signup');
       return;
     }
-    
+
     const { user } = await authResponse.json();
-    
+
     if (!user) {
       // User not authenticated, show auth modal
-      openAuthModal('login');
+      openAuthModal('signup');
       return;
     }
-    
-    // User is authenticated, proceed to checkout
-    const checkoutData = {
-      stationID,
-      stationTitle,
-      country,
-      includeMoon: false, // Default to false, can be made configurable later
-      unlimited: false    // Default to false, can be made configurable later
-    };
-    
-    const response = await fetch('/api/checkout/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(checkoutData),
-      credentials: 'include'
-    });
-    
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to create checkout session');
-    }
-    
-    const { url } = await response.json();
-    
-    // Redirect to Stripe checkout
-    window.location.href = url;
-    
+
+    // User is authenticated, show plan chooser
+    openPlanModal();
+
   } catch (error) {
     console.error('Download error:', error);
     alert('Failed to start checkout process. Please try again.');
@@ -386,6 +376,79 @@ async function handleDownloadClick(stationID, stationTitle, country) {
 
 // Make handleDownloadClick globally available
 window.handleDownloadClick = handleDownloadClick;
+
+// Plan chooser modal functions
+function openPlanModal() {
+  const modal = document.getElementById('planModal');
+  if (!modal) {
+    console.error('Plan modal not found');
+    return;
+  }
+
+  // Show modal
+  if (window.bootstrap?.Modal) {
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+  } else {
+    modal.style.display = 'block';
+    modal.classList.add('show');
+  }
+}
+
+async function selectPlan(plan) {
+  try {
+    if (!pendingStationContext && plan === 'single') {
+      throw new Error('Station context missing for single plan');
+    }
+
+    // Prepare checkout data
+    const checkoutData = {
+      plan: plan
+    };
+
+    // Add station info for single plan
+    if (plan === 'single' && pendingStationContext) {
+      checkoutData.stationID = pendingStationContext.stationID;
+      checkoutData.stationTitle = pendingStationContext.stationTitle;
+      checkoutData.country = pendingStationContext.country;
+    }
+
+    // Close plan modal
+    const modal = document.getElementById('planModal');
+    if (window.bootstrap?.Modal) {
+      const bsModal = bootstrap.Modal.getInstance(modal);
+      bsModal?.hide();
+    } else {
+      modal.style.display = 'none';
+      modal.classList.remove('show');
+    }
+
+    // Create checkout session
+    const response = await fetch('/api/checkout/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(checkoutData),
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create checkout session');
+    }
+
+    const { url } = await response.json();
+
+    // Redirect to Stripe checkout
+    window.location.href = url;
+
+  } catch (error) {
+    console.error('Plan selection error:', error);
+    alert('Failed to start checkout process. Please try again.');
+  }
+}
+
+// Make selectPlan globally available
+window.selectPlan = selectPlan;
 
 //https://buy.stripe.com/test_00g6rIbmh8x08KY9AA <-- Test Link
 

@@ -16,16 +16,12 @@ export async function handleCheckoutCompleted(session) {
   const { metadata = {} } = session;
 
   const {
+    plan,
     userId,
     stationID,
     stationTitle,
     country,
-    includeMoon,
-    unlimited,
   } = metadata;
-
-  const includeMoonBool = includeMoon === 'true';
-  const unlimitedBool = unlimited === 'true';
 
   const { ObjectId } = await import('mongodb');
 
@@ -55,23 +51,29 @@ export async function handleCheckoutCompleted(session) {
     userId: new ObjectId(userId),
     stripeSessionId: session.id,
     stripePaymentIntentId: session.payment_intent ?? null,
-    product: unlimitedBool ? 'unlimited' : (includeMoonBool ? 'lunar-addon' : 'single'),
+    product: plan,
     metadata: {
       stationId: stationID,
       stationTitle,
       country,
-      includeMoon: includeMoonBool,
-      unlimited: unlimitedBool,
+      plan,
     },
     createdAt: new Date(),
   });
   console.log('[webhook] Created purchase record');
 
-  // 3) Entitlement or file generation
-  if (unlimitedBool) {
+  // 3) Handle based on plan type
+  if (plan === 'unlimited') {
+    // Set unlimited entitlement
     await db.collection('users').updateOne(
       { _id: new ObjectId(userId) },
-      { $set: { unlimited: true, updatedAt: new Date() } }
+      { 
+        $set: { 
+          unlimited: true, 
+          unlimitedSince: new Date(),
+          updatedAt: new Date() 
+        } 
+      }
     );
     console.log('[webhook] Set unlimited entitlement');
     return;
@@ -83,7 +85,7 @@ export async function handleCheckoutCompleted(session) {
     id: stationID,
     title: stationTitle,
     country,
-    includeMoon: includeMoonBool,
+    includeMoon: false, // Default to false for now
   });
 
   // Save file
@@ -103,13 +105,34 @@ export async function handleCheckoutCompleted(session) {
     stationId: stationID,
     stationTitle,
     region: country,
-    includesMoon: includeMoonBool,
+    includesMoon: false, // Default to false for now
+    fileName,
     storagePath: `tempICSFile/${fileName}`,
     createdAt: now,
     retainUntil,
     lastDownloadedAt: null,
   });
   console.log('[webhook] Created file record with TTL');
+
+  // Update user entitlements - remove existing for same station, add new one
+  await db.collection('users').updateOne(
+    { _id: new ObjectId(userId) },
+    {
+      $pull: { 
+        entitlements: { stationId: stationID } 
+      },
+      $push: { 
+        entitlements: { 
+          stationId: stationID,
+          stationTitle,
+          region: country,
+          retainUntil 
+        } 
+      },
+      $set: { updatedAt: now }
+    }
+  );
+  console.log('[webhook] Updated user entitlements');
 
   // Email the download link (if we have an email and not in mock mode)
   if (customerEmail && process.env.MOCK_EMAILS !== 'true') {

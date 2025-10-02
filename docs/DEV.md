@@ -36,6 +36,31 @@
 
 4. Expected: server logs event; DB updated; (if configured) ICS file and email are handled.
 
+## Plan Chooser Testing
+
+### Single Plan Flow:
+1. Sign up/login at http://localhost:3000
+2. Click "Download" on any station marker
+3. Select "Single Station" plan ($5)
+4. Complete Stripe checkout
+5. Check webhook logs for ICS generation
+6. Visit http://localhost:3000/account to see your file
+
+### Unlimited Plan Flow:
+1. Sign up/login at http://localhost:3000
+2. Click "Download" on any station marker
+3. Select "Unlimited Locations" plan ($29)
+4. Complete Stripe checkout
+5. Check webhook logs for unlimited entitlement
+6. Check user document in MongoDB: `db.users.findOne({unlimited: true})`
+
+### Account Dashboard Testing:
+- Visit http://localhost:3000/account
+- Should show list of purchased files
+- Download buttons should work for non-expired files
+- Expired files should show "Expired" status
+- Empty state should show when no files exist
+
 ## Environment Configuration
 
 Create `.env` file with the following variables:

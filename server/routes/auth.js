@@ -40,6 +40,8 @@ router.post('/signup', async (req, res) => {
       emailVerifiedAt: null,
       stripeCustomerId: null,
       unlimited: false,
+      unlimitedSince: null,
+      entitlements: [],
       createdAt: now,
       updatedAt: now
     });
@@ -127,6 +129,16 @@ router.get('/me', requireAuth, (req, res) => {
     lastName: req.user.lastName
   };
   res.json({ user });
+});
+
+// GET /api/auth/me/entitlements
+router.get('/me/entitlements', requireAuth, (req, res) => {
+  const entitlements = {
+    unlimited: req.user.unlimited || false,
+    unlimitedSince: req.user.unlimitedSince || null,
+    entitlements: req.user.entitlements || []
+  };
+  res.json(entitlements);
 });
 
 export default router;

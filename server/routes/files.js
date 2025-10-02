@@ -36,16 +36,23 @@ router.get('/', async (req, res) => {
       .toArray();
     
     // Add download URLs and format response
-    const filesWithUrls = files.map(file => ({
-      id: file._id,
-      stationTitle: file.stationTitle,
-      region: file.region,
-      includesMoon: file.includesMoon,
-      createdAt: file.createdAt,
-      retainUntil: file.retainUntil,
-      lastDownloadedAt: file.lastDownloadedAt,
-      downloadUrl: `${process.env.APP_URL}/api/files/${file._id}/download`
-    }));
+    const filesWithUrls = files.map(file => {
+      const now = new Date();
+      const retainUntil = new Date(file.retainUntil);
+      const daysRemaining = Math.max(0, Math.ceil((retainUntil - now) / (1000 * 60 * 60 * 24)));
+      
+      return {
+        id: file._id,
+        stationTitle: file.stationTitle,
+        region: file.region,
+        includesMoon: file.includesMoon,
+        createdAt: file.createdAt,
+        retainUntil: file.retainUntil,
+        daysRemaining,
+        lastDownloadedAt: file.lastDownloadedAt,
+        downloadUrl: `${process.env.APP_URL}/api/files/${file._id}/download`
+      };
+    });
     
     res.json({ files: filesWithUrls });
   } catch (error) {

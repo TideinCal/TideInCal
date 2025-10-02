@@ -265,7 +265,67 @@
 
   </footer>
 </div>
-<!-- Auth Modal -->
+  <!-- Plan Chooser Modal -->
+<div class="modal fade" id="planModal" tabindex="-1" aria-labelledby="planModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="planModalLabel">Choose Your Plan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="mb-4">Select the plan that best fits your needs:</p>
+        
+        <div class="row g-3">
+          <div class="col-12 col-md-6">
+            <div class="card h-100 plan-card" data-plan="single">
+              <div class="card-body d-flex flex-column">
+                <h5 class="card-title">Single Station</h5>
+                <div class="price-display mb-3">
+                  <span class="price">$5</span>
+                  <small class="text-muted">one-time</small>
+                </div>
+                <ul class="list-unstyled text-start flex-grow-1">
+                  <li class="mb-2">✅ 12 months of tide data</li>
+                  <li class="mb-2">✅ One specific location</li>
+                  <li class="mb-2">✅ Download to calendar</li>
+                  <li class="mb-2">✅ Works offline forever</li>
+                </ul>
+                <button class="btn btn-primary w-100 mt-auto" onclick="selectPlan('single')">
+                  Choose Single
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-12 col-md-6">
+            <div class="card h-100 plan-card" data-plan="unlimited">
+              <div class="card-body d-flex flex-column">
+                <h5 class="card-title">Unlimited Locations</h5>
+                <div class="price-display mb-3">
+                  <span class="price">$29</span>
+                  <small class="text-muted">one-time</small>
+                </div>
+                <ul class="list-unstyled text-start flex-grow-1">
+                  <li class="mb-2">✅ 12 months of tide data</li>
+                  <li class="mb-2">✅ Unlimited locations</li>
+                  <li class="mb-2">✅ Download to calendar</li>
+                  <li class="mb-2">✅ Works offline forever</li>
+                  <li class="mb-2">✅ Best value for explorers</li>
+                </ul>
+                <button class="btn btn-primary w-100 mt-auto" onclick="selectPlan('unlimited')">
+                  Choose Unlimited
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- Auth Modal -->
 <div class="modal fade" id="authModal" tabindex="-1" aria-labelledby="authModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">

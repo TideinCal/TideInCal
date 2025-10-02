@@ -51,42 +51,95 @@ body {
 .offcanvas { z-index: 11000; }
 #topNav     { z-index: 11001; }
 
-/* keep auth modal above the map */
-#authModal { z-index: 11002; }
+/* keep modals above the map */
+#authModal, #planModal { z-index: 11002; }
 
-/* Auth modal brand styling */
-#authModal .modal-content {
+/* Modal brand styling */
+#authModal .modal-content, #planModal .modal-content {
   border: none;
   border-radius: 16px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
 
-#authModal .modal-header {
+#authModal .modal-header, #planModal .modal-header {
   background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 80%);
   color: white;
   border: none;
   padding: 1.5rem;
 }
 
-#authModal .modal-title {
+#authModal .modal-title, #planModal .modal-title {
   font-family: 'Kanit', sans-serif;
   font-weight: 600;
   font-size: 1.25rem;
   margin: 0;
 }
 
-#authModal .btn-close {
+#authModal .btn-close, #planModal .btn-close {
   filter: brightness(0) invert(1);
   opacity: 0.8;
 }
 
-#authModal .btn-close:hover {
+#authModal .btn-close:hover, #planModal .btn-close:hover {
   opacity: 1;
 }
 
 #authModal .modal-body {
   padding: 0;
+}
+
+#planModal .modal-body {
+  padding: 1.5rem;
+  background: white;
+}
+
+/* Plan chooser specific styling */
+.plan-card {
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.plan-card:hover {
+  border-color: #0B62AC;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.plan-card.selected {
+  border-color: #0B62AC;
+  background: linear-gradient(135deg, rgba(11, 98, 172, 0.05) 0%, rgba(0, 199, 230, 0.05) 100%);
+}
+
+.price-display {
+  text-align: center;
+}
+
+.price {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0B62AC;
+  font-family: 'Kanit', sans-serif;
+}
+
+.plan-card .card-title {
+  color: #0B62AC;
+  font-weight: 600;
+  font-family: 'Kanit', sans-serif;
+}
+
+.plan-card .btn-primary {
+  background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 80%);
+  border: none;
+  font-weight: 600;
+  font-family: 'Kanit', sans-serif;
+}
+
+.plan-card .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Tab styling */

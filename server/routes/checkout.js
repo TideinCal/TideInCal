@@ -9,13 +9,20 @@ dotenv.config();
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Validation schema for checkout session
+// Validation schema for plan-based checkout
 const checkoutSchema = z.object({
-  stationID: z.string().min(1),
-  stationTitle: z.string().min(1),
-  country: z.string().min(1),
-  includeMoon: z.boolean().optional(),
-  unlimited: z.boolean().optional()
+  plan: z.enum(['single', 'unlimited']),
+  stationID: z.string().min(1).optional(),
+  stationTitle: z.string().min(1).optional(),
+  country: z.string().min(1).optional()
+}).refine((data) => {
+  // For single plan, station fields are required
+  if (data.plan === 'single') {
+    return data.stationID && data.stationTitle && data.country;
+  }
+  return true;
+}, {
+  message: "stationID, stationTitle, and country are required for single plan"
 });
 
 // Apply middleware
@@ -26,24 +33,36 @@ router.use(requireAuth);
 router.post('/session', async (req, res) => {
   try {
     const validated = checkoutSchema.parse(req.body);
-    const { stationID, stationTitle, country, includeMoon, unlimited } = validated;
+    const { plan, stationID, stationTitle, country } = validated;
     
-    // Determine price based on options
-    let priceId = process.env.STRIPE_PRICE_SINGLE;
-    let productName = 'Single Download';
+    // Determine price based on plan
+    let priceId;
+    let productName;
     
-    if (unlimited) {
+    if (plan === 'unlimited') {
       priceId = process.env.STRIPE_PRICE_UNLIMITED;
       productName = 'Unlimited Access';
-    } else if (includeMoon) {
-      // For single download with moon, we'll need to handle this in webhook
-      // For now, use single download price
-      productName = 'Single Download + Moon';
+    } else if (plan === 'single') {
+      priceId = process.env.STRIPE_PRICE_SINGLE;
+      productName = 'Single Station';
     }
     
     // Validate that we have a valid price ID
     if (!priceId) {
-      throw new Error(`Missing Stripe price configuration for ${unlimited ? 'unlimited' : 'single'} purchase`);
+      throw new Error(`Missing Stripe price configuration for ${plan} plan`);
+    }
+    
+    // Prepare metadata
+    const metadata = {
+      plan,
+      userId: req.user._id.toString()
+    };
+    
+    // Add station info for single plan
+    if (plan === 'single') {
+      metadata.stationID = stationID;
+      metadata.stationTitle = stationTitle;
+      metadata.country = country;
     }
     
     // Create Stripe checkout session
@@ -57,14 +76,7 @@ router.post('/session', async (req, res) => {
       ],
       mode: 'payment',
       customer_email: req.user.email,
-      metadata: {
-        userId: req.user._id.toString(),
-        stationID,
-        stationTitle,
-        country,
-        includeMoon: includeMoon ? 'true' : 'false',
-        unlimited: unlimited ? 'true' : 'false'
-      },
+      metadata,
       success_url: `${process.env.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.APP_URL}/`,
     });
