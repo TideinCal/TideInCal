@@ -16,8 +16,17 @@ body {
   box-shadow: 0 8px 16px rgba(0,0,0,0.35);
   font-family: 'Kanit', sans-serif;
   font-weight: 600; /* Match logout button weight */
+  transition: all 0.3s ease;
 }
-.btn-gradient:hover { filter: brightness(1.05); }
+.btn-gradient:hover { 
+  filter: brightness(1.05);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+}
+.btn-gradient:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.35);
+}
 
 /* Desktop navigation button styling - consistent heights */
 @media (min-width: 576px) {
@@ -257,7 +266,7 @@ body {
 }
 
 /* Outline logout button styling - matches gradient buttons */
-#navLogoutBtn, #menuLogoutBtn {
+#navLogoutBtn, #menuLogoutBtn, #logoutBtn, #logoutBtnDesktop {
   background: transparent !important;
   color: #0B62AC !important;
   border: 2px solid #0B62AC !important;
@@ -273,7 +282,7 @@ body {
 
 /* Mobile logout button styling - larger font size */
 @media (max-width: 575px) {
-  #menuLogoutBtn {
+  #menuLogoutBtn, #logoutBtn {
     font-size: 1.1rem !important;
   }
   
@@ -283,16 +292,16 @@ body {
   }
 }
 
-#navLogoutBtn:hover, #menuLogoutBtn:hover {
+#navLogoutBtn:hover, #menuLogoutBtn:hover, #logoutBtn:hover, #logoutBtnDesktop:hover {
   background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 80%) !important;
   color: #fff !important;
-  
+  border-color: transparent !important;
   transform: translateY(-2px);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25);
   filter: brightness(1.05);
 }
 
-#navLogoutBtn:active, #menuLogoutBtn:active {
+#navLogoutBtn:active, #menuLogoutBtn:active, #logoutBtn:active, #logoutBtnDesktop:active {
   transform: translateY(0);
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
 }
