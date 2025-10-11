@@ -283,6 +283,12 @@ window.addEventListener('DOMContentLoaded', () => {
     const href = item.getAttribute('href') || '';
     const isHash = href.startsWith('#');
     console.log('[offcanvas] Clicked:', href, 'isHash:', isHash);
+    
+    // For non-hash links (like /account), let Bootstrap's data-bs-dismiss handle it
+    if (!isHash && href) {
+      console.log('[offcanvas] Non-hash link detected, letting default behavior proceed');
+      return; // Let the link navigate naturally
+    }
 
     // Use Bootstrap API if available; otherwise fall back to removing classes
     const hideOffcanvas = () => {
@@ -313,7 +319,7 @@ window.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Non-hash items (e.g., /account) → just close
+    // For buttons without href (like logout), just close the offcanvas
     hideOffcanvas();
   });
 });

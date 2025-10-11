@@ -10,7 +10,7 @@
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark fixed-top" id="topNav">
+    <nav class="navbar navbar-dark bg-deepnav shadow-sm fixed-top" id="topNav">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="/">
                 <img src="/img/logo.png" alt="TideInCal" height="40" class="me-2">
@@ -30,9 +30,11 @@
                     <div class="list-group list-group-flush">
                         <a class="list-group-item list-group-item-action bg-transparent text-white" href="/">🏠 Home</a>
                         <hr class="text-white-50">
-                        <button class="list-group-item list-group-item-action bg-transparent text-white" id="logoutBtn">
-                            👋 Log out
-                        </button>
+                        <div class="list-group-item bg-transparent text-white border-0 d-flex justify-content-end align-items-center">
+                            <button id="logoutBtn" data-bs-dismiss="offcanvas">
+                                👋&nbsp;Log out
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -40,7 +42,7 @@
             <!-- Desktop menu -->
             <div class="d-none d-lg-flex align-items-center gap-3">
                 <a href="/" class="btn btn-outline-light btn-sm">Home</a>
-                <button class="btn btn-outline-light btn-sm" id="logoutBtnDesktop">👋 Log out</button>
+                <button id="logoutBtnDesktop">👋 Log out</button>
             </div>
         </div>
     </nav>
