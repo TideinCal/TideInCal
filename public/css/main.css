@@ -9,19 +9,23 @@ body {
 /* dark navy */
 .bg-deepnav { background-color: #0d1b48 !important; }
 
-/* gradient primary button */
+/* gradient primary button with shine effect */
 .btn-gradient {
-  background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 80%);
-  color: #fff; border: 0;
+  background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 50%, #0B62AC 80%);
+  background-size: 300% 300%;
+  background-position: 0% 50%;
+  color: #fff;
+  border: 0;
   box-shadow: 0 8px 16px rgba(0,0,0,0.35);
   font-family: 'Kanit', sans-serif;
-  font-weight: 600; /* Match logout button weight */
-  transition: all 0.3s ease;
+  font-weight: 600;
+  transition: background-position 0.8s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
 .btn-gradient:hover { 
-  filter: brightness(1.05);
+  background-position: 100% 50%;
   transform: translateY(-2px);
   box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+  color: #fff; /* Keep text white on hover */
 }
 .btn-gradient:active {
   transform: translateY(0);
