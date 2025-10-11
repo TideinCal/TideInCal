@@ -75,7 +75,8 @@ app.use(
           "'self'",
           'https://api.tidesandcurrents.noaa.gov',
           'https://api-iwls.dfo-mpo.gc.ca',
-          'https://api.stripe.com'
+          'https://api.stripe.com',
+          'https://nominatim.openstreetmap.org'
         ],
       },
     },
