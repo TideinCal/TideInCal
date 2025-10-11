@@ -282,12 +282,30 @@ window.addEventListener('DOMContentLoaded', () => {
     // If it's a hash link, we'll handle scroll below.
     const href = item.getAttribute('href') || '';
     const isHash = href.startsWith('#');
-    console.log('[offcanvas] Clicked:', href, 'isHash:', isHash);
+    console.log('[offcanvas] Clicked:', href, 'isHash:', isHash, 'target:', item);
     
-    // For non-hash links (like /account), let Bootstrap's data-bs-dismiss handle it
-    if (!isHash && href) {
-      console.log('[offcanvas] Non-hash link detected, letting default behavior proceed');
-      return; // Let the link navigate naturally
+    // For non-hash links (like /account), navigate explicitly
+    if (!isHash && href && href !== '') {
+      console.log('[offcanvas] Non-hash link detected, navigating to:', href);
+      e.preventDefault(); // Prevent any default behavior
+      e.stopPropagation(); // Stop event bubbling
+      
+      // Close offcanvas first, then navigate
+      const hideAndNavigate = () => {
+        if (window.bootstrap?.Offcanvas) {
+          const oc = bootstrap.Offcanvas.getInstance(offcanvasEl) || new bootstrap.Offcanvas(offcanvasEl);
+          offcanvasEl.addEventListener('hidden.bs.offcanvas', () => {
+            window.location.href = href;
+          }, { once: true });
+          oc.hide();
+        } else {
+          offcanvasEl.classList.remove('show');
+          window.location.href = href;
+        }
+      };
+      
+      hideAndNavigate();
+      return;
     }
 
     // Use Bootstrap API if available; otherwise fall back to removing classes
