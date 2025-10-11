@@ -29,9 +29,6 @@
                 <div class="offcanvas-body">
                     <div class="list-group list-group-flush">
                         <a class="list-group-item list-group-item-action bg-transparent text-white" href="/">🏠 Home</a>
-                        <a class="list-group-item list-group-item-action bg-transparent text-white" href="/#map">🗺️ Find My Location</a>
-                        <a class="list-group-item list-group-item-action bg-transparent text-white" href="/#tutorial">📚 How It Works</a>
-                        <a class="list-group-item list-group-item-action bg-transparent text-white" href="/#about">ℹ️ About</a>
                         <hr class="text-white-50">
                         <button class="list-group-item list-group-item-action bg-transparent text-white" id="logoutBtn">
                             👋 Log out
@@ -157,23 +154,31 @@
         // Load user files
         async function loadFiles() {
             try {
+                console.log('[account] Loading files...');
                 showLoading();
                 
                 const response = await fetch('/api/files', { credentials: 'include' });
+                console.log('[account] Files API response status:', response.status);
+                
                 if (!response.ok) {
-                    throw new Error('Failed to load files');
+                    const errorText = await response.text();
+                    console.error('[account] Files API error:', errorText);
+                    throw new Error(`Failed to load files: ${response.status}`);
                 }
                 
                 const data = await response.json();
+                console.log('[account] Files data:', data);
                 const files = data.files || [];
                 
                 if (files.length === 0) {
+                    console.log('[account] No files found, showing empty state');
                     showEmpty();
                 } else {
+                    console.log('[account] Found', files.length, 'files');
                     showFiles(files);
                 }
             } catch (error) {
-                console.error('Error loading files:', error);
+                console.error('[account] Error loading files:', error);
                 showError(error.message);
             }
         }

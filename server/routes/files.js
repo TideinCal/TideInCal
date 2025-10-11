@@ -23,6 +23,7 @@ router.use(requireAuth);
 // GET /api/files - List current user's files
 router.get('/', async (req, res) => {
   try {
+    console.log('[files] GET /api/files - User ID:', req.user._id);
     const db = getDatabase();
     const { ObjectId } = await import('mongodb');
     
@@ -34,6 +35,8 @@ router.get('/', async (req, res) => {
         storagePath: 0 // Mask internal paths from responses
       })
       .toArray();
+    
+    console.log('[files] Found', files.length, 'files for user');
     
     // Add download URLs and format response
     const filesWithUrls = files.map(file => {
