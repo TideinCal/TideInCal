@@ -621,33 +621,24 @@ const initMap = () => {
 
 
 
-  // Function to find and display user's location
-  function findMyLocation() {
-    navigator.geolocation.getCurrentPosition((position) => {
-      const latitude = position.coords.latitude;
-      const longitude = position.coords.longitude;
-
-      const userLocation = L.marker([latitude, longitude], { icon: myIcon }).addTo(map);
-      userLocation.setLatLng([latitude, longitude]);
-      userLocation.setZIndexOffset(50);
-      map.panTo(new L.LatLng(latitude, longitude));
-    });
+  // Function to scroll to the map section
+  function scrollToMap() {
+    const mapSection = document.getElementById('map');
+    if (mapSection) {
+      const navOffset = 56; // navbar height
+      const y = mapSection.getBoundingClientRect().top + window.pageYOffset - navOffset;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
   }
 
-  // Connect all "Find My Location" buttons to the location functionality
-  document.getElementById('mapBtn')?.addEventListener('click', findMyLocation);
+  // Connect all "Find My Location" buttons to scroll to map
+  document.getElementById('mapBtn')?.addEventListener('click', scrollToMap);
   
-  // Desktop menu "Find My Location" button
-  document.querySelector('a[href="#map"]')?.addEventListener('click', (e) => {
-    e.preventDefault(); // Prevent default anchor behavior
-    findMyLocation();
-  });
+  // Desktop menu "Find My Location" button - let offcanvas handler manage it
+  // (it will scroll to #map automatically)
   
-  // Mobile menu "Find My Location" button  
-  document.querySelector('a[href="#mapSection"]')?.addEventListener('click', (e) => {
-    e.preventDefault(); // Prevent default anchor behavior
-    findMyLocation();
-  });
+  // Mobile menu "Find My Location" button - let offcanvas handler manage it  
+  // (it will scroll to #mapSection which is the map ID)
 
   // Load tide stations onto the map
   loadTideStations();
