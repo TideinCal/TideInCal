@@ -133,6 +133,31 @@ async function logout() {
 async function init() {
     const isAuthenticated = await checkAuth();
     if (isAuthenticated) {
+        // Get user info and populate name fields
+        try {
+            const response = await fetch('/api/auth/me', { credentials: 'include' });
+            if (response.ok) {
+                const { user } = await response.json();
+                if (user) {
+                    const displayName = user.firstName || user.email.split('@')[0];
+                    
+                    // Update desktop greeting
+                    const navUserName = document.getElementById('navUserName');
+                    if (navUserName) {
+                        navUserName.textContent = displayName;
+                    }
+                    
+                    // Update mobile greeting
+                    const menuUserName = document.getElementById('menuUserName');
+                    if (menuUserName) {
+                        menuUserName.textContent = displayName;
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching user info:', error);
+        }
+        
         await loadFiles();
     }
 }
