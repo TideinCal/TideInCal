@@ -589,13 +589,20 @@ const initMap = () => {
     position: 'topright',
     placeholder: 'Search for a place...',
     defaultMarkGeocode: false,
-    geocoder: provider
+    geocoder: provider,
+    showResultIcons: true,
+    suggestMinLength: 3,
+    suggestTimeout: 250,
+    queryMinLength: 3,
+    collapsed: true
   }).addTo(map);
 
   // Handle geocoder results
   geocoder.on('markgeocode', function(e) {
     const result = e.geocode;
     const latlng = result.center;
+
+    console.log('[geocoder] Search result:', result.name, latlng);
 
     // Pan to the result location with zoom level 12
     map.setView(latlng, 12);
@@ -609,8 +616,6 @@ const initMap = () => {
         iconAnchor: [10, 10]
       })
     }).addTo(map);
-
-
 
     // Remove the marker after 5 seconds
     setTimeout(() => {
