@@ -279,9 +279,10 @@ window.addEventListener('DOMContentLoaded', () => {
     const item = e.target.closest('a,button');
     if (!item) return;
 
-    // If it's a hash link, we’ll handle scroll below.
+    // If it's a hash link, we'll handle scroll below.
     const href = item.getAttribute('href') || '';
     const isHash = href.startsWith('#');
+    console.log('[offcanvas] Clicked:', href, 'isHash:', isHash);
 
     // Use Bootstrap API if available; otherwise fall back to removing classes
     const hideOffcanvas = () => {
