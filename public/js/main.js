@@ -409,20 +409,54 @@ async function handleDownloadClick(stationID, stationTitle, country) {
 window.handleDownloadClick = handleDownloadClick;
 
 // Plan chooser modal functions
-function openPlanModal() {
-  const modal = document.getElementById('planModal');
-  if (!modal) {
-    console.error('Plan modal not found');
-    return;
-  }
+async function openPlanModal() {
+  try {
+    // Check if user has unlimited access
+    const response = await fetch('/api/auth/me/entitlements', { credentials: 'include' });
+    if (response.ok) {
+      const { unlimited } = await response.json();
+      
+      if (unlimited) {
+        // User has unlimited access, show unlimited modal
+        const modal = document.getElementById('unlimitedModal');
+        if (!modal) {
+          console.error('Unlimited modal not found');
+          return;
+        }
+        
+        if (window.bootstrap?.Modal) {
+          const bsModal = new bootstrap.Modal(modal);
+          bsModal.show();
+        } else {
+          modal.style.display = 'block';
+          modal.classList.add('show');
+        }
+        return;
+      }
+    }
+    
+    // Regular plan chooser for non-unlimited users
+    const modal = document.getElementById('planModal');
+    if (!modal) {
+      console.error('Plan modal not found');
+      return;
+    }
 
-  // Show modal
-  if (window.bootstrap?.Modal) {
-    const bsModal = new bootstrap.Modal(modal);
-    bsModal.show();
-  } else {
-    modal.style.display = 'block';
-    modal.classList.add('show');
+    if (window.bootstrap?.Modal) {
+      const bsModal = new bootstrap.Modal(modal);
+      bsModal.show();
+    } else {
+      modal.style.display = 'block';
+      modal.classList.add('show');
+    }
+  } catch (error) {
+    console.error('Error checking user entitlements:', error);
+    // Fallback to regular plan modal
+    const modal = document.getElementById('planModal');
+    if (modal && window.bootstrap?.Modal) {
+      const bsModal = new bootstrap.Modal(modal);
+      bsModal.show();
+    }
   }
 }
 
@@ -467,10 +501,23 @@ async function selectPlan(plan) {
       throw new Error(error.error || 'Failed to create checkout session');
     }
 
-    const { url } = await response.json();
+    const responseData = await response.json();
 
-    // Redirect to Stripe checkout
-    window.location.href = url;
+    // Check if this is a free download for unlimited user
+    if (responseData.success && responseData.message?.includes('Free download')) {
+      // Show success message and redirect to account page
+      alert('✅ Free download processed! Your tide calendar is ready.');
+      window.location.href = '/account';
+      return;
+    }
+
+    // Regular Stripe checkout flow
+    const { url } = responseData;
+    if (url) {
+      window.location.href = url;
+    } else {
+      throw new Error('No checkout URL received');
+    }
 
   } catch (error) {
     console.error('Plan selection error:', error);

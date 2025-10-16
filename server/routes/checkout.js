@@ -2,6 +2,7 @@ import { Router } from 'express';
 import Stripe from 'stripe';
 import { z } from 'zod';
 import { attachUser, requireAuth } from '../auth/index.js';
+import { getDatabase } from '../db/index.js';
 
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -31,6 +32,49 @@ router.post('/session', async (req, res) => {
   try {
     const validated = checkoutSchema.parse(req.body);
     const { plan, stationID, stationTitle, country } = validated;
+    
+    // Check if user already has unlimited subscription
+    const db = getDatabase();
+    const user = await db.collection('users').findOne({ _id: req.user._id });
+    
+    // If user has unlimited and is requesting single station, handle as free download
+    if (user?.unlimited && plan === 'single') {
+      console.log('[checkout] User has unlimited subscription, processing free single download');
+      
+      // Import the checkoutCompleted service to handle the free download
+      const { handleCheckoutCompleted } = await import('../services/checkoutCompleted.js');
+      
+      // Create a mock session object for unlimited users getting single stations for free
+      const mockSession = {
+        id: `free_single_${Date.now()}`,
+        customer: user.stripeCustomerId || null,
+        customer_details: {
+          name: user.billingName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0],
+          email: user.email
+        },
+        amount_total: 0,
+        currency: 'usd',
+        payment_intent: null,
+        metadata: {
+          plan: 'single',
+          userId: user._id.toString(),
+          stationID,
+          stationTitle,
+          country,
+          freeForUnlimited: 'true'
+        }
+      };
+      
+      // Process the free download
+      await handleCheckoutCompleted(mockSession);
+      
+      // Return success response with download link
+      return res.json({ 
+        success: true, 
+        message: 'Free download processed for unlimited user',
+        downloadUrl: `/api/files/latest?stationId=${stationID}`
+      });
+    }
     
     // Determine price based on plan
     let priceId;

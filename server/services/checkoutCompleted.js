@@ -70,6 +70,7 @@ export async function handleCheckoutCompleted(session) {
       stationTitle,
       country,
       plan,
+      freeForUnlimited: metadata.freeForUnlimited || false,
     },
     createdAt: new Date(),
   };

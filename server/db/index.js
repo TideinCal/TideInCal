@@ -12,7 +12,18 @@ export async function connectToDatabase() {
   }
 
   try {
-    client = new MongoClient(process.env.MONGO_URI);
+    client = new MongoClient(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 30000,
+      connectTimeoutMS: 30000,
+      socketTimeoutMS: 30000,
+      maxPoolSize: 10,
+      retryWrites: true,
+      retryReads: true,
+      w: 'majority',
+      tls: true,
+      tlsAllowInvalidCertificates: false,
+      tlsAllowInvalidHostnames: false
+    });
     await client.connect();
     db = client.db('tideincal');
     
