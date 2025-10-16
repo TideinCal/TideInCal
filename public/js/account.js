@@ -16,6 +16,85 @@ async function checkAuth() {
     }
 }
 
+// Load subscription information
+async function loadSubscriptionInfo() {
+    try {
+        console.log('[account] Loading subscription info...');
+        const response = await fetch('/api/auth/me/entitlements', { credentials: 'include' });
+        
+        if (!response.ok) {
+            console.error('[account] Subscription API error:', response.status);
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('[account] Subscription data:', data);
+        displaySubscriptionInfo(data);
+    } catch (error) {
+        console.error('[account] Error loading subscription:', error);
+        displaySubscriptionError();
+    }
+}
+
+// Display subscription information
+function displaySubscriptionInfo(data) {
+    const subscriptionInfo = document.getElementById('subscriptionInfo');
+    if (!subscriptionInfo) return;
+    
+    const { unlimited, unlimitedSince, entitlements } = data;
+    
+    if (unlimited) {
+        const sinceDate = unlimitedSince ? new Date(unlimitedSince).toLocaleDateString() : 'Unknown';
+        subscriptionInfo.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-success fs-6 me-2">🎉 UNLIMITED</span>
+                        <span class="text-success fw-bold">Active Subscription</span>
+                    </div>
+                    <p class="mb-0 text-muted">Unlimited access since ${sinceDate}</p>
+                    <small class="text-muted">You can download any single station for free!</small>
+                </div>
+                <div class="text-end">
+                    <div class="h5 mb-0 text-success">∞</div>
+                    <small class="text-muted">Unlimited</small>
+                </div>
+            </div>
+        `;
+    } else {
+        const stationCount = entitlements ? entitlements.length : 0;
+        subscriptionInfo.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge bg-primary fs-6 me-2">📍 SINGLE</span>
+                        <span class="text-primary fw-bold">Individual Stations</span>
+                    </div>
+                    <p class="mb-0 text-muted">${stationCount} station(s) purchased</p>
+                    <small class="text-muted">Each station download costs $5</small>
+                </div>
+                <div class="text-end">
+                    <div class="h5 mb-0 text-primary">${stationCount}</div>
+                    <small class="text-muted">Stations</small>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Display subscription error
+function displaySubscriptionError() {
+    const subscriptionInfo = document.getElementById('subscriptionInfo');
+    if (!subscriptionInfo) return;
+    
+    subscriptionInfo.innerHTML = `
+        <div class="alert alert-warning mb-0">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            Unable to load subscription information
+        </div>
+    `;
+}
+
 // Load user files
 async function loadFiles() {
     try {
@@ -158,6 +237,8 @@ async function init() {
             console.error('Error fetching user info:', error);
         }
         
+        // Load subscription info and files
+        await loadSubscriptionInfo();
         await loadFiles();
     }
 }
