@@ -74,6 +74,7 @@ router.post('/session', async (req, res) => {
       ],
       mode: plan === 'unlimited' ? 'subscription' : 'payment',
       customer_email: req.user.email,
+      allow_promotion_codes: true,
       metadata,
       success_url: `${process.env.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.APP_URL}/`,
