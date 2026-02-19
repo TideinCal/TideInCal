@@ -5,6 +5,18 @@ dotenv.config();
 
 let client;
 let db;
+let databaseName = 'tideincal';
+
+function getDatabaseNameFromUri(uri) {
+  if (!uri || typeof uri !== 'string') return 'tideincal';
+  try {
+    const url = new URL(uri.replace(/^mongodb\+srv/, 'https'));
+    const name = (url.pathname || '').replace(/^\//, '').split('?')[0].trim();
+    return name || 'tideincal';
+  } catch {
+    return 'tideincal';
+  }
+}
 
 export async function connectToDatabase() {
   if (db) {
@@ -12,6 +24,7 @@ export async function connectToDatabase() {
   }
 
   try {
+    databaseName = getDatabaseNameFromUri(process.env.MONGO_URI);
     client = new MongoClient(process.env.MONGO_URI, {
       serverSelectionTimeoutMS: 30000,
       connectTimeoutMS: 30000,
@@ -25,7 +38,7 @@ export async function connectToDatabase() {
       tlsAllowInvalidHostnames: false
     });
     await client.connect();
-    db = client.db('tideincal');
+    db = client.db(databaseName);
     
     // Create TTL index on files.retainUntil
     await db.collection('files').createIndex(
@@ -45,7 +58,7 @@ export async function connectToDatabase() {
     // Create index on purchases.userId
     await db.collection('purchases').createIndex({ userId: 1 });
     
-    console.log('Connected to MongoDB and created indexes');
+    console.log('Connected to MongoDB (database: %s) and created indexes', databaseName);
     return { client, db };
   } catch (error) {
     console.error('Failed to connect to MongoDB:', error);
@@ -65,4 +78,9 @@ export function getClient() {
     throw new Error('Client not connected. Call connectToDatabase() first.');
   }
   return client;
+}
+
+/** Database name in use (for debugging). Only set after connectToDatabase(). */
+export function getDatabaseName() {
+  return databaseName;
 }
