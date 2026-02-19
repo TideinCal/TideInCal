@@ -1,5 +1,5 @@
 // server.js
-import 'dotenv/config.js';
+import './server/bootstrap/loadEnv.js';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -12,8 +12,9 @@ import JSZip from 'jszip';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import cors from 'cors';
+import csurf from 'csurf';
 
 // Internal modules
 import { connectToDatabase } from './server/db/index.js';
@@ -21,14 +22,15 @@ import authRoutes from './server/routes/auth.js';
 import checkoutRoutes from './server/routes/checkout.js';
 // NOTE: do NOT import webhook as a router; we mount a raw handler inline
 import filesRoutes from './server/routes/files.js';
+import downloadsRoutes from './server/routes/downloads.js';
 import { attachUser } from './server/auth/index.js';
 import { assertStripeEnv } from './server/bootstrap/envGuard.js';
 
-// Validate required environment variables
-assertStripeEnv();
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Validate required environment variables
+assertStripeEnv();
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -49,7 +51,8 @@ app.use(
           "'unsafe-inline'", 
           'https://unpkg.com',
           'https://cdn.jsdelivr.net',
-          'https://fonts.googleapis.com'
+          'https://fonts.googleapis.com',
+          'https://cdnjs.cloudflare.com'
         ],
         scriptSrc: [
           "'self'", 
@@ -69,14 +72,17 @@ app.use(
         fontSrc: [
           "'self'",
           'https://fonts.gstatic.com',
-          'https://cdn.jsdelivr.net'
+          'https://cdn.jsdelivr.net',
+          'https://cdnjs.cloudflare.com'
         ],
         connectSrc: [
           "'self'",
           'https://api.tidesandcurrents.noaa.gov',
           'https://api-iwls.dfo-mpo.gc.ca',
           'https://api.stripe.com',
-          'https://nominatim.openstreetmap.org'
+          'https://nominatim.openstreetmap.org',
+          'https://unpkg.com',
+          'https://cdn.jsdelivr.net'
         ],
       },
     },
@@ -91,17 +97,44 @@ app.use(
   })
 );
 
-// Rate limits - more generous for development
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 10 : 100, // 100 in dev, 10 in prod
-  message: 'Too many authentication attempts, please try again later.',
-});
+// Shared handler for rate limit 429 responses
+const rateLimitHandler = (_req, res) => {
+  res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+};
 
+// Rate limits - auth limiter is applied per-route in server/routes/auth.js
 const checkoutLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 5 : 50, // 50 in dev, 5 in prod
-  message: 'Too many checkout attempts, please try again later.',
+  limit: 10,
+  handler: rateLimitHandler,
+});
+
+// Downloads: per-user 5/min, per-IP 30/min
+const downloadsUserLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 5,
+  keyGenerator: (req) => req.user?._id?.toString() ?? ipKeyGenerator(req.ip),
+  handler: rateLimitHandler,
+});
+
+const downloadsIPLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 30,
+  handler: rateLimitHandler,
+});
+
+// Files (list/download): per-user 5/min, per-IP 30/min
+const filesUserLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 5,
+  keyGenerator: (req) => req.user?._id?.toString() ?? ipKeyGenerator(req.ip),
+  handler: rateLimitHandler,
+});
+
+const filesIPLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 30,
+  handler: rateLimitHandler,
 });
 
 // Session config (store added after DB connects)
@@ -116,6 +149,15 @@ let sessionConfig = {
     maxAge: 24 * 60 * 60 * 1000, // 24h
   },
 };
+
+// Production: must not use missing or fallback SESSION_SECRET
+if (process.env.NODE_ENV === 'production') {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret === 'fallback-secret-change-in-production') {
+    throw new Error('SESSION_SECRET must be set to a secure value in production. Do not use the fallback.');
+  }
+  sessionConfig.secret = secret;
+}
 
 // Session middleware will be applied after DB connection
 
@@ -185,12 +227,18 @@ app.get('/api/tide-stations', (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────
-// Routes that don’t require DB (webhook/static) are already above.
+// Routes that don't require DB (webhook/static) are already above.
 // Everything that needs sessions/user comes after DB connection.
 // ─────────────────────────────────────────────────────────────
 async function startServer() {
+  let dbConnected = false;
+  let client = null;
+
+  // Try to connect to MongoDB
   try {
-    const { client } = await connectToDatabase();
+    const result = await connectToDatabase();
+    client = result.client;
+    dbConnected = true;
 
     // Configure session store with MongoDB
     sessionConfig.store = MongoStore.create({
@@ -200,66 +248,112 @@ async function startServer() {
       ttl: 14 * 24 * 3600, // 14 days
     });
 
-    // Apply session middleware with MongoDB store
-    app.use(session(sessionConfig));
+    console.log('✅ MongoDB connected - full functionality enabled');
+  } catch (err) {
+    console.warn('⚠️  MongoDB connection failed:', err.message);
+    console.warn('⚠️  Server will start with limited functionality (static files only)');
+    console.warn('⚠️  Database-dependent routes will be disabled');
     
-    // Apply middleware that relies on req.session
+    // Use memory store as fallback (sessions won't persist across restarts)
+    // Note: MemoryStore is the default when no store is specified
+  }
+
+  // Apply session middleware (works with or without MongoDB store)
+  app.use(session(sessionConfig));
+
+  // CSRF token endpoint (session-based, public)
+  const csrfProtection = csurf({ cookie: false });
+  app.get('/api/csrf', csrfProtection, (req, res) => {
+    res.json({ csrfToken: req.csrfToken() });
+  });
+  
+  // Only apply database-dependent middleware if connected
+  if (dbConnected) {
+    // Apply middleware that relies on req.session and DB
     app.use(attachUser);
 
     // Auth/checkout/file routes (rate-limited where appropriate)
-    app.use('/api/auth', authLimiter, authRoutes);
+    app.use('/api/auth', authRoutes);
     app.use('/api/checkout', checkoutLimiter, checkoutRoutes);
-    app.use('/api/files', filesRoutes);
+    app.use('/api/files', filesUserLimiter, filesIPLimiter, filesRoutes);
+    app.use('/api/downloads', downloadsUserLimiter, downloadsIPLimiter, downloadsRoutes);
+  } else {
+    // Mount routes with error handlers for DB-dependent endpoints
+    app.use('/api/auth', (req, res) => {
+      res.status(503).json({ error: 'Database not available. MongoDB connection required.' });
+    });
+    app.use('/api/checkout', (req, res) => {
+      res.status(503).json({ error: 'Database not available. MongoDB connection required.' });
+    });
+    app.use('/api/files', (req, res) => {
+      res.status(503).json({ error: 'Database not available. MongoDB connection required.' });
+    });
+    app.use('/api/downloads', (req, res) => {
+      res.status(503).json({ error: 'Database not available. MongoDB connection required.' });
+    });
+  }
 
-    // Legacy data generation endpoint (kept for compatibility)
-    app.post('/startDataFetch', async (req, res) => {
-      const { stationID, stationTitle, country, feet, userTimezone } = req.body;
-      try {
-        const fileName = await getYearData(
-          stationID,
-          stationTitle,
-          country,
-          feet,
-          userTimezone
-        );
-        const fileUrl = `/tempICSFile/${fileName}`;
-        res.json({ message: 'Data fetching initiated', fileUrl });
-      } catch (error) {
-        res.status(500).json({ error: error.toString() });
+  // Success page
+  app.get('/success', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'success.html'));
+  });
+
+  // Email verification page
+  app.get('/verify-email', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'verify-email.html'));
+  });
+
+  // Password reset page
+  app.get('/reset-password', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'reset-password.html'));
+  });
+
+  // Account page
+  app.get('/account', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'account.html'));
+  });
+
+  // Home LAST
+  app.get('/', (_req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  });
+
+  // CSRF error handler
+  app.use((err, _req, res, next) => {
+    if (err?.code === 'EBADCSRFTOKEN') {
+      return res.status(403).json({ error: 'Invalid or missing CSRF token' });
+    }
+    next(err);
+  });
+
+  // Catch-all error handler: no stack or internal details
+  app.use((err, _req, res, _next) => {
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+
+  // Daily cleanup of old files (legacy; webhook/TTL handles new flow)
+  cron.schedule('0 0 * * *', () => {
+    const dir = './tempICSFile';
+    if (!fs.existsSync(dir)) return;
+    const files = fs.readdirSync(dir);
+    files.forEach((file) => {
+      const filePath = path.join(dir, file);
+      const stats = fs.statSync(filePath);
+      if (Date.now() - stats.mtimeMs > 24 * 60 * 60 * 1000) {
+        fs.unlinkSync(filePath);
       }
     });
+  });
 
-    // Account page
-    app.get('/account', (_req, res) => {
-      res.sendFile(path.join(__dirname, 'public', 'account.html'));
-    });
-
-    // Home LAST
-    app.get('/', (_req, res) => {
-      res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    });
-
-    // Daily cleanup of old files (legacy; webhook/TTL handles new flow)
-    cron.schedule('0 0 * * *', () => {
-      const dir = './tempICSFile';
-      if (!fs.existsSync(dir)) return;
-      const files = fs.readdirSync(dir);
-      files.forEach((file) => {
-        const filePath = path.join(dir, file);
-        const stats = fs.statSync(filePath);
-        if (Date.now() - stats.mtimeMs > 24 * 60 * 60 * 1000) {
-          fs.unlinkSync(filePath);
-        }
-      });
-    });
-
-    app.listen(port, () => {
-      console.log(`Server running on port ${port}`);
-    });
-  } catch (err) {
-    console.error('Failed to start server:', err);
-    process.exit(1);
-  }
+  app.listen(port, () => {
+    const status = dbConnected ? '✅' : '⚠️  (DB disconnected)';
+    console.log(`🚀 Server running on port ${port} ${status}`);
+    if (!dbConnected) {
+      console.log('📝 Note: Check your MONGO_URI environment variable and MongoDB connection');
+    }
+  });
 }
 
 startServer();

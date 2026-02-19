@@ -3,9 +3,14 @@ import { getDatabase } from '../db/index.js';
 import { z } from 'zod';
 
 // Validation schemas
+export const passwordSchema = z
+  .string()
+  .min(8)
+  .regex(/^(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/, 'Password must include a number and a special character.');
+
 export const signupSchema = z.object({
   email: z.string().email().toLowerCase(),
-  password: z.string().min(8),
+  password: passwordSchema,
   firstName: z.string().min(1).max(50).optional(),
   lastName: z.string().min(1).max(50).optional()
 });
@@ -50,6 +55,19 @@ export async function attachUser(req, res, next) {
 export function requireAuth(req, res, next) {
   if (!req.user) {
     return res.status(401).json({ error: 'Authentication required' });
+  }
+  next();
+}
+
+export function requireVerified(req, res, next) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  if (!req.user.emailVerifiedAt) {
+    return res.status(403).json({
+      error: 'Email verification required',
+      needsVerification: true
+    });
   }
   next();
 }

@@ -10,8 +10,6 @@ const tideIcon = L.icon({
   riseOffset: 250,
 });
 
-console.log('Tide icon created:', tideIcon);
-
 // Define the custom icon for the user location
 const myIcon = L.icon({
   iconUrl: '/img/homeIcon.png',
@@ -24,7 +22,18 @@ const myIcon = L.icon({
   riseOffset: 500,
 });
 
-console.log('User location icon created:', myIcon);
+let csrfToken = null;
+
+async function getCsrfToken() {
+  if (csrfToken) return csrfToken;
+  const response = await fetch('/api/csrf', { credentials: 'include' });
+  if (!response.ok) {
+    throw new Error('Unable to fetch CSRF token');
+  }
+  const data = await response.json();
+  csrfToken = data.csrfToken;
+  return csrfToken;
+}
 
 async function refreshAuthUI() {
   try {
@@ -34,9 +43,6 @@ async function refreshAuthUI() {
     if (r.ok) {
       const data = await r.json();
       user = data.user;
-      console.log('[refreshAuthUI] User authenticated:', user?.email);
-    } else {
-      console.log('[refreshAuthUI] User not authenticated:', r.status);
     }
 
                 const navLoginBtn    = document.getElementById('navLoginBtn');
@@ -49,19 +55,6 @@ async function refreshAuthUI() {
                 const menuLogoutContainer = document.getElementById('menuLogoutContainer');
                 const menuAccountLink= document.getElementById('menuAccountLink');
                 const menuUserName = document.getElementById('menuUserName');
-
-                console.log('[refreshAuthUI] Found elements:', {
-                  navLoginBtn: !!navLoginBtn,
-                  navLogoutBtn: !!navLogoutBtn,
-                  navAccountLink: !!navAccountLink,
-                  navUserGreeting: !!navUserGreeting,
-                  navUserName: !!navUserName,
-                  menuLoginBtn: !!menuLoginBtn,
-                  menuLogoutBtn: !!menuLogoutBtn,
-                  menuLogoutContainer: !!menuLogoutContainer,
-                  menuAccountLink: !!menuAccountLink,
-                  menuUserName: !!menuUserName
-                });
 
                 if (user) {
                   // User is logged in - hide login, show logout and greeting
@@ -86,7 +79,6 @@ async function refreshAuthUI() {
                     const displayName = user.firstName || user.email.split('@')[0];
                     menuUserName.textContent = displayName;
                   }
-                  console.log('[refreshAuthUI] Showing logout UI for user:', user.email);
                 } else {
                   // User is not logged in - show login, hide logout and greeting
                   // Desktop navigation
@@ -102,7 +94,6 @@ async function refreshAuthUI() {
                     menuLogoutContainer.classList.remove('show');
                   }
                   if (menuAccountLink) menuAccountLink.style.display = 'none';
-                  console.log('[refreshAuthUI] Showing login UI');
                 }
   } catch (e) {
     console.warn('[refreshAuthUI] Auth state check failed:', e);
@@ -157,6 +148,8 @@ function openAuthModal(mode = 'signup') {
     loginPane.classList.remove('active', 'show');
   }
   
+  resetForgotPasswordUI();
+
   // Show modal
   if (window.bootstrap?.Modal) {
     const bsModal = new bootstrap.Modal(modal);
@@ -164,6 +157,19 @@ function openAuthModal(mode = 'signup') {
   } else {
     modal.style.display = 'block';
     modal.classList.add('show');
+  }
+}
+
+function resetForgotPasswordUI() {
+  const loginForm = document.getElementById('loginForm');
+  const forgotForm = document.getElementById('forgotPasswordForm');
+  const message = document.getElementById('forgotPasswordMessage');
+
+  if (loginForm) loginForm.classList.remove('d-none');
+  if (forgotForm) forgotForm.classList.add('d-none');
+  if (message) {
+    message.classList.add('d-none');
+    message.textContent = '';
   }
 }
 
@@ -195,14 +201,20 @@ async function handleAuth(formData, isSignup = false) {
     }
     
     const { user } = await response.json();
-    console.log('Authentication successful:', user);
     
-    // Close modal
+    // New session: clear cached CSRF so logout/checkout get a token for this session
+    csrfToken = null;
+    
+    // Close modal: move focus out first to avoid aria-hidden + focused descendant
     const modal = document.getElementById('authModal');
+    if (modal?.contains(document.activeElement)) {
+      document.activeElement?.blur();
+      document.body.focus();
+    }
     if (window.bootstrap?.Modal) {
       const bsModal = bootstrap.Modal.getInstance(modal);
       bsModal?.hide();
-    } else {
+    } else if (modal) {
       modal.style.display = 'none';
       modal.classList.remove('show');
     }
@@ -220,7 +232,15 @@ async function handleAuth(formData, isSignup = false) {
     return true;
   } catch (error) {
     console.error('Authentication error:', error);
-    alert(error.message);
+    setVerificationBannerState({
+      title: 'Unable to sign in',
+      message: error.message || 'Please try again.',
+      variant: 'danger',
+      showResend: false,
+      showContinue: false,
+      showSelectLink: false,
+      showDismiss: true
+    });
     return false;
   }
 }
@@ -231,13 +251,25 @@ document.getElementById('menuLoginBtn')?.addEventListener('click', () => openAut
 
 // Desktop logout button
 document.getElementById('navLogoutBtn')?.addEventListener('click', async () => {
-  await fetch('/api/auth/logout', { method:'POST', credentials:'include' });
+  const token = await getCsrfToken();
+  await fetch('/api/auth/logout', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'X-CSRF-Token': token }
+  });
+  csrfToken = null;
   refreshAuthUI();
 });
 
 // Mobile logout button
 document.getElementById('menuLogoutBtn')?.addEventListener('click', async () => {
-  await fetch('/api/auth/logout', { method:'POST', credentials:'include' });
+  const token = await getCsrfToken();
+  await fetch('/api/auth/logout', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'X-CSRF-Token': token }
+  });
+  csrfToken = null;
   refreshAuthUI();
 });
 
@@ -250,6 +282,79 @@ document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
     password: formData.get('password')
   };
   await handleAuth(data, false);
+});
+
+function attachPasswordToggles(root = document) {
+  const toggleButtons = root.querySelectorAll('[data-password-toggle]');
+  toggleButtons.forEach((btn) => {
+    const targetId = btn.getAttribute('data-target');
+    if (!targetId) return;
+    const input = document.getElementById(targetId);
+    if (!input) return;
+    btn.addEventListener('click', () => {
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      const icon = btn.querySelector('i');
+      if (icon) {
+        icon.classList.toggle('bi-eye', !isHidden);
+        icon.classList.toggle('bi-eye-slash', isHidden);
+      }
+      btn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+    });
+  });
+}
+
+const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+const forgotPasswordBack = document.getElementById('forgotPasswordBack');
+const forgotPasswordMessage = document.getElementById('forgotPasswordMessage');
+const loginForm = document.getElementById('loginForm');
+
+const setForgotState = (show) => {
+  if (loginForm) loginForm.classList.toggle('d-none', show);
+  if (forgotPasswordForm) forgotPasswordForm.classList.toggle('d-none', !show);
+  if (forgotPasswordMessage) {
+    forgotPasswordMessage.classList.add('d-none');
+    forgotPasswordMessage.textContent = '';
+  }
+};
+
+forgotPasswordLink?.addEventListener('click', () => setForgotState(true));
+forgotPasswordBack?.addEventListener('click', () => setForgotState(false));
+
+forgotPasswordForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const email = formData.get('email');
+
+  try {
+    const response = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email })
+    });
+
+    let message = 'If that email exists, we sent a reset link.';
+    if (!response.ok) {
+      try {
+        const data = await response.json();
+        message = data.error || message;
+      } catch (e) {
+        message = `Unable to send reset link (${response.status}).`;
+      }
+    }
+
+    if (forgotPasswordMessage) {
+      forgotPasswordMessage.textContent = message;
+      forgotPasswordMessage.classList.remove('d-none');
+    }
+  } catch (error) {
+    if (forgotPasswordMessage) {
+      forgotPasswordMessage.textContent = 'Unable to send reset link. Please try again.';
+      forgotPasswordMessage.classList.remove('d-none');
+    }
+  }
 });
 
 document.getElementById('signupForm')?.addEventListener('submit', async (e) => {
@@ -266,6 +371,47 @@ document.getElementById('signupForm')?.addEventListener('submit', async (e) => {
 
 // initial paint
 document.addEventListener('DOMContentLoaded', refreshAuthUI);
+document.addEventListener('DOMContentLoaded', () => attachPasswordToggles());
+document.addEventListener('DOMContentLoaded', maybeResumeCheckoutAfterVerification);
+document.addEventListener('DOMContentLoaded', () => {
+  const resendBtn = document.getElementById('verificationResendBtn');
+  const continueBtn = document.getElementById('verificationContinueBtn');
+  const dismissBtn = document.getElementById('verificationDismissBtn');
+
+  resendBtn?.addEventListener('click', async () => {
+    try {
+      await resendVerificationEmail();
+      setVerificationBannerState({
+        title: 'Verification email sent',
+        message: 'Please check your inbox for the verification link.',
+        variant: 'success',
+        showResend: false,
+        showContinue: true,
+        showSelectLink: false,
+        showDismiss: true
+      });
+    } catch (error) {
+      console.error('[checkout] Resend verification error:', error);
+      setVerificationBannerState({
+        title: 'Unable to resend email',
+        message: error.message || 'Please try again later.',
+        variant: 'danger',
+        showResend: true,
+        showContinue: true,
+        showSelectLink: false,
+        showDismiss: true
+      });
+    }
+  });
+
+  continueBtn?.addEventListener('click', () => {
+    attemptResumeCheckout();
+  });
+
+  dismissBtn?.addEventListener('click', () => {
+    hideVerificationBanner();
+  });
+});
 
 // Offcanvas: close on click; smooth-scroll to anchors AFTER it closes
 window.addEventListener('DOMContentLoaded', () => {
@@ -374,6 +520,258 @@ const renderModalContent = (title, id, region, lat, lon, type) => {
 // Global variables to store station context for plan chooser
 let pendingStationContext = null;
 
+const PENDING_CHECKOUT_KEY = 'pendingCheckout';
+const EMAIL_VERIFIED_FLAG = 'emailVerifiedJustNow';
+
+function setVerificationBannerState({
+  title,
+  message,
+  variant = 'info',
+  showResend = true,
+  showContinue = true,
+  showSelectLink = false,
+  showDismiss = true
+}) {
+  const banner = document.getElementById('verificationBanner');
+  if (!banner) return;
+
+  const titleEl = document.getElementById('verificationBannerTitle');
+  const messageEl = document.getElementById('verificationBannerMessage');
+  const resendBtn = document.getElementById('verificationResendBtn');
+  const continueBtn = document.getElementById('verificationContinueBtn');
+  const selectLink = document.getElementById('verificationSelectLink');
+  const dismissBtn = document.getElementById('verificationDismissBtn');
+
+  if (titleEl && title) titleEl.textContent = title;
+  if (messageEl && message) messageEl.textContent = message;
+
+  if (resendBtn) resendBtn.classList.toggle('d-none', !showResend);
+  if (continueBtn) continueBtn.classList.toggle('d-none', !showContinue);
+  if (selectLink) selectLink.classList.toggle('d-none', !showSelectLink);
+  if (dismissBtn) dismissBtn.classList.toggle('d-none', !showDismiss);
+
+  banner.classList.remove('alert-info', 'alert-warning', 'alert-danger', 'alert-success');
+  banner.classList.add(`alert-${variant}`);
+  banner.classList.remove('d-none');
+}
+
+function hideVerificationBanner() {
+  const banner = document.getElementById('verificationBanner');
+  if (!banner) return;
+  banner.classList.add('d-none');
+}
+
+function storePendingCheckout(data) {
+  try {
+    localStorage.setItem(PENDING_CHECKOUT_KEY, JSON.stringify({
+      ...data,
+      createdAt: Date.now()
+    }));
+  } catch (error) {
+    console.warn('[checkout] Unable to store pending checkout:', error);
+  }
+}
+
+function readPendingCheckout() {
+  try {
+    const raw = localStorage.getItem(PENDING_CHECKOUT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    console.warn('[checkout] Unable to read pending checkout:', error);
+    return null;
+  }
+}
+
+function clearPendingCheckout() {
+  try {
+    localStorage.removeItem(PENDING_CHECKOUT_KEY);
+  } catch (error) {
+    console.warn('[checkout] Unable to clear pending checkout:', error);
+  }
+}
+
+async function resendVerificationEmail() {
+  const response = await fetch('/api/auth/resend-verification', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({})
+  });
+
+  if (!response.ok) {
+    let errorMessage = 'Failed to resend verification email.';
+    try {
+      const error = await response.json();
+      errorMessage = error.error || errorMessage;
+    } catch (e) {
+      errorMessage = `Failed to resend verification email (${response.status}).`;
+    }
+    throw new Error(errorMessage);
+  }
+}
+
+async function handleVerificationRequired(checkoutData) {
+  storePendingCheckout(checkoutData);
+
+  setVerificationBannerState({
+    title: 'Email verification required',
+    message: 'Please verify your email before checking out. Check your inbox for the verification link.',
+    variant: 'warning',
+    showResend: true,
+    showContinue: true,
+    showSelectLink: false,
+    showDismiss: true
+  });
+
+  document.getElementById('verificationBanner')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function startCheckoutSession(checkoutData) {
+  const token = await getCsrfToken();
+  const response = await fetch('/api/checkout/session', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': token
+    },
+    body: JSON.stringify(checkoutData),
+    credentials: 'include'
+  });
+
+  let responseData = null;
+  if (!response.ok) {
+    try {
+      responseData = await response.json();
+    } catch (e) {
+      responseData = null;
+    }
+
+    if (response.status === 403 && responseData?.needsVerification) {
+      await handleVerificationRequired(checkoutData);
+      return;
+    }
+
+    throw new Error(responseData?.error || 'Failed to create checkout session');
+  }
+
+  responseData = responseData || await response.json();
+
+  if (responseData.success && responseData.message?.includes('Free download')) {
+    clearPendingCheckout();
+    window.location.href = '/account';
+    return;
+  }
+
+  const { url } = responseData;
+  if (url) {
+    clearPendingCheckout();
+    window.location.href = url;
+    return;
+  }
+
+  throw new Error('No checkout URL received');
+}
+
+async function maybeResumeCheckoutAfterVerification() {
+  const verifiedFlag = localStorage.getItem(EMAIL_VERIFIED_FLAG);
+  if (!verifiedFlag) return;
+  localStorage.removeItem(EMAIL_VERIFIED_FLAG);
+
+  let user = null;
+  try {
+    const response = await fetch('/api/auth/me', { credentials: 'include' });
+    if (response.ok) {
+      const data = await response.json();
+      user = data.user;
+    }
+  } catch (error) {
+    console.warn('[checkout] Unable to confirm verification status:', error);
+  }
+
+  if (!user?.emailVerifiedAt) {
+    return;
+  }
+
+  const pending = readPendingCheckout();
+  if (!pending) {
+    setVerificationBannerState({
+      title: 'Email verified',
+      message: 'Please select your location again to continue checkout.',
+      variant: 'warning',
+      showResend: false,
+      showContinue: false,
+      showSelectLink: true,
+      showDismiss: true
+    });
+    return;
+  }
+
+  setVerificationBannerState({
+    title: 'Email verified',
+    message: 'Continue to checkout when you are ready.',
+    variant: 'success',
+    showResend: false,
+    showContinue: true,
+    showSelectLink: false,
+    showDismiss: true
+  });
+}
+
+async function attemptResumeCheckout() {
+  const pending = readPendingCheckout();
+  if (!pending) {
+    setVerificationBannerState({
+      title: 'Email verified',
+      message: 'Please select your location again to continue checkout.',
+      variant: 'warning',
+      showResend: false,
+      showContinue: false,
+      showSelectLink: true,
+      showDismiss: true
+    });
+    return;
+  }
+
+  let user = null;
+  try {
+    const response = await fetch('/api/auth/me', { credentials: 'include' });
+    if (response.ok) {
+      const data = await response.json();
+      user = data.user;
+    }
+  } catch (error) {
+    console.warn('[checkout] Unable to confirm verification status:', error);
+  }
+
+  if (!user?.emailVerifiedAt) {
+    setVerificationBannerState({
+      title: 'Email not verified yet',
+      message: 'Please verify your email before continuing checkout.',
+      variant: 'warning',
+      showResend: true,
+      showContinue: false,
+      showSelectLink: false,
+      showDismiss: true
+    });
+    return;
+  }
+
+  try {
+    await startCheckoutSession(pending);
+  } catch (error) {
+    console.error('[checkout] Resume checkout error:', error);
+    setVerificationBannerState({
+      title: 'Unable to continue checkout',
+      message: error.message || 'Please try again in a moment.',
+      variant: 'danger',
+      showResend: false,
+      showContinue: true,
+      showSelectLink: false,
+      showDismiss: true
+    });
+  }
+}
+
 async function handleDownloadClick(stationID, stationTitle, country) {
   try {
     // Store station context for later use
@@ -382,6 +780,18 @@ async function handleDownloadClick(stationID, stationTitle, country) {
     // Check if user is authenticated
     const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
 
+    if (authResponse.status === 429) {
+      setVerificationBannerState({
+        title: 'Too many requests',
+        message: 'Please wait a moment and try again.',
+        variant: 'warning',
+        showResend: false,
+        showContinue: false,
+        showSelectLink: false,
+        showDismiss: true
+      });
+      return;
+    }
     if (!authResponse.ok) {
       // User not authenticated, show auth modal
       openAuthModal('signup');
@@ -401,7 +811,15 @@ async function handleDownloadClick(stationID, stationTitle, country) {
 
   } catch (error) {
     console.error('Download error:', error);
-    alert('Failed to start checkout process. Please try again.');
+    setVerificationBannerState({
+      title: 'Checkout unavailable',
+      message: 'Failed to start checkout process. Please try again.',
+      variant: 'danger',
+      showResend: false,
+      showContinue: false,
+      showSelectLink: false,
+      showDismiss: true
+    });
   }
 }
 
@@ -414,24 +832,49 @@ async function openPlanModal() {
     // Check if user has unlimited access
     const response = await fetch('/api/auth/me/entitlements', { credentials: 'include' });
     if (response.ok) {
-      const { unlimited } = await response.json();
+      const { unlimited, oneTimePurchases } = await response.json();
       
       if (unlimited) {
-        // User has unlimited access, show unlimited modal
-        const modal = document.getElementById('unlimitedModal');
-        if (!modal) {
-          console.error('Unlimited modal not found');
+        if (!pendingStationContext) {
+          console.error('Station context missing for unlimited download');
           return;
         }
-        
-        if (window.bootstrap?.Modal) {
-          const bsModal = new bootstrap.Modal(modal);
-          bsModal.show();
-        } else {
-          modal.style.display = 'block';
-          modal.classList.add('show');
-        }
+        const { stationID, stationTitle, country } = pendingStationContext;
+        const params = new URLSearchParams({
+          stationID,
+          stationTitle,
+          country
+        });
+        window.location.href = `/dlFile.html?${params.toString()}`;
         return;
+      }
+      
+      // Check if user has 2+ one-time purchases (show upsell)
+      const purchaseCount = oneTimePurchases ? oneTimePurchases.length : 0;
+      if (purchaseCount >= 2) {
+        // Show upsell modal
+        const upsellModal = document.getElementById('upsellModal');
+        if (upsellModal) {
+          // Calculate savings
+          const totalSpent = purchaseCount * 5; // $5 per purchase
+          const subscriptionCost = 24.99; // $24.99 for subscription
+          const savings = totalSpent - subscriptionCost;
+          
+          // Update upsell modal content
+          const savingsText = document.getElementById('upsellSavings');
+          if (savingsText) {
+            savingsText.textContent = `You've spent $${Number(totalSpent).toFixed(2)} on ${purchaseCount} stations. Upgrade to unlimited for $${Number(subscriptionCost).toFixed(2)} (save $${Math.abs(savings).toFixed(2)} more!)`;
+          }
+          
+          if (window.bootstrap?.Modal) {
+            const bsModal = new bootstrap.Modal(upsellModal);
+            bsModal.show();
+          } else {
+            upsellModal.style.display = 'block';
+            upsellModal.classList.add('show');
+          }
+          return;
+        }
       }
     }
     
@@ -460,15 +903,39 @@ async function openPlanModal() {
   }
 }
 
-async function selectPlan(plan) {
+function setCheckoutButtonsLoading(loading) {
+  document.querySelectorAll('.js-checkout-trigger').forEach(btn => {
+    if (loading) {
+      btn.disabled = true;
+      btn.dataset.originalText = btn.textContent;
+      btn.textContent = 'Loading…';
+    } else {
+      btn.disabled = false;
+      if (btn.dataset.originalText) {
+        btn.textContent = btn.dataset.originalText;
+        delete btn.dataset.originalText;
+      }
+    }
+  });
+}
+
+function moveFocusOutOfModal(modal) {
+  if (!modal || !modal.contains(document.activeElement)) return;
+  document.activeElement?.blur();
+  document.body.focus?.();
+}
+
+async function selectPlan(plan, fromUpsell = false, _triggerButton = null) {
   try {
     if (!pendingStationContext && plan === 'single') {
       throw new Error('Station context missing for single plan');
     }
 
+    setCheckoutButtonsLoading(true);
+
     // Prepare checkout data
     const checkoutData = {
-      plan: plan
+      plan: plan === 'unlimited' ? 'unlimited' : 'single'
     };
 
     // Add station info for single plan
@@ -478,55 +945,83 @@ async function selectPlan(plan) {
       checkoutData.country = pendingStationContext.country;
     }
 
-    // Close plan modal
-    const modal = document.getElementById('planModal');
-    if (window.bootstrap?.Modal) {
-      const bsModal = bootstrap.Modal.getInstance(modal);
-      bsModal?.hide();
-    } else {
-      modal.style.display = 'none';
-      modal.classList.remove('show');
+    // Close modals (move focus out first to avoid aria-hidden + focused descendant)
+    const planModal = document.getElementById('planModal');
+    const upsellModal = document.getElementById('upsellModal');
+    moveFocusOutOfModal(planModal);
+    moveFocusOutOfModal(upsellModal);
+
+    if (planModal) {
+      if (window.bootstrap?.Modal) {
+        const bsModal = bootstrap.Modal.getInstance(planModal);
+        bsModal?.hide();
+      } else {
+        planModal.style.display = 'none';
+        planModal.classList.remove('show');
+      }
+    }
+    if (upsellModal) {
+      if (window.bootstrap?.Modal) {
+        const bsModal = bootstrap.Modal.getInstance(upsellModal);
+        bsModal?.hide();
+      } else {
+        upsellModal.style.display = 'none';
+        upsellModal.classList.remove('show');
+      }
     }
 
-    // Create checkout session
-    const response = await fetch('/api/checkout/session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(checkoutData),
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to create checkout session');
-    }
-
-    const responseData = await response.json();
-
-    // Check if this is a free download for unlimited user
-    if (responseData.success && responseData.message?.includes('Free download')) {
-      // Show success message and redirect to account page
-      alert('✅ Free download processed! Your tide calendar is ready.');
-      window.location.href = '/account';
-      return;
-    }
-
-    // Regular Stripe checkout flow
-    const { url } = responseData;
-    if (url) {
-      window.location.href = url;
-    } else {
-      throw new Error('No checkout URL received');
-    }
+    await startCheckoutSession(checkoutData);
 
   } catch (error) {
     console.error('Plan selection error:', error);
-    alert('Failed to start checkout process. Please try again.');
+    setCheckoutButtonsLoading(false);
+    const message = error?.message && error.message.includes('Too many requests')
+      ? error.message
+      : 'Failed to start checkout process. Please try again.';
+    setVerificationBannerState({
+      title: 'Checkout unavailable',
+      message,
+      variant: 'danger',
+      showResend: false,
+      showContinue: false,
+      showSelectLink: false,
+      showDismiss: true
+    });
   }
 }
 
-// Make selectPlan globally available
+// Close upsell modal and continue with one-time purchase
+function closeUpsellAndContinue() {
+  const upsellModal = document.getElementById('upsellModal');
+  if (upsellModal) {
+    moveFocusOutOfModal(upsellModal);
+    if (window.bootstrap?.Modal) {
+      const bsModal = bootstrap.Modal.getInstance(upsellModal);
+      bsModal?.hide();
+    } else {
+      upsellModal.style.display = 'none';
+      upsellModal.classList.remove('show');
+    }
+  }
+  
+  // Show regular plan modal
+  setTimeout(() => {
+    const modal = document.getElementById('planModal');
+    if (modal) {
+      if (window.bootstrap?.Modal) {
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+      } else {
+        modal.style.display = 'block';
+        modal.classList.add('show');
+      }
+    }
+  }, 300);
+}
+
+// Make functions globally available
 window.selectPlan = selectPlan;
+window.closeUpsellAndContinue = closeUpsellAndContinue;
 
 //https://buy.stripe.com/test_00g6rIbmh8x08KY9AA <-- Test Link
 
@@ -604,12 +1099,10 @@ const loadTideStations = async () => {
 
 // Initialize the map
 const initMap = () => {
-  console.log('Initializing map...');
-  console.log('Map element:', document.getElementById('map'));
+  
 
   // Initialize the Leaflet map and assign it to the global `map` variable
   map = L.map('map').setView([49.26083, -123.11389], 3);
-  console.log('Map created:', map);
 
   L.tileLayer(
     'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
@@ -649,7 +1142,6 @@ const initMap = () => {
     const result = e.geocode;
     const latlng = result.center;
 
-    console.log('[geocoder] Search result:', result.name, latlng);
 
     // Pan to the result location with zoom level 12
     map.setView(latlng, 12);

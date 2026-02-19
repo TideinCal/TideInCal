@@ -3,12 +3,120 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend lazily to avoid errors if API key is missing during evaluation
+let resend;
+const getResend = () => {
+  if (resend) return resend;
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn('[email] RESEND_API_KEY is missing. Email sending will be skipped.');
+    return null;
+  }
+  resend = new Resend(apiKey);
+  return resend;
+};
+
 const FROM_EMAIL = 'TideInCal <noreply@tideincal.com>';
 
-export async function sendWelcome({ to }) {
+export async function sendEmailVerification({ to, token }) {
+  const client = getResend();
+  if (!client) return null;
+
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const verifyUrl = `${appUrl}/verify-email?token=${encodeURIComponent(token)}`;
+
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: 'Verify your email for TideInCal',
+      template: {
+        id: '74af04fe-8e30-417d-ba78-3f237f017e65',
+        variables: {
+          VERIFY_URL: verifyUrl
+        }
+      }
+    });
+
+    if (error) {
+      console.error('[email] Error sending verification email:', error.message);
+      return null;
+    }
+
+    console.log('[email] Verification email sent successfully:', data?.id);
+    return data;
+  } catch (error) {
+    console.error('[email] Unexpected error sending verification email:', error.message);
+    return null;
+  }
+}
+
+export async function sendPasswordReset({ to, token }) {
+  const client = getResend();
+  if (!client) return null;
+
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const resetUrl = `${appUrl}/reset-password?token=${encodeURIComponent(token)}`;
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: 'Reset your TideInCal password',
+      template: {
+        id: '058d37b8-314e-49c7-872e-983a43df96d9',
+        variables: {
+          RESET_PASSWORD: resetUrl
+        }
+      }
+    });
+
+    if (error) {
+      console.error('[email] Error sending password reset email:', error.message);
+      return null;
+    }
+
+    console.log('[email] Password reset email sent successfully:', data?.id);
+    return data;
+  } catch (error) {
+    console.error('[email] Unexpected error sending password reset email:', error.message);
+    return null;
+  }
+}
+
+export async function sendPasswordChangeConfirmation({ to }) {
+  const client = getResend();
+  if (!client) return null;
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: 'Your TideInCal password was updated',
+      template: {
+        id: 'cc0a3043-651a-44e2-85b8-cc3051ec46db'
+      }
+    });
+
+    if (error) {
+      console.error('[email] Error sending password confirmation email:', error.message);
+      return null;
+    }
+
+    console.log('[email] Password confirmation email sent successfully:', data?.id);
+    return data;
+  } catch (error) {
+    console.error('[email] Unexpected error sending password confirmation email:', error.message);
+    return null;
+  }
+}
+
+export async function sendWelcome({ to }) {
+  const client = getResend();
+  if (!client) return null;
+
+  try {
+    const { data, error } = await client.emails.send({
       from: FROM_EMAIL,
       to: [to],
       subject: 'Welcome to TideInCal!',
@@ -37,21 +145,27 @@ The TideInCal Team`
     });
 
     if (error) {
-      console.error('Error sending welcome email:', error);
-      throw error;
+      console.error('[email] Error sending welcome email:', error.message);
+      return null;
     }
 
-    console.log('Welcome email sent:', data?.id);
+    console.log('[email] Welcome email sent successfully:', data?.id);
     return data;
   } catch (error) {
-    console.error('Failed to send welcome email:', error);
-    throw error;
+    console.error('[email] Unexpected error sending welcome email:', error.message);
+    return null;
   }
 }
 
 export async function sendDownloadReady({ to, stationTitle, link }) {
+  const client = getResend();
+  if (!client) {
+    console.warn('[email] Skipping download ready email: Resend client not initialized');
+    return null;
+  }
+
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await client.emails.send({
       from: FROM_EMAIL,
       to: [to],
       subject: 'Your tide calendar is ready!',
@@ -83,14 +197,14 @@ The TideInCal Team`
     });
 
     if (error) {
-      console.error('Error sending download ready email:', error);
-      throw error;
+      console.error('[email] Error sending download ready email:', error.message);
+      return null;
     }
 
-    console.log('Download ready email sent:', data?.id);
+    console.log('[email] Download ready email sent successfully:', data?.id);
     return data;
   } catch (error) {
-    console.error('Failed to send download ready email:', error);
-    throw error;
+    console.error('[email] Unexpected error sending download ready email:', error.message);
+    return null;
   }
 }

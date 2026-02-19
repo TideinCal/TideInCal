@@ -1,130 +1,230 @@
-import { createEvents } from 'ics';
 import fetch from 'node-fetch';
-import SunCalc from 'suncalc';
 
+/**
+ * Generates ICS calendar content for a tide station
+ * Uses the same logic as the legacy getYearData function
+ * @param {Object} stationData - Station information
+ * @param {string} stationData.id - Station ID
+ * @param {string} stationData.title - Station title/name
+ * @param {string} stationData.country - 'usa' or 'canada'
+ * @param {boolean} stationData.includeMoon - Whether to include moon phases
+ * @param {string} stationData.userTimezone - User's timezone (defaults to UTC)
+ * @param {boolean} stationData.feet - Whether to use feet (defaults to false for meters)
+ * @returns {Promise<string>} ICS file content
+ */
 export async function generateICS(stationData) {
-  const { id: stationID, title: stationTitle, country, includeMoon = false } = stationData;
+  const { 
+    id: stationID, 
+    title: stationTitle, 
+    country, 
+    includeMoon = false,
+    userTimezone = 'UTC',
+    feet = false,
+    startDate = null,
+    endDate = null
+  } = stationData;
   
   try {
-    // Fetch tide data for the station
-    const tideData = await fetchTideData(stationID);
-    
-    // Generate events
-    const events = [];
-    
-    // Add tide events
-    for (const tide of tideData) {
-      events.push({
-        title: `Tide: ${tide.type}`,
-        start: tide.datetime,
-        duration: { minutes: 30 },
-        description: `${tide.type} tide at ${stationTitle}`,
-        location: stationTitle,
-        status: 'CONFIRMED',
-        busyStatus: 'FREE'
-      });
+    const now = new Date();
+    const start = startDate ? new Date(startDate) : now;
+    const fallbackEnd = new Date(start);
+    fallbackEnd.setFullYear(fallbackEnd.getFullYear() + 1);
+    const end = endDate ? new Date(endDate) : fallbackEnd;
+
+    const startYear = start.getFullYear();
+    const endYear = end.getFullYear();
+    const startMonth2d = String(start.getMonth() + 1).padStart(2, '0');
+    const startDay2d = String(start.getDate()).padStart(2, '0');
+    const endMonth2d = String(end.getMonth() + 1).padStart(2, '0');
+    const endDay2d = String(end.getDate()).padStart(2, '0');
+    let events = [];
+
+    // Fetch tide data from appropriate API
+    const apiUrl =
+      country === 'canada'
+        ? `https://api-iwls.dfo-mpo.gc.ca/api/v1/stations/${stationID}/data?time-series-code=wlp-hilo&from=${startYear}-${startMonth2d}-${startDay2d}T00%3A00%3A00Z&to=${endYear}-${endMonth2d}-${endDay2d}T00%3A00%3A00Z`
+        : `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${startYear}${startMonth2d}${startDay2d}&end_date=${endYear}${endMonth2d}${endDay2d}&station=${stationID}&product=predictions&datum=MLLW&time_zone=lst_ldt&interval=hilo&units=english&application=DataAPI_Sample&format=json`;
+
+    const response = await fetch(apiUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch tide data: ${response.statusText}`);
     }
     
+    const data = await response.json();
+    const tideData = country === 'canada' ? data : data.predictions;
+
+    if (!tideData || tideData.length === 0) {
+      throw new Error('No tide data returned from API');
+    }
+
+    // Process each tide entry
+    tideData.forEach((entry, i) => {
+      let tide;
+
+      if (country === 'canada') {
+        const currentHeight = parseFloat(entry.value);
+        const prev = tideData[i - 1] ? parseFloat(tideData[i - 1].value) : null;
+        const next = tideData[i + 1] ? parseFloat(tideData[i + 1].value) : null;
+
+        if (prev === null) {
+          tide = currentHeight > next ? 'High Tide' : 'Low Tide';
+        } else if (next === null) {
+          tide = currentHeight > prev ? 'High Tide' : 'Low Tide';
+        } else {
+          tide =
+            currentHeight > prev && currentHeight > next
+              ? 'High Tide'
+              : 'Low Tide';
+        }
+      } else {
+        tide = entry.type === 'L' ? 'Low Tide' : 'High Tide';
+      }
+
+      const tideHeight = feet
+        ? `${
+            country === 'canada' ? (entry.value * 3.2808399).toFixed(2) : entry.v
+          }Ft`
+        : `${
+            country === 'canada'
+              ? entry.value
+              : (entry.v / 3.2808399).toFixed(2)
+          }M`;
+
+      const rawTime =
+        country === 'canada' ? entry.eventDate : `${entry.t}:00`;
+
+      const startDate = new Date(
+        new Date(rawTime).toLocaleString('en-US', { timeZone: userTimezone })
+      );
+      const endDate = new Date(startDate.getTime() + 30 * 60 * 1000); // +30 min
+
+      const eventUID = `tide-${stationID}-${startDate.getTime()}-${Math.random()
+        .toString(36)
+        .substr(2, 6)}@tideincal.com`;
+
+      const eventContent = `BEGIN:VEVENT
+UID:${eventUID}
+SEQUENCE:0
+DTSTAMP:${formatDateForICS(new Date(), country, userTimezone)}
+DTSTART:${formatDateForICS(startDate, country, userTimezone)}
+DTEND:${formatDateForICS(endDate, country, userTimezone)}
+SUMMARY:${stationTitle} ${tide} @ ${tideHeight}
+DESCRIPTION:${tideHeight}Tide at ${stationTitle}
+LOCATION:${stationTitle}
+STATUS:CONFIRMED
+END:VEVENT`;
+
+      events.push(eventContent);
+    });
+
     // Add moon events if requested
     if (includeMoon) {
-      const moonEvents = await generateMoonEvents(stationTitle);
+      const moonEvents = generateMoonEvents(stationTitle, startYear, endYear, userTimezone);
       events.push(...moonEvents);
     }
-    
-    // Create ICS content
-    const { error, value } = createEvents(events);
-    
-    if (error) {
-      throw new Error(`ICS generation error: ${error}`);
-    }
-    
-    return value;
+
+    const calendarName = `Tide - ${stationTitle} - ${startYear}-${startMonth2d}-${startDay2d}`;
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+CALSCALE:GREGORIAN
+PRODID:-//Tide In Calendar//TideCal//EN
+METHOD:PUBLISH
+X-WR-CALNAME:${calendarName}
+X-WR-TIMEZONE:${userTimezone}
+${events.join('\n')}
+END:VCALENDAR`;
+
+    return icsContent;
   } catch (error) {
     console.error('Error generating ICS:', error);
     throw error;
   }
 }
 
-async function fetchTideData(stationID) {
-  try {
-    // This is a placeholder - you'll need to implement the actual tide data fetching
-    // based on your existing tide data source
-    const response = await fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=NOS.COOPS.TAC.WL&begin_date=20250101&end_date=20251231&datum=MLLW&station=${stationID}&time_zone=lst_ldt&units=english&interval=hilo&format=json`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch tide data: ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    
-    // Transform NOAA data to our format
-    return data.predictions.map(pred => ({
-      type: pred.type === 'H' ? 'High' : 'Low',
-      datetime: new Date(pred.t)
-    }));
-  } catch (error) {
-    console.error('Error fetching tide data:', error);
-    // Return mock data for now
-    return generateMockTideData();
+/**
+ * Formats a date for ICS format based on country
+ */
+function formatDateForICS(date, country, userTimezone) {
+  if (country === 'canada') {
+    return new Date(date).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  } else {
+    const local = new Date(
+      date.toLocaleString('en-US', { timeZone: userTimezone })
+    );
+    return `${local.getFullYear()}${String(local.getMonth() + 1).padStart(
+      2,
+      '0'
+    )}${String(local.getDate()).padStart(2, '0')}T${String(
+      local.getHours()
+    ).padStart(2, '0')}${String(local.getMinutes()).padStart(2, '0')}${String(
+      local.getSeconds()
+    ).padStart(2, '0')}`;
   }
 }
 
-function generateMockTideData() {
-  // Generate mock tide data for testing
+/**
+ * Generates moon phase events for the calendar year
+ */
+function generateMoonEvents(stationTitle, startYear, endYear, userTimezone) {
   const events = [];
-  const startDate = new Date();
+  const startDate = new Date(startYear, 0, 1);
+  const endDate = new Date(endYear, 11, 31);
   
-  for (let i = 0; i < 30; i++) {
-    const date = new Date(startDate.getTime() + (i * 24 * 60 * 60 * 1000));
+  // Check moon phases daily
+  for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
+    const moonPhase = getMoonPhase(date);
     
-    // High tide
-    events.push({
-      type: 'High',
-      datetime: new Date(date.getTime() + (6 * 60 * 60 * 1000)) // 6 AM
-    });
-    
-    // Low tide
-    events.push({
-      type: 'Low',
-      datetime: new Date(date.getTime() + (18 * 60 * 60 * 1000)) // 6 PM
-    });
-  }
-  
-  return events;
-}
-
-async function generateMoonEvents(stationTitle) {
-  const events = [];
-  const startDate = new Date();
-  
-  for (let i = 0; i < 30; i++) {
-    const date = new Date(startDate.getTime() + (i * 24 * 60 * 60 * 1000));
-    const moonPhase = SunCalc.getMoonIllumination(date);
-    
-    // Add moon phase events for significant phases
-    const phase = moonPhase.phase;
-    if (phase < 0.1 || phase > 0.9) {
-      events.push({
-        title: 'New Moon',
-        start: date,
-        duration: { minutes: 60 },
-        description: 'New Moon phase',
-        location: stationTitle,
-        status: 'CONFIRMED',
-        busyStatus: 'FREE'
-      });
-    } else if (phase > 0.4 && phase < 0.6) {
-      events.push({
-        title: 'Full Moon',
-        start: date,
-        duration: { minutes: 60 },
-        description: 'Full Moon phase',
-        location: stationTitle,
-        status: 'CONFIRMED',
-        busyStatus: 'FREE'
-      });
+    // Add events for significant phases
+    if (moonPhase === 'new') {
+      const eventUID = `moon-new-${date.getTime()}@tideincal.com`;
+      const eventContent = `BEGIN:VEVENT
+UID:${eventUID}
+SEQUENCE:0
+DTSTAMP:${formatDateForICS(new Date(), 'usa', userTimezone)}
+DTSTART:${formatDateForICS(date, 'usa', userTimezone)}
+DTEND:${formatDateForICS(new Date(date.getTime() + 60 * 60 * 1000), 'usa', userTimezone)}
+SUMMARY:New Moon
+DESCRIPTION:New Moon phase
+LOCATION:${stationTitle}
+STATUS:CONFIRMED
+END:VEVENT`;
+      events.push(eventContent);
+    } else if (moonPhase === 'full') {
+      const eventUID = `moon-full-${date.getTime()}@tideincal.com`;
+      const eventContent = `BEGIN:VEVENT
+UID:${eventUID}
+SEQUENCE:0
+DTSTAMP:${formatDateForICS(new Date(), 'usa', userTimezone)}
+DTSTART:${formatDateForICS(date, 'usa', userTimezone)}
+DTEND:${formatDateForICS(new Date(date.getTime() + 60 * 60 * 1000), 'usa', userTimezone)}
+SUMMARY:Full Moon
+DESCRIPTION:Full Moon phase
+LOCATION:${stationTitle}
+STATUS:CONFIRMED
+END:VEVENT`;
+      events.push(eventContent);
     }
   }
   
   return events;
+}
+
+/**
+ * Simple moon phase calculation (approximate)
+ * Returns 'new', 'full', or null
+ */
+function getMoonPhase(date) {
+  // Approximate lunar cycle: 29.5 days
+  // This is a simplified calculation
+  const lunarCycle = 29.5;
+  const knownNewMoon = new Date('2024-01-11'); // Reference new moon
+  const daysSince = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
+  const phase = (daysSince % lunarCycle) / lunarCycle;
+  
+  if (phase < 0.05 || phase > 0.95) {
+    return 'new';
+  } else if (phase > 0.45 && phase < 0.55) {
+    return 'full';
+  }
+  return null;
 }
