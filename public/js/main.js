@@ -622,8 +622,6 @@ async function handleVerificationRequired(checkoutData) {
     showSelectLink: false,
     showDismiss: true
   });
-
-  document.getElementById('verificationBanner')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function startCheckoutSession(checkoutData) {

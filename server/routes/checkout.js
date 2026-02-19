@@ -72,6 +72,12 @@ router.post('/session', csrfProtection, async (req, res) => {
     if (!priceId) {
       throw new Error(`Missing Stripe price configuration for ${plan} plan`);
     }
+
+    const appUrl = process.env.APP_URL?.trim();
+    if (!appUrl) {
+      console.error('Checkout session error: APP_URL is not set');
+      return res.status(503).json({ error: 'Checkout is not fully configured. Please try again later.' });
+    }
     
     // Prepare metadata
     const metadata = {
@@ -98,8 +104,8 @@ router.post('/session', csrfProtection, async (req, res) => {
       mode: sessionMode,
       allow_promotion_codes: true,
       metadata,
-      success_url: `${process.env.APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.APP_URL}/`,
+      success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}/`,
     };
     
     // Use existing customer if available, otherwise use email
@@ -117,7 +123,11 @@ router.post('/session', csrfProtection, async (req, res) => {
     if (error.name === 'ZodError') {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
-    console.error('Checkout session error:', error);
+    console.error('Checkout session error:', error?.message ?? error);
+    if (error?.stack) console.error('Checkout session error stack:', error.stack);
+    if (error?.message?.includes('Missing Stripe price')) {
+      return res.status(503).json({ error: 'Checkout is not fully configured. Please try again later.' });
+    }
     res.status(500).json({ error: 'Internal server error' });
   }
 });
