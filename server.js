@@ -353,6 +353,8 @@ async function startServer() {
     if (!dbConnected) {
       console.log('📝 Note: Check your MONGO_URI environment variable and MongoDB connection');
     }
+    const couponSet = process.env.STRIPE_PRO_UPGRADE_COUPON?.trim();
+    console.log(`[startup] STRIPE_PRO_UPGRADE_COUPON: ${couponSet ? 'loaded' : 'MISSING'}`);
   });
 }
 

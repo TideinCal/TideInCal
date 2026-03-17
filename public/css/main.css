@@ -161,6 +161,36 @@ body {
   color: white;
 }
 
+/* Upsell modal: 2-minute countdown timer */
+.upsell-countdown-wrap {
+  background: linear-gradient(135deg, rgba(11, 98, 172, 0.08) 20%, rgba(0, 199, 230, 0.12) 80%);
+  border: 1px solid rgba(11, 98, 172, 0.35);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  display: inline-block;
+}
+
+.upsell-countdown-urgency {
+  font-family: 'Kanit', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #0B62AC;
+  margin: 0;
+}
+
+.upsell-countdown-time {
+  font-family: 'Kanit', sans-serif;
+  font-weight: 700;
+  font-size: 1.75rem;
+  color: #0B62AC;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+#upsellModal .upsell-countdown-time {
+  color: #0d1b48;
+}
+
 /* Plan chooser specific styling */
 .plan-card {
   border: 2px solid #e9ecef;
@@ -421,6 +451,23 @@ canvas#rippleCanvas {
   height: 1.3em;
   margin-bottom: 10px;
 
+}
+
+/* Larger, tap-friendly Golden Hour checkbox in tide station popup */
+.pro-golden-checkbox {
+  width: 1.35rem;
+  height: 1.35rem;
+  min-width: 1.35rem;
+  min-height: 1.35rem;
+}
+
+@media (max-width: 576px) {
+  .pro-golden-checkbox {
+    width: 1.5rem;
+    height: 1.5rem;
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+  }
 }
 
 #mapSection {

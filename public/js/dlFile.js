@@ -13,6 +13,19 @@ const tideIcon = L.icon({
 const urlParams = new URLSearchParams(window.location.search);
 const purchaseId = urlParams.get('purchaseId');
 const sessionId = urlParams.get('session_id');
+// Pro tide station add-on: optional Golden Hour selection passed from map
+const includeGoldenHour = urlParams.get('includeGoldenHour') === 'true';
+const goldenLat = urlParams.get('goldenLat');
+const goldenLng = urlParams.get('goldenLng');
+const goldenLocationName = urlParams.get('goldenLocationName');
+
+function getUserTimezoneDl() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz && typeof tz === 'string') return tz;
+  } catch (e) {}
+  return 'UTC';
+}
 const FIRST_DOWNLOAD_VERIFY_KEY = 'firstDownloadVerifyRedirect';
 
 // Initialize variables
@@ -94,6 +107,10 @@ if (purchaseId) {
         if (stnNameEl) {
           stnNameEl.textContent = stationTitle;
         }
+        const subtitleEl = document.getElementById('dlSubtitle');
+        if (subtitleEl && (params.includeGoldenHour === true || params.includeGoldenHour === 'true')) {
+          subtitleEl.textContent = 'Download 12 months of tide times + Golden Hour directly to your calendar';
+        }
         
         // For map, use default location if coordinates not available
         if (!lat || !long) {
@@ -145,6 +162,10 @@ if (purchaseId) {
     if (stnNameEl) {
       stnNameEl.textContent = stationTitle;
     }
+  }
+  const subtitleEl = document.getElementById('dlSubtitle');
+  if (subtitleEl && includeGoldenHour) {
+    subtitleEl.textContent = 'Download 12 months of tide times + Golden Hour directly to your calendar';
   }
   
   // Initialize map when DOM is ready if we have coordinates
@@ -271,51 +292,133 @@ let timerStart = () => {
                 return;
               }
 
-              const response = await fetch('/api/downloads/generate', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'X-CSRF-Token': csrf
-                },
-                body: JSON.stringify({
-                  stationID: stationID,
-                  stationTitle: stationTitle,
-                  country: country,
-                  includeMoon: false,
-                  userTimezone: 'UTC',
-                  feet: isFeet
-                })
-              });
+              // If Golden Hour add-on was selected on the map, generate tide and Golden Hour ICS
+              // separately and merge them into one combined calendar on the client.
+              if (includeGoldenHour && goldenLat && goldenLng) {
+                const tideResponse = await fetch('/api/downloads/generate', {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrf
+                  },
+                  body: JSON.stringify({
+                    stationID: stationID,
+                    stationTitle: stationTitle,
+                    country: country,
+                    includeMoon: false,
+                    userTimezone: 'UTC',
+                    feet: isFeet,
+                    includeGoldenHour: true
+                  })
+                });
 
-              if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.error || 'Failed to generate file');
-              }
-
-              // Get filename from response headers if available
-              const contentDisposition = response.headers.get('Content-Disposition');
-              let filename = 'tide-calendar.ics';
-              if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                if (filenameMatch) {
-                  filename = filenameMatch[1];
+                if (!tideResponse.ok) {
+                  const err = await tideResponse.json();
+                  throw new Error(err.error || 'Failed to generate tide file');
                 }
-              } else if (stationTitle && stationTitle !== 'Tide Station') {
-                // Use stationTitle if available and not default
-                filename = `${stationTitle.replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
-              }
 
-              const blob = await response.blob();
-              // Create download link
-              const url = window.URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = filename;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              window.URL.revokeObjectURL(url);
+                const tideIcs = await tideResponse.text();
+
+                const goldenResponse = await fetch('/api/downloads/golden', {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrf
+                  },
+                  body: JSON.stringify({
+                    lat: Number(goldenLat),
+                    lng: Number(goldenLng),
+                    locationName: goldenLocationName || stationTitle,
+                    userTimezone: getUserTimezoneDl()
+                  })
+                });
+
+                if (!goldenResponse.ok) {
+                  const err = await goldenResponse.json();
+                  throw new Error(err.error || 'Failed to generate Golden Hour file');
+                }
+
+                const goldenIcs = await goldenResponse.text();
+
+                // Merge VEVENT blocks from both calendars into one VCALENDAR
+                const veventRegex = /BEGIN:VEVENT[\s\S]*?END:VEVENT/g;
+                const tideEvents = (tideIcs.match(veventRegex) || []).join('\n');
+                const goldenEvents = (goldenIcs.match(veventRegex) || []).join('\n');
+                const allEvents = [tideEvents, goldenEvents].filter(Boolean).join('\n');
+                const calendarName = `Tide + Golden Hour - ${stationTitle}`;
+                const combinedIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+CALSCALE:GREGORIAN
+PRODID:-//Tide In Calendar//TideCal+GoldenHour//EN
+METHOD:PUBLISH
+X-WR-CALNAME:${calendarName.replace(/\\n/g, ' ')}
+X-WR-TIMEZONE:UTC
+${allEvents}
+END:VCALENDAR`;
+
+                let filename = `${stationTitle && stationTitle !== 'Tide Station'
+                  ? stationTitle.replace(/[^a-zA-Z0-9]/g, '_')
+                  : 'tide-calendar'}.ics`;
+
+                const blob = new Blob([combinedIcs], { type: 'text/calendar; charset=utf-8' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+              } else {
+                const response = await fetch('/api/downloads/generate', {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrf
+                  },
+                  body: JSON.stringify({
+                    stationID: stationID,
+                    stationTitle: stationTitle,
+                    country: country,
+                    includeMoon: false,
+                    userTimezone: 'UTC',
+                    feet: isFeet,
+                    includeGoldenHour: false
+                  })
+                });
+
+                if (!response.ok) {
+                  const err = await response.json();
+                  throw new Error(err.error || 'Failed to generate file');
+                }
+
+                // Get filename from response headers if available
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = 'tide-calendar.ics';
+                if (contentDisposition) {
+                  const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                  if (filenameMatch) {
+                    filename = filenameMatch[1];
+                  }
+                } else if (stationTitle && stationTitle !== 'Tide Station') {
+                  // Use stationTitle if available and not default
+                  filename = `${stationTitle.replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
+                }
+
+                const blob = await response.blob();
+                // Create download link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+              }
 
               // Show success state
               showDownloadSuccess();
@@ -375,6 +478,88 @@ let timerStart = () => {
                   return;
                 }
 
+                // If Golden Hour add-on was selected on the map, generate tide and Golden Hour ICS
+                // separately and merge them into one combined calendar on the client.
+                if (includeGoldenHour && goldenLat && goldenLng) {
+                  const tideResponse = await fetch('/api/downloads/generate', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-Token': csrf
+                    },
+                    body: JSON.stringify({
+                      stationID,
+                      stationTitle,
+                      country,
+                      includeMoon: false,
+                      userTimezone: 'UTC',
+                      feet: isFeet,
+                      includeGoldenHour: true
+                    })
+                  });
+
+                  if (!tideResponse.ok) {
+                    const err = await tideResponse.json();
+                    throw new Error(err.error || 'Failed to generate tide file');
+                  }
+
+                  const tideIcs = await tideResponse.text();
+
+                  const goldenResponse = await fetch('/api/downloads/golden', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'X-CSRF-Token': csrf
+                    },
+                    body: JSON.stringify({
+                      lat: Number(goldenLat),
+                      lng: Number(goldenLng),
+                      locationName: goldenLocationName || stationTitle,
+                      userTimezone: getUserTimezoneDl()
+                    })
+                  });
+
+                  if (!goldenResponse.ok) {
+                    const err = await goldenResponse.json();
+                    throw new Error(err.error || 'Failed to generate Golden Hour file');
+                  }
+
+                  const goldenIcs = await goldenResponse.text();
+
+                  const veventRegex = /BEGIN:VEVENT[\s\S]*?END:VEVENT/g;
+                  const tideEvents = (tideIcs.match(veventRegex) || []).join('\n');
+                  const goldenEvents = (goldenIcs.match(veventRegex) || []).join('\n');
+                  const allEvents = [tideEvents, goldenEvents].filter(Boolean).join('\n');
+                  const calendarName = `Tide + Golden Hour - ${stationTitle}`;
+                  const combinedIcs = `BEGIN:VCALENDAR
+VERSION:2.0
+CALSCALE:GREGORIAN
+PRODID:-//Tide In Calendar//TideCal+GoldenHour//EN
+METHOD:PUBLISH
+X-WR-CALNAME:${calendarName.replace(/\\n/g, ' ')}
+X-WR-TIMEZONE:UTC
+${allEvents}
+END:VCALENDAR`;
+
+                  let filename = `${stationTitle && stationTitle !== 'Tide Station'
+                    ? stationTitle.replace(/[^a-zA-Z0-9]/g, '_')
+                    : 'tide-calendar'}.ics`;
+
+                  const blob = new Blob([combinedIcs], { type: 'text/calendar; charset=utf-8' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = filename;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  window.URL.revokeObjectURL(url);
+                  showDownloadSuccess();
+                  return;
+                }
+
                 const response = await fetch('/api/downloads/generate', {
                   method: 'POST',
                   credentials: 'include',
@@ -388,7 +573,8 @@ let timerStart = () => {
                     country,
                     includeMoon: false,
                     userTimezone: 'UTC',
-                    feet: isFeet
+                    feet: isFeet,
+                    includeGoldenHour: false
                   })
                 });
 

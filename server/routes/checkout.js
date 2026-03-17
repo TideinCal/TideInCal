@@ -9,20 +9,50 @@ const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const csrfProtection = csurf({ cookie: false });
 
-// Validation schema for plan-based checkout
+/**
+ * Returns session options for Pro coupon (allow_promotion_codes and discounts).
+ * Exported for tests. Stripe allows either discounts OR allow_promotion_codes, not both.
+ * @param {string} plan - 'single' | 'unlimited'
+ * @param {boolean|string} useProOffer - from client (true or 'true' when upsell timer is active)
+ * @param {string|undefined} envCoupon - STRIPE_PRO_UPGRADE_COUPON value
+ * @returns {{ allow_promotion_codes: boolean, discounts?: Array<{ coupon: string }> }}
+ */
+export function getProCouponSessionOptions(plan, useProOffer, envCoupon) {
+  const proCoupon = (envCoupon || '').trim() || null;
+  const useProOfferTruthy = useProOffer === true || useProOffer === 'true';
+  const applyProCoupon = plan === 'unlimited' && useProOfferTruthy && !!proCoupon;
+  return {
+    allow_promotion_codes: !applyProCoupon,
+    ...(applyProCoupon && proCoupon && { discounts: [{ coupon: proCoupon }] })
+  };
+}
+
+// Validation schema for plan-based checkout (useProOffer can be boolean or string 'true' from JSON)
 const checkoutSchema = z.object({
   plan: z.enum(['single', 'unlimited']),
   stationID: z.string().min(1).optional(),
   stationTitle: z.string().min(1).optional(),
-  country: z.string().min(1).optional()
+  country: z.string().min(1).optional(),
+  stationLat: z.number().optional(),
+  stationLng: z.number().optional(),
+  useProOffer: z.optional(
+    z.union([z.boolean(), z.literal('true'), z.literal('false')]).transform((v) => v === true || v === 'true')
+  ),
+  includeMoon: z.boolean().optional().default(false),
+  includeGoldenHour: z.boolean().optional().default(false),
+  goldenOnly: z.boolean().optional().default(false),
+  goldenLat: z.number().optional(),
+  goldenLng: z.number().optional(),
+  goldenLocationName: z.string().optional(),
+  userTimezone: z.string().optional()
 }).refine((data) => {
-  // For single plan, station fields are required
-  if (data.plan === 'single') {
-    return data.stationID && data.stationTitle && data.country;
+  if (data.plan === 'unlimited') return true;
+  if (data.goldenOnly) {
+    return typeof data.goldenLat === 'number' && typeof data.goldenLng === 'number' && data.goldenLocationName != null && data.goldenLocationName !== '';
   }
-  return true;
+  return !!(data.stationID && data.stationTitle && data.country);
 }, {
-  message: "stationID, stationTitle, and country are required for single plan"
+  message: "For single plan: either stationID/stationTitle/country (tide), or goldenOnly with goldenLat/goldenLng/goldenLocationName"
 });
 
 // Apply middleware
@@ -33,7 +63,7 @@ router.use(requireAuth);
 router.post('/session', csrfProtection, async (req, res) => {
   try {
     const validated = checkoutSchema.parse(req.body);
-    const { plan, stationID, stationTitle, country } = validated;
+    const { plan, stationID, stationTitle, country, stationLat, stationLng, useProOffer, includeMoon, includeGoldenHour, goldenOnly, goldenLat, goldenLng, goldenLocationName, userTimezone } = validated;
     
     const db = getDatabase();
     const { ObjectId } = await import('mongodb');
@@ -44,33 +74,11 @@ router.post('/session', csrfProtection, async (req, res) => {
                                    user?.subscriptionCurrentPeriodEnd && 
                                    new Date(user.subscriptionCurrentPeriodEnd) > new Date();
     
-    // If user has active subscription and is requesting single station, allow free generation
-    // (No checkout needed - they can generate directly from dashboard)
-    if (hasActiveSubscription && plan === 'single') {
+    // If user has active subscription and is requesting single station (tide), allow free generation
+    if (hasActiveSubscription && plan === 'single' && !goldenOnly) {
       return res.status(400).json({ 
         error: 'You have an active subscription. Please use the dashboard to generate files for free.' 
       });
-    }
-    
-    // Determine price and mode based on plan
-    let priceId;
-    let sessionMode;
-    
-    if (plan === 'unlimited') {
-      // Unlimited is a one-year subscription
-      priceId = process.env.STRIPE_PRICE_UNLIMITED;
-      sessionMode = 'subscription';
-    } else if (plan === 'single') {
-      // Single is a one-time payment
-      priceId = process.env.STRIPE_PRICE_SINGLE;
-      sessionMode = 'payment';
-    } else {
-      throw new Error(`Invalid plan: ${plan}`);
-    }
-    
-    // Validate that we have a valid price ID
-    if (!priceId) {
-      throw new Error(`Missing Stripe price configuration for ${plan} plan`);
     }
 
     const appUrl = process.env.APP_URL?.trim();
@@ -78,44 +86,87 @@ router.post('/session', csrfProtection, async (req, res) => {
       console.error('Checkout session error: APP_URL is not set');
       return res.status(503).json({ error: 'Checkout is not fully configured. Please try again later.' });
     }
-    
-    // Prepare metadata
+
+    let sessionMode = 'payment';
+    const lineItems = [];
     const metadata = {
       plan: plan === 'unlimited' ? 'subscription' : 'single',
-      userId: req.user._id.toString()
+      userId: req.user._id.toString(),
+      includeMoon: includeMoon === true,
+      includeGoldenHour: includeGoldenHour === true,
+      userTimezone: (userTimezone && String(userTimezone).trim()) || (req.body.userTimezone && String(req.body.userTimezone).trim()) || ''
     };
-    
-    // Add station info for single plan
-    if (plan === 'single') {
-      metadata.stationID = stationID;
-      metadata.stationTitle = stationTitle;
-      metadata.country = country;
+
+    if (plan === 'unlimited') {
+      sessionMode = 'subscription';
+      const priceId = process.env.STRIPE_PRICE_UNLIMITED;
+      if (!priceId) throw new Error('Missing Stripe price configuration for unlimited plan');
+      lineItems.push({ price: priceId, quantity: 1 });
+    } else {
+      // plan === 'single': (a) tide only, (b) golden only, (c) tide + golden
+      if (goldenOnly) {
+        const priceId = process.env.STRIPE_PRICE_GOLDEN || process.env.STRIPE_GOLDEN_HOUR;
+        if (!priceId) throw new Error('Missing Stripe price configuration for Golden Hour (STRIPE_PRICE_GOLDEN or STRIPE_GOLDEN_HOUR)');
+        lineItems.push({ price: priceId, quantity: 1 });
+        metadata.productType = 'golden';
+        metadata.goldenLat = String(goldenLat);
+        metadata.goldenLng = String(goldenLng);
+        metadata.goldenLocationName = goldenLocationName || 'Location';
+      } else {
+        const tidePriceId = process.env.STRIPE_PRICE_SINGLE;
+        if (!tidePriceId) throw new Error('Missing Stripe price configuration for single plan');
+        lineItems.push({ price: tidePriceId, quantity: 1 });
+        metadata.stationID = stationID;
+        metadata.stationTitle = stationTitle;
+        metadata.country = country;
+        if (typeof stationLat === 'number') metadata.stationLat = String(stationLat);
+        if (typeof stationLng === 'number') metadata.stationLng = String(stationLng);
+
+        if (includeGoldenHour) {
+          const goldenPriceId = process.env.STRIPE_PRICE_GOLDEN || process.env.STRIPE_GOLDEN_HOUR;
+          if (!goldenPriceId) throw new Error('Missing Stripe price configuration for Golden Hour (STRIPE_PRICE_GOLDEN or STRIPE_GOLDEN_HOUR)');
+          lineItems.push({ price: goldenPriceId, quantity: 1 });
+          metadata.productType = 'tide_and_golden';
+          const glat = validated.goldenLat ?? req.body.goldenLat;
+          const glng = validated.goldenLng ?? req.body.goldenLng;
+          metadata.goldenLat = glat != null ? String(glat) : '';
+          metadata.goldenLng = glng != null ? String(glng) : '';
+          metadata.goldenLocationName = (validated.goldenLocationName ?? req.body.goldenLocationName ?? stationTitle ?? 'Location') || 'Location';
+        } else {
+          metadata.productType = 'tide';
+        }
+      }
     }
-    
-    // Use existing Stripe customer if available
+
+    // Pro upgrade coupon: only when unlimited + client sent offer flag + env is set
+    const proCoupon = process.env.STRIPE_PRO_UPGRADE_COUPON?.trim() || null;
+    const couponOptions = getProCouponSessionOptions(plan, useProOffer, process.env.STRIPE_PRO_UPGRADE_COUPON);
+    const applyProCoupon = !!couponOptions.discounts;
+
+    if (plan === 'unlimited') {
+      console.log('[checkout] unlimited request: useProOffer=', useProOffer, 'couponEnv=', proCoupon ? `${proCoupon.slice(0, 4)}...${proCoupon.slice(-2)}` : 'missing', 'applyProCoupon=', applyProCoupon);
+    }
+
     const sessionConfig = {
       payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       mode: sessionMode,
-      allow_promotion_codes: true,
       metadata,
       success_url: `${appUrl}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/`,
     };
-    
-    // Use existing customer if available, otherwise use email
+    if (couponOptions.discounts) {
+      sessionConfig.discounts = couponOptions.discounts;
+    } else {
+      sessionConfig.allow_promotion_codes = true;
+    }
+
     if (user?.stripeCustomerId) {
       sessionConfig.customer = user.stripeCustomerId;
     } else {
       sessionConfig.customer_email = req.user.email;
     }
-    
-    // Create Stripe checkout session
+
     const session = await stripe.checkout.sessions.create(sessionConfig);
     
     res.json({ url: session.url });
@@ -161,17 +212,22 @@ router.get('/verify', async (req, res) => {
     const { ObjectId } = await import('mongodb');
     
     const metadata = session.metadata || {};
-    const { userId, plan, stationID, stationTitle, country } = metadata;
+    const { userId, plan, stationID, stationTitle, country, productType, goldenLat, goldenLng, goldenLocationName } = metadata;
     
     // Validate required metadata
     const missing = [];
     if (!userId) missing.push('userId');
     
-    // For single plan or payment mode, station info is required
     if (plan === 'single' || session.mode === 'payment') {
-      if (!stationID) missing.push('stationID');
-      if (!stationTitle) missing.push('stationTitle');
-      if (!country) missing.push('country');
+      if (productType === 'golden') {
+        if (goldenLat === undefined || goldenLat === '') missing.push('goldenLat');
+        if (goldenLng === undefined || goldenLng === '') missing.push('goldenLng');
+        if (!goldenLocationName) missing.push('goldenLocationName');
+      } else {
+        if (!stationID) missing.push('stationID');
+        if (!stationTitle) missing.push('stationTitle');
+        if (!country) missing.push('country');
+      }
     }
     
     if (missing.length > 0) {
@@ -275,14 +331,16 @@ router.get('/verify', async (req, res) => {
     // Log successful verification
     console.log('[verify]', session.id, 'status:', session.status, 'payment_status:', session.payment_status, 'payment_intent:', session.payment_intent, 'isPaid:', isPaid, 'purchaseFoundBeforeCreate:', purchaseFoundBeforeCreate, 'purchaseCreated:', purchaseCreated);
 
-    // Determine purchase type
+    // Determine purchase type for client (subscription | one_time)
     const purchaseType = purchase.product === 'subscription' ? 'subscription' : 'one_time';
+    // Product kind so success page can route Golden Hour-only to /account, tide to dlFile.html
+    const product = purchase.product; // 'subscription' | 'single' | 'golden'
 
-    // Return purchase info in required format
     res.json({
       ok: true,
       purchaseId: purchase._id.toString(),
-      type: purchaseType
+      type: purchaseType,
+      product: product
     });
   } catch (error) {
     console.error('[verify] Checkout verification error:', error);

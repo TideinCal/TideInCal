@@ -23,21 +23,28 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
     stationID,
     stationTitle,
     country,
+    product: metadataProduct,
+    productType,
+    goldenLat,
+    goldenLng,
+    goldenLocationName,
+    userTimezone: metaTimezone
   } = metadata;
+  const goldenTimezone = (metaTimezone && String(metaTimezone).trim()) || 'UTC';
 
   if (!userId) {
     console.error('[checkoutCompleted] Missing userId in session metadata');
     return null;
   }
 
-  // Check if purchase already exists (idempotent)
-  const existingPurchase = await db.collection('purchases').findOne({
-    stripeSessionId: session.id
-  });
-
-  if (existingPurchase) {
-    console.log('[checkoutCompleted] Purchase already exists:', existingPurchase._id.toString());
-    return existingPurchase;
+  // Idempotent: find all purchases for this session (tide_and_golden creates one combined purchase)
+  const existingPurchases = await db.collection('purchases').find({ stripeSessionId: session.id }).toArray();
+  if (existingPurchases.length > 0) {
+    const expected = 1;
+    if (existingPurchases.length >= expected) {
+      console.log('[checkoutCompleted] Purchase(s) already exist for session:', session.id);
+      return existingPurchases[0];
+    }
   }
 
   // Best-effort email source
@@ -110,13 +117,6 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
         currentPeriodEnd = null;
       }
     }
-    
-    if (!currentPeriodEnd && subscription.status === 'active') {
-      console.warn('[checkoutCompleted] Missing valid current_period_end for active subscription, calculating 1 year from now');
-      // Default to 1 year from now for active subscriptions without period end
-      currentPeriodEnd = new Date();
-      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
-    }
 
     // Update user with subscription info
     try {
@@ -181,7 +181,135 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
     }
   }
 
-  // 3) Handle one-time purchase (single station)
+  // 3) Handle Golden Hour only purchase (separate product)
+  if (plan === 'single' && productType === 'golden') {
+    const now = new Date();
+    const purchaseDate = now;
+    const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+    const lat = parseFloat(goldenLat);
+    const lng = parseFloat(goldenLng);
+    const locationName = goldenLocationName || 'Location';
+
+    const purchaseData = {
+      userId: new ObjectId(userId),
+      stripeSessionId: session.id,
+      stripePaymentIntentId: session.payment_intent ?? null,
+      product: 'golden',
+      amount: session.amount_total,
+      currency: session.currency,
+      customerEmail: customerEmail,
+      purchaseDate,
+      expiresAt,
+      regenerationParams: { lat, lng, locationName, userTimezone: goldenTimezone },
+      createdAt: now,
+    };
+    if (session.customer_details) {
+      purchaseData.customerDetails = {
+        name: session.customer_details.name,
+        address: session.customer_details.address,
+      };
+    }
+    try {
+      const result = await db.collection('purchases').insertOne(purchaseData);
+      return await db.collection('purchases').findOne({ _id: result.insertedId });
+    } catch (error) {
+      console.error('[checkoutCompleted] Error inserting golden purchase:', error);
+      return null;
+    }
+  }
+
+  // 3b) Handle tide + Golden Hour (one combined purchase; one combined ICS on download)
+  if (plan === 'single' && productType === 'tide_and_golden') {
+    const now = new Date();
+    const purchaseDate = now;
+    const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+    const glat = parseFloat(goldenLat);
+    const glng = parseFloat(goldenLng);
+    const goldenName = goldenLocationName || stationTitle || 'Location';
+
+    const tideData = {
+      userId: new ObjectId(userId),
+      stripeSessionId: session.id,
+      stripePaymentIntentId: session.payment_intent ?? null,
+      product: 'single',
+      amount: session.amount_total,
+      currency: session.currency,
+      customerEmail: customerEmail,
+      purchaseDate,
+      expiresAt,
+      regenerationParams: {
+        stationId: stationID,
+        stationTitle,
+        country,
+        includeMoon: false,
+        userTimezone: goldenTimezone || 'UTC',
+        feet: false,
+        includeGoldenHour: true,
+        goldenLat: glat,
+        goldenLng: glng,
+        goldenLocationName: goldenName,
+        latitude: metadata.stationLat ? Number(metadata.stationLat) : undefined,
+        longitude: metadata.stationLng ? Number(metadata.stationLng) : undefined,
+      },
+      createdAt: now,
+    };
+    if (session.customer_details) {
+      tideData.customerDetails = {
+        name: session.customer_details.name,
+        address: session.customer_details.address,
+      };
+    }
+    try {
+      const tideResult = await db.collection('purchases').insertOne(tideData);
+      return await db.collection('purchases').findOne({ _id: tideResult.insertedId });
+    } catch (error) {
+      console.error('[checkoutCompleted] Error inserting tide+golden purchase:', error);
+      return null;
+    }
+  }
+
+  // 4) Handle standalone moon purchase
+  if (metadataProduct === 'moon') {
+    const now = new Date();
+    const purchaseDate = now;
+    const entitlementEnd = (() => {
+      const d = new Date(purchaseDate);
+      const year = d.getUTCFullYear() + 1;
+      const month = d.getUTCMonth();
+      const day = d.getUTCDate();
+      return new Date(Date.UTC(year, month, day));
+    })();
+
+    const purchaseData = {
+      userId: new ObjectId(userId),
+      stripeSessionId: session.id,
+      stripePaymentIntentId: session.payment_intent ?? null,
+      product: 'moon',
+      amount: session.amount_total,
+      currency: session.currency,
+      customerEmail: customerEmail,
+      purchaseDate,
+      entitlementEnd,
+      createdAt: now
+    };
+
+    if (session.customer_details) {
+      purchaseData.customerDetails = {
+        name: session.customer_details.name,
+        address: session.customer_details.address
+      };
+    }
+
+    try {
+      const result = await db.collection('purchases').insertOne(purchaseData);
+      return await db.collection('purchases').findOne({ _id: result.insertedId });
+    } catch (error) {
+      console.error('[checkoutCompleted] Error inserting moon purchase:', error);
+      return null;
+    }
+  }
+
+  // 4) Handle one-time purchase (single station)
   const now = new Date();
   const purchaseDate = now;
   const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 365 days
@@ -203,6 +331,8 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       includeMoon: false,
       userTimezone: 'UTC',
       feet: false,
+      latitude: metadata.stationLat ? Number(metadata.stationLat) : undefined,
+      longitude: metadata.stationLng ? Number(metadata.stationLng) : undefined,
     },
     createdAt: now,
   };

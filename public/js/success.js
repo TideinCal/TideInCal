@@ -63,7 +63,14 @@ async function verifyPurchase() {
             const data = await response.json();
             
             if (data.ok && data.purchaseId) {
-                // Success - redirect to download page
+                // Golden Hour-only: download lives on My Account, not dlFile.html
+                if (data.product === 'golden') {
+                    console.log('[success] Golden Hour-only purchase, redirecting to My Account');
+                    window.__verificationStarted = false;
+                    window.location.href = '/account';
+                    return;
+                }
+                // Tide (single or tide+golden): redirect to tide download page
                 console.log('[success] Verification successful, redirecting to download page');
                 window.__verificationStarted = false;
                 window.location.href = `/dlFile.html?purchaseId=${data.purchaseId}`;
@@ -89,10 +96,14 @@ async function verifyPurchase() {
                 // Legacy response format - try to extract purchaseId
                 if (data.purchaseId) {
                     window.__verificationStarted = false;
-                    window.location.href = `/dlFile.html?purchaseId=${data.purchaseId}`;
+                    if (data.product === 'golden') {
+                        window.location.href = '/account';
+                    } else {
+                        window.location.href = `/dlFile.html?purchaseId=${data.purchaseId}`;
+                    }
                     return;
                 }
-                // Fallback to session_id if purchaseId not available
+                // Fallback to session_id if purchaseId not available (tide flow)
                 window.__verificationStarted = false;
                 window.location.href = `/dlFile.html?session_id=${sessionId}`;
                 return;

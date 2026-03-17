@@ -1,15 +1,16 @@
 import fetch from 'node-fetch';
 
 /**
- * Generates ICS calendar content for a tide station
- * Uses the same logic as the legacy getYearData function
+ * Generates ICS calendar content for a tide station.
+ * Moon phases are intentionally NOT included here; they are delivered
+ * via a separate moon phases calendar to avoid duplicate events.
+ *
  * @param {Object} stationData - Station information
  * @param {string} stationData.id - Station ID
  * @param {string} stationData.title - Station title/name
  * @param {string} stationData.country - 'usa' or 'canada'
- * @param {boolean} stationData.includeMoon - Whether to include moon phases
- * @param {string} stationData.userTimezone - User's timezone (defaults to UTC)
- * @param {boolean} stationData.feet - Whether to use feet (defaults to false for meters)
+ * @param {string} [stationData.userTimezone='UTC'] - User's timezone
+ * @param {boolean} [stationData.feet=false] - Whether to use feet (defaults to meters)
  * @returns {Promise<string>} ICS file content
  */
 export async function generateICS(stationData) {
@@ -17,7 +18,6 @@ export async function generateICS(stationData) {
     id: stationID, 
     title: stationTitle, 
     country, 
-    includeMoon = false,
     userTimezone = 'UTC',
     feet = false,
     startDate = null,
@@ -108,7 +108,7 @@ SEQUENCE:0
 DTSTAMP:${formatDateForICS(new Date(), country, userTimezone)}
 DTSTART:${formatDateForICS(startDate, country, userTimezone)}
 DTEND:${formatDateForICS(endDate, country, userTimezone)}
-SUMMARY:${stationTitle} ${tide} @ ${tideHeight}
+SUMMARY:🌊 ${stationTitle} ${tide} @ ${tideHeight}
 DESCRIPTION:${tideHeight}Tide at ${stationTitle}
 LOCATION:${stationTitle}
 STATUS:CONFIRMED
@@ -116,12 +116,6 @@ END:VEVENT`;
 
       events.push(eventContent);
     });
-
-    // Add moon events if requested
-    if (includeMoon) {
-      const moonEvents = generateMoonEvents(stationTitle, startYear, endYear, userTimezone);
-      events.push(...moonEvents);
-    }
 
     const calendarName = `Tide - ${stationTitle} - ${startYear}-${startMonth2d}-${startDay2d}`;
     const icsContent = `BEGIN:VCALENDAR
@@ -163,68 +157,26 @@ function formatDateForICS(date, country, userTimezone) {
 }
 
 /**
- * Generates moon phase events for the calendar year
+ * Merges tide and Golden Hour ICS into one calendar (tide + Golden Hour combined).
+ * Extracts all VEVENT blocks from both and wraps in a single VCALENDAR.
+ * @param {string} tideIcs - Full ICS string from generateICS
+ * @param {string} goldenIcs - Full ICS string from generateGoldenHourICS
+ * @param {string} calendarName - X-WR-CALNAME value
+ * @param {string} [userTimezone='UTC'] - X-WR-TIMEZONE
+ * @returns {string} Combined ICS content
  */
-function generateMoonEvents(stationTitle, startYear, endYear, userTimezone) {
-  const events = [];
-  const startDate = new Date(startYear, 0, 1);
-  const endDate = new Date(endYear, 11, 31);
-  
-  // Check moon phases daily
-  for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-    const moonPhase = getMoonPhase(date);
-    
-    // Add events for significant phases
-    if (moonPhase === 'new') {
-      const eventUID = `moon-new-${date.getTime()}@tideincal.com`;
-      const eventContent = `BEGIN:VEVENT
-UID:${eventUID}
-SEQUENCE:0
-DTSTAMP:${formatDateForICS(new Date(), 'usa', userTimezone)}
-DTSTART:${formatDateForICS(date, 'usa', userTimezone)}
-DTEND:${formatDateForICS(new Date(date.getTime() + 60 * 60 * 1000), 'usa', userTimezone)}
-SUMMARY:New Moon
-DESCRIPTION:New Moon phase
-LOCATION:${stationTitle}
-STATUS:CONFIRMED
-END:VEVENT`;
-      events.push(eventContent);
-    } else if (moonPhase === 'full') {
-      const eventUID = `moon-full-${date.getTime()}@tideincal.com`;
-      const eventContent = `BEGIN:VEVENT
-UID:${eventUID}
-SEQUENCE:0
-DTSTAMP:${formatDateForICS(new Date(), 'usa', userTimezone)}
-DTSTART:${formatDateForICS(date, 'usa', userTimezone)}
-DTEND:${formatDateForICS(new Date(date.getTime() + 60 * 60 * 1000), 'usa', userTimezone)}
-SUMMARY:Full Moon
-DESCRIPTION:Full Moon phase
-LOCATION:${stationTitle}
-STATUS:CONFIRMED
-END:VEVENT`;
-      events.push(eventContent);
-    }
-  }
-  
-  return events;
-}
-
-/**
- * Simple moon phase calculation (approximate)
- * Returns 'new', 'full', or null
- */
-function getMoonPhase(date) {
-  // Approximate lunar cycle: 29.5 days
-  // This is a simplified calculation
-  const lunarCycle = 29.5;
-  const knownNewMoon = new Date('2024-01-11'); // Reference new moon
-  const daysSince = (date - knownNewMoon) / (1000 * 60 * 60 * 24);
-  const phase = (daysSince % lunarCycle) / lunarCycle;
-  
-  if (phase < 0.05 || phase > 0.95) {
-    return 'new';
-  } else if (phase > 0.45 && phase < 0.55) {
-    return 'full';
-  }
-  return null;
+export function mergeTideAndGoldenHourICS(tideIcs, goldenIcs, calendarName, userTimezone = 'UTC') {
+  const veventRegex = /BEGIN:VEVENT[\s\S]*?END:VEVENT/g;
+  const tideEvents = (tideIcs.match(veventRegex) || []).join('\n');
+  const goldenEvents = (goldenIcs.match(veventRegex) || []).join('\n');
+  const allEvents = [tideEvents, goldenEvents].filter(Boolean).join('\n');
+  return `BEGIN:VCALENDAR
+VERSION:2.0
+CALSCALE:GREGORIAN
+PRODID:-//Tide In Calendar//TideCal+GoldenHour//EN
+METHOD:PUBLISH
+X-WR-CALNAME:${(calendarName || 'Tide + Golden Hour').replace(/\n/g, ' ')}
+X-WR-TIMEZONE:${userTimezone}
+${allEvents}
+END:VCALENDAR`;
 }
