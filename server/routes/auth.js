@@ -77,12 +77,6 @@ function normalizeSubscriptionPeriodEnd(subscription) {
     }
   }
 
-  if (!periodEnd && subscription?.status === 'active') {
-    // Fallback: assume 1 year for active subscriptions with missing period end
-    periodEnd = new Date();
-    periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-  }
-
   return periodEnd;
 }
 
@@ -545,6 +539,61 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
       .sort({ createdAt: -1 })
       .toArray();
     
+    // Compute moon calendar entitlements (standalone purchases)
+    const moonPurchases = await db.collection('purchases')
+      .find({
+        userId: new ObjectId(req.user._id),
+        product: 'moon'
+      })
+      .toArray();
+    let moonStandaloneAllowed = false;
+    let moonStandaloneStart = null;
+    let moonStandaloneEnd = null;
+
+    for (const p of moonPurchases) {
+      const purchaseDate = p.purchaseDate || p.createdAt;
+      if (!purchaseDate) continue;
+
+      const entitlementEnd = p.entitlementEnd || (() => {
+        const d = new Date(purchaseDate);
+        const year = d.getUTCFullYear() + 1;
+        const month = d.getUTCMonth();
+        const day = d.getUTCDate();
+        return new Date(Date.UTC(year, month, day));
+      })();
+
+      if (entitlementEnd >= now) {
+        moonStandaloneAllowed = true;
+        if (!moonStandaloneStart || purchaseDate < moonStandaloneStart) {
+          moonStandaloneStart = purchaseDate;
+        }
+        if (!moonStandaloneEnd || entitlementEnd > moonStandaloneEnd) {
+          moonStandaloneEnd = entitlementEnd;
+        }
+      }
+    }
+
+    // Derive overall moon calendar entitlement combining Pro + standalone
+    const proMoonAllowed = hasActiveSubscription && !!subscriptionCurrentPeriodEnd;
+    const proMoonEnd = subscriptionCurrentPeriodEnd || null;
+
+    const moonAllowed = proMoonAllowed || moonStandaloneAllowed;
+    let moonStartDate = null;
+    let moonEndDate = null;
+
+    if (moonAllowed) {
+      if (proMoonAllowed) {
+        moonStartDate = now;
+      } else if (moonStandaloneAllowed) {
+        moonStartDate = moonStandaloneStart;
+      }
+
+      const candidates = [proMoonEnd, moonStandaloneEnd].filter(Boolean);
+      if (candidates.length > 0) {
+        moonEndDate = new Date(Math.max(...candidates.map(d => d.getTime())));
+      }
+    }
+
     const entitlements = {
       unlimited: hasActiveSubscription,
       unlimitedSince: user.unlimitedSince || null,
@@ -557,7 +606,16 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
         stationTitle: p.regenerationParams?.stationTitle || p.metadata?.stationTitle,
         country: p.regenerationParams?.country || p.metadata?.country,
         stationId: p.regenerationParams?.stationId || p.metadata?.stationId
-      }))
+      })),
+      moonCalendar: {
+        allowed: moonAllowed,
+        startDate: moonStartDate,
+        endDate: moonEndDate,
+        sources: {
+          pro: proMoonAllowed,
+          standalone: moonStandaloneAllowed
+        }
+      }
     };
     
     res.json(entitlements);
@@ -593,7 +651,7 @@ router.get('/me/purchases', requireAuth, async (req, res) => {
         const expiresAt = p.expiresAt || new Date(new Date(purchaseDate).getTime() + 365 * 24 * 60 * 60 * 1000);
         const daysRemaining = Math.max(0, Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24)));
         const isExpired = expiresAt < now;
-        
+
         result.isExpired = isExpired;
         result.daysRemaining = daysRemaining;
         result.expiresAt = expiresAt;
@@ -619,6 +677,17 @@ router.get('/me/purchases', requireAuth, async (req, res) => {
         if (existingCountry) result.regenerationParams.country = existingCountry;
         if (existingStationId) result.regenerationParams.stationId = existingStationId;
         if (existingStationTitle) result.regenerationParams.stationTitle = existingStationTitle;
+      } else if (p.product === 'golden') {
+        const purchaseDate = p.purchaseDate || p.createdAt;
+        const expiresAt = p.expiresAt || new Date(new Date(purchaseDate).getTime() + 365 * 24 * 60 * 60 * 1000);
+        const daysRemaining = Math.max(0, Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24)));
+        const isExpired = expiresAt < now;
+        result.isExpired = isExpired;
+        result.daysRemaining = daysRemaining;
+        result.expiresAt = expiresAt;
+        if (!result.regenerationParams && p.regenerationParams) {
+          result.regenerationParams = { ...p.regenerationParams };
+        }
       } else if (p.product === 'subscription') {
         // For subscriptions, verify with Stripe
         let periodEnd = normalizeStoredPeriodEnd(p.subscriptionCurrentPeriodEnd);
@@ -655,15 +724,6 @@ router.get('/me/purchases', requireAuth, async (req, res) => {
         } else {
           // No Stripe ID, use stored value
           isActive = periodEnd && periodEnd > now;
-        }
-
-        // Fallback: if period end missing, assume 1 year from purchase
-        if (!periodEnd && p.createdAt) {
-          periodEnd = new Date(p.createdAt);
-          periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-        }
-        if (!isActive && periodEnd && periodEnd > now) {
-          isActive = true;
         }
         
         result.isActive = isActive;

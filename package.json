@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "argon2": "^0.44.0",
+    "astronomy-engine": "^2.1.19",
     "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
     "csurf": "^1.11.0",

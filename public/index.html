@@ -126,7 +126,8 @@
       <h1 class="hero-title">Tide In Calendar</h1>
       <h1>Know the <span class="tides">TIDES</span> before you arrive<br> No App, No Clutter.</h1>
       <h1 class="text-white" style="font-family: 'Kanit', sans-serif; font-size: 2.2rem;">
-        Get High & Low Tides in Your Calendar for a Full Year,  Just <span style="color:#7DF9FF;">$5</span>
+        Get High and Low Tides for One location for Just <span style="color:#7DF9FF;">$5</span>
+        <div>or <span style="color:#7DF9FF;">GO PRO</span> for Unlimited Locations, Moon Phases, and Golden Hour.</div
       </h1>
 
       <a href="#steps" class="cta-button">Add Tides to My Calendar</a>
@@ -275,7 +276,24 @@
       </div>
       <div class="modal-body text-center">
         <p class="mb-4">Select the plan that best fits your needs:</p>
-        
+
+        <div class="d-flex flex-wrap gap-3 justify-content-center mb-3" id="planAddons">
+          <!-- Moon Phases: hidden until wired end-to-end in this checkout flow -->
+          <label class="d-flex align-items-center gap-2 mb-0 d-none" id="planIncludeMoonWrap">
+            <input type="checkbox" id="planIncludeMoon" class="form-check-input" disabled />
+            <span>Moon Phases</span>
+          </label>
+          <label class="d-flex flex-column align-items-center text-center gap-1 mb-0 w-100">
+            <div class="d-flex align-items-center justify-content-center gap-2">
+              <input type="checkbox" id="planIncludeGoldenHour" class="form-check-input" />
+              <span class="fw-semibold">Add Golden Hour for this location for $4.99</span>
+            </div>
+            <small class="text-muted">
+              Includes 2 daily calendar events: Morning Golden Hour and Evening Golden Hour
+            </small>
+          </label>
+        </div>
+
         <div class="row g-3">
           <div class="col-12 col-md-6">
             <div class="card h-100 plan-card" data-plan="single">
@@ -297,11 +315,11 @@
               </div>
             </div>
           </div>
-          
+
           <div class="col-12 col-md-6">
             <div class="card h-100 plan-card" data-plan="unlimited">
               <div class="card-body d-flex flex-column">
-                <h5 class="card-title">Unlimited Locations</h5>
+                <h5 class="card-title">Go Pro</h5>
                 <div class="price-display mb-3">
                   <span class="price">$24.99</span>
                   <small class="text-muted">/year</small>
@@ -311,6 +329,8 @@
                   <li class="mb-2">✅ Unlimited locations</li>
                   <li class="mb-2">✅ Download to calendar</li>
                   <li class="mb-2">✅ Works offline forever</li>
+                  <li class="mb-2">✅ Moon Phases Included</li>
+                  <li class="mb-2">✅ Golden Hour per location</li>
                   <li class="mb-2">✅ Best value for explorers</li>
                 </ul>
                 <button type="button" class="btn btn-primary w-100 mt-auto js-checkout-trigger" onclick="selectPlan('unlimited', false, this)">
@@ -330,39 +350,44 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="upsellModalLabel">💡 Upgrade to Unlimited?</h5>
+        <h5 class="modal-title" id="upsellModalLabel">💡 Upgrade to Pro!</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body text-center">
-        <div class="mb-4">
-          <div class="badge bg-warning fs-6 mb-3">SPECIAL OFFER</div>
-          <p id="upsellSavings" class="mb-4"></p>
-          <p class="mb-4">With unlimited access, you can generate tide calendars for any station, anytime!</p>
+        <div class="">
+          <div class="badge bg-warning fs-6 mb-3 d-block mx-auto">LIMITED SPECIAL OFFER</div>
+          <div id="upsellCountdownWrap" class="upsell-countdown-wrap mb-3 d-inline-flex flex-column align-items-center justify-content-center mx-auto">
+            <p class="upsell-countdown-urgency mb-1">⏱ This offer expires in</p>
+            <p class="upsell-countdown-time mb-0" id="upsellCountdown" aria-live="polite">2:00</p>
+          </div>
+          <p id="upsellSavings"></p>
         </div>
-        
+
         <div class="row g-3">
           <div class="col-12">
             <div class="card border-success">
               <div class="card-body">
-                <h5 class="card-title text-success">Unlimited Subscription</h5>
+                <h5 class="card-title text-success">Go Pro</h5>
                 <div class="price-display mb-3">
-                  <span class="price text-success">$24.99</span>
+                  <span class="price text-success" id="upsellModalPrice">$19.99</span>
                   <small class="text-muted">/year</small>
                 </div>
                 <ul class="list-unstyled text-start">
-                  <li class="mb-2">✅ Unlimited station downloads</li>
+                  <li class="mb-2">✅ Unlimited Locations</li>
                   <li class="mb-2">✅ Generate anytime</li>
-                  <li class="mb-2">✅ No expiration</li>
+                  <li class="mb-2">✅ No more payments</li>
                   <li class="mb-2">✅ Best value for multiple locations</li>
+                  <li class="mb-2">✅ Moon Phases Included</li>
+                  <li class="mb-2">✅ Unlimited Golden Hour Locations </li>
                 </ul>
                 <button type="button" class="btn btn-gradient w-100 mt-3 js-checkout-trigger" onclick="selectPlan('unlimited', true, this)">
-                  🎉 Upgrade to Unlimited
+                  🎉 Upgrade to Pro
                 </button>
               </div>
             </div>
           </div>
         </div>
-        
+
         <div class="mt-4">
           <button class="btn btn-outline-secondary" onclick="closeUpsellAndContinue()">
             Continue with One-Time Purchase ($5)
@@ -386,7 +411,7 @@
           <div class="d-flex flex-column gap-2">
             <div class="fw-semibold" id="verificationBannerTitle">Email verification required</div>
             <div id="verificationBannerMessage">Please verify your email to continue checkout.</div>
-            <div class="d-flex flex-wrap gap-2">
+            <div class="d-flex flex-wrap gsap-2">
               <button id="verificationResendBtn" class="btn btn-outline-primary btn-sm">Resend email</button>
               <button id="verificationContinueBtn" class="btn btn-gradient btn-sm">I verified</button>
               <a id="verificationSelectLink" class="btn btn-outline-light btn-sm" href="#mapSection">Select location</a>

@@ -1,3 +1,4 @@
+
 function setMessage(target, message) {
   if (!target) return;
   target.textContent = message;

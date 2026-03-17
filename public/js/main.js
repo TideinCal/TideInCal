@@ -493,6 +493,20 @@ window.addEventListener('DOMContentLoaded', () => {
 // Declare the map variable at a global scope so it’s accessible throughout the file
 let map;
 
+// Entitlements cache (used to show Pro-only UI like Golden Hour checkbox on tide popup)
+let isUnlimitedProUser = false;
+(async function initEntitlementsForMap() {
+  try {
+    const res = await fetch('/api/auth/me/entitlements', { credentials: 'include' });
+    if (res.ok) {
+      const { unlimited } = await res.json();
+      isUnlimitedProUser = !!unlimited;
+    }
+  } catch (e) {
+    // Ignore; non-auth users simply won't see Pro-only UI
+  }
+})();
+
 // Dynamically load the popup once a tide icon is selected (bootstrap Card)
 const renderModalContent = (title, id, region, lat, lon, type) => {
   localStorage.setItem('region', region);
@@ -509,9 +523,17 @@ const renderModalContent = (title, id, region, lat, lon, type) => {
         <h6 class="card-text">
           Select "Download File" to get 1 Year Of Tide Data To Your Calendar from this station
         </h6>
-        <button class="btn download-btn" onclick="handleDownloadClick('${id}', '${title}', '${region}')">
+        <button class="btn download-btn" onclick="handleDownloadClick('${id}', '${title.replace(/'/g, "\\'")}', '${region}')">
           <img src="/img/whiteLogo.png" alt="calendar icon">Download File
         </button>
+        <div class="mt-3 d-none" id="proGoldenWrap-${id}">
+          <div class="form-check d-flex align-items-center justify-content-center gap-2">
+            <input class="form-check-input pro-golden-checkbox" type="checkbox" id="proGoldenCheckbox-${id}">
+            <label class="form-check-label mb-0" for="proGoldenCheckbox-${id}">
+              Add Golden Hour To This Location
+            </label>
+          </div>
+        </div>
       </div>
     </div>`;
 };
@@ -519,6 +541,21 @@ const renderModalContent = (title, id, region, lat, lon, type) => {
 // Handle download button click
 // Global variables to store station context for plan chooser
 let pendingStationContext = null;
+/** 'tide' | 'golden_only' - whether planModal was opened from a tide station or a Golden Hour–only location */
+let pendingContextType = 'tide';
+/** For Golden Hour–only flow: { lat, lng, label }. Set when opening from search marker or current location. */
+let pendingGoldenLocation = null;
+/** Last clicked tide station coords so we can add them to pendingStationContext (for tide+golden). */
+let lastClickedStationLatLon = null;
+
+/** User timezone for Golden Hour (and other) flows. Prefer real timezone; fallback UTC. */
+function getUserTimezone() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz && typeof tz === 'string') return tz;
+  } catch (e) {}
+  return 'UTC';
+}
 
 const PENDING_CHECKOUT_KEY = 'pendingCheckout';
 const EMAIL_VERIFIED_FLAG = 'emailVerifiedJustNow';
@@ -772,8 +809,15 @@ async function attemptResumeCheckout() {
 
 async function handleDownloadClick(stationID, stationTitle, country) {
   try {
-    // Store station context for later use
-    pendingStationContext = { stationID, stationTitle, country };
+    pendingContextType = 'tide';
+    pendingGoldenLocation = null;
+    pendingStationContext = {
+      stationID,
+      stationTitle,
+      country,
+      lat: lastClickedStationLatLon?.lat,
+      lon: lastClickedStationLatLon?.lon
+    };
 
     // Check if user is authenticated
     const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
@@ -804,7 +848,36 @@ async function handleDownloadClick(stationID, stationTitle, country) {
       return;
     }
 
-    // User is authenticated, show plan chooser
+    // Check entitlements to see if user is Pro (unlimited)
+    try {
+      const entRes = await fetch('/api/auth/me/entitlements', { credentials: 'include' });
+      if (entRes.ok) {
+        const { unlimited } = await entRes.json();
+        isUnlimitedProUser = !!unlimited;
+        if (unlimited) {
+          // For Pro users, use tide -> dlFile flow directly, with optional Golden Hour add-on for this station
+          const checkbox = document.getElementById(`proGoldenCheckbox-${stationID}`);
+          const includeGoldenHour = checkbox?.checked === true;
+          const params = new URLSearchParams({
+            stationID,
+            stationTitle,
+            country
+          });
+          if (includeGoldenHour && lastClickedStationLatLon) {
+            params.set('includeGoldenHour', 'true');
+            params.set('goldenLat', String(lastClickedStationLatLon.lat));
+            params.set('goldenLng', String(lastClickedStationLatLon.lon));
+            params.set('goldenLocationName', stationTitle);
+          }
+          window.location.href = `/dlFile.html?${params.toString()}`;
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to read user entitlements for tide download:', e);
+    }
+
+    // Non-Pro users: show plan chooser as before
     openPlanModal();
 
   } catch (error) {
@@ -824,15 +897,82 @@ async function handleDownloadClick(stationID, stationTitle, country) {
 // Make handleDownloadClick globally available
 window.handleDownloadClick = handleDownloadClick;
 
+/** Golden Hour search marker: one at a time, state for lat/lng/label */
+let goldenSearchMarker = null;
+let goldenSearchLocation = null;
+
+/** Called when user clicks "Create Golden Hour Calendar" on the Golden Hour search marker. Opens planModal (or Pro direct download). */
+async function handleGoldenHourLocationClick() {
+  if (!goldenSearchLocation) return;
+  pendingGoldenLocation = { ...goldenSearchLocation };
+  pendingContextType = 'golden_only';
+  pendingStationContext = null;
+  const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
+  if (!authResponse.ok) {
+    openAuthModal('signup');
+    return;
+  }
+  const { user } = await authResponse.json();
+  if (!user) {
+    openAuthModal('signup');
+    return;
+  }
+  openPlanModal();
+}
+window.handleGoldenHourLocationClick = handleGoldenHourLocationClick;
+
+// Pro: generate Golden Hour for current context (search marker or current location) and download
+async function generateGoldenHourProAndDownload() {
+  if (!pendingGoldenLocation) return;
+  const { lat, lng, label } = pendingGoldenLocation;
+  try {
+    const token = await getCsrfToken();
+    const res = await fetch('/api/downloads/golden', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
+      credentials: 'include',
+      body: JSON.stringify({ lat, lng, locationName: label || 'Location', userTimezone: getUserTimezone() })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || err.error || 'Failed to generate Golden Hour');
+    }
+    const blob = await res.blob();
+    const filename = res.headers.get('Content-Disposition')?.match(/filename="?([^"]+)"?/)?.[1] || 'golden-hour.ics';
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error('Golden Hour generation error:', e);
+    setVerificationBannerState({
+      title: 'Golden Hour unavailable',
+      message: e.message || 'Failed to generate Golden Hour calendar. Please try again.',
+      variant: 'danger',
+      showResend: false,
+      showContinue: false,
+      showSelectLink: false,
+      showDismiss: true
+    });
+  }
+}
+
 // Plan chooser modal functions
 async function openPlanModal() {
   try {
-    // Check if user has unlimited access
     const response = await fetch('/api/auth/me/entitlements', { credentials: 'include' });
     if (response.ok) {
       const { unlimited, oneTimePurchases } = await response.json();
-      
+
       if (unlimited) {
+        if (pendingGoldenLocation) {
+          await generateGoldenHourProAndDownload();
+          return;
+        }
         if (!pendingStationContext) {
           console.error('Station context missing for unlimited download');
           return;
@@ -847,29 +987,36 @@ async function openPlanModal() {
         return;
       }
       
-      // Check if user has 2+ one-time purchases (show upsell)
+      // Show upsell on 2nd, 3rd, … purchase attempt (when user has 1+ one-time purchases, no subscription)
       const purchaseCount = oneTimePurchases ? oneTimePurchases.length : 0;
-      if (purchaseCount >= 2) {
+      if (purchaseCount >= 1) {
         // Show upsell modal
         const upsellModal = document.getElementById('upsellModal');
         if (upsellModal) {
-          // Calculate savings
+          // Calculate savings (limited-time offer price shown in upsell)
           const totalSpent = purchaseCount * 5; // $5 per purchase
-          const subscriptionCost = 24.99; // $24.99 for subscription
-          const savings = totalSpent - subscriptionCost;
-          
+          const offerPrice = 19.99; // $19.99 while countdown is active
+          const savings = totalSpent - offerPrice;
+          const stationWord = purchaseCount === 1 ? 'station' : 'stations';
+
+          // Store for timer-end update (savings text switches to $24.99)
+          upsellModal.dataset.purchaseCount = String(purchaseCount);
+          upsellModal.dataset.totalSpent = String(totalSpent);
+
           // Update upsell modal content
           const savingsText = document.getElementById('upsellSavings');
           if (savingsText) {
-            savingsText.textContent = `You've spent $${Number(totalSpent).toFixed(2)} on ${purchaseCount} stations. Upgrade to unlimited for $${Number(subscriptionCost).toFixed(2)} (save $${Math.abs(savings).toFixed(2)} more!)`;
+            savingsText.textContent = `You've spent $${Number(totalSpent).toFixed(2)} on ${purchaseCount} ${stationWord}. Upgrade to Pro for $${Number(offerPrice).toFixed(2)} (save $${Math.abs(savings).toFixed(2)} more!)`;
           }
           
           if (window.bootstrap?.Modal) {
             const bsModal = new bootstrap.Modal(upsellModal);
             bsModal.show();
+            startUpsellCountdown();
           } else {
             upsellModal.style.display = 'block';
             upsellModal.classList.add('show');
+            startUpsellCountdown();
           }
           return;
         }
@@ -925,22 +1072,55 @@ function moveFocusOutOfModal(modal) {
 
 async function selectPlan(plan, fromUpsell = false, _triggerButton = null) {
   try {
-    if (!pendingStationContext && plan === 'single') {
-      throw new Error('Station context missing for single plan');
+    const includeMoon = document.getElementById('planIncludeMoon')?.checked === true;
+    const includeGoldenHour = document.getElementById('planIncludeGoldenHour')?.checked === true;
+
+    if (plan === 'single') {
+      const isGoldenOnly = pendingContextType === 'golden_only' && pendingGoldenLocation;
+      if (!isGoldenOnly && !pendingStationContext) {
+        throw new Error('Select a tide station or a location for Golden Hour first.');
+      }
+      if (isGoldenOnly && !pendingGoldenLocation) {
+        throw new Error('Select a location for Golden Hour first.');
+      }
     }
 
     setCheckoutButtonsLoading(true);
 
-    // Prepare checkout data
+    const userTimezone = getUserTimezone();
     const checkoutData = {
-      plan: plan === 'unlimited' ? 'unlimited' : 'single'
+      plan: plan === 'unlimited' ? 'unlimited' : 'single',
+      includeMoon: includeMoon,
+      includeGoldenHour: includeGoldenHour,
+      userTimezone: userTimezone
     };
 
-    // Add station info for single plan
-    if (plan === 'single' && pendingStationContext) {
-      checkoutData.stationID = pendingStationContext.stationID;
-      checkoutData.stationTitle = pendingStationContext.stationTitle;
-      checkoutData.country = pendingStationContext.country;
+    if (plan === 'single') {
+      const isGoldenOnly = pendingContextType === 'golden_only' && pendingGoldenLocation;
+      if (isGoldenOnly) {
+        checkoutData.goldenOnly = true;
+        checkoutData.goldenLat = pendingGoldenLocation.lat;
+        checkoutData.goldenLng = pendingGoldenLocation.lng;
+        checkoutData.goldenLocationName = pendingGoldenLocation.label || 'Location';
+      } else {
+        checkoutData.stationID = pendingStationContext.stationID;
+        checkoutData.stationTitle = pendingStationContext.stationTitle;
+        checkoutData.country = pendingStationContext.country;
+        checkoutData.stationLat = pendingStationContext.lat;
+        checkoutData.stationLng = pendingStationContext.lon;
+        if (includeGoldenHour && pendingStationContext) {
+          checkoutData.goldenLat = pendingStationContext.lat;
+          checkoutData.goldenLng = pendingStationContext.lon;
+          checkoutData.goldenLocationName = pendingStationContext.stationTitle || 'Location';
+        }
+      }
+    }
+
+    if (plan === 'unlimited' && fromUpsell && upsellOfferActive) {
+      checkoutData.useProOffer = true;
+    }
+    if (plan === 'unlimited' && fromUpsell) {
+      console.log('[checkout] Upgrade from upsell: useProOffer=', !!checkoutData.useProOffer, 'upsellOfferActive=', upsellOfferActive);
     }
 
     // Close modals (move focus out first to avoid aria-hidden + focused descendant)
@@ -959,6 +1139,7 @@ async function selectPlan(plan, fromUpsell = false, _triggerButton = null) {
       }
     }
     if (upsellModal) {
+      stopUpsellCountdown();
       if (window.bootstrap?.Modal) {
         const bsModal = bootstrap.Modal.getInstance(upsellModal);
         bsModal?.hide();
@@ -988,10 +1169,72 @@ async function selectPlan(plan, fromUpsell = false, _triggerButton = null) {
   }
 }
 
+// Upsell modal: 2-minute countdown
+let upsellCountdownInterval = null;
+let upsellOfferActive = false;
+
+function startUpsellCountdown() {
+  const el = document.getElementById('upsellCountdown');
+  const wrap = document.getElementById('upsellCountdownWrap');
+  const priceEl = document.getElementById('upsellModalPrice');
+  if (!el) return;
+  if (upsellCountdownInterval) clearInterval(upsellCountdownInterval);
+  let secondsLeft = 2 * 60;
+
+  // Show countdown block and set offer price when starting
+  if (wrap) wrap.style.display = '';
+  if (priceEl) priceEl.textContent = '$19.99';
+  upsellOfferActive = true;
+
+  function format(sec) {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  el.textContent = format(secondsLeft);
+  upsellCountdownInterval = setInterval(function () {
+    secondsLeft -= 1;
+    if (secondsLeft <= 0) {
+      clearInterval(upsellCountdownInterval);
+      upsellCountdownInterval = null;
+      upsellOfferActive = false;
+      // Hide countdown block and switch to full price
+      if (wrap) wrap.style.display = 'none';
+      if (priceEl) priceEl.textContent = '$24.99';
+      // Update savings sentence to $24.99
+      const upsellModal = document.getElementById('upsellModal');
+      const savingsText = document.getElementById('upsellSavings');
+      if (upsellModal && savingsText && upsellModal.dataset.purchaseCount !== undefined) {
+        const purchaseCount = parseInt(upsellModal.dataset.purchaseCount, 10);
+        const totalSpent = parseFloat(upsellModal.dataset.totalSpent) || purchaseCount * 5;
+        const fullPrice = 24.99;
+        const savings = totalSpent - fullPrice;
+        const stationWord = purchaseCount === 1 ? 'station' : 'stations';
+        savingsText.textContent = `You've spent $${Number(totalSpent).toFixed(2)} on ${purchaseCount} ${stationWord}. Upgrade to Pro for $${fullPrice.toFixed(2)} (save $${Math.abs(savings).toFixed(2)} more!)`;
+      }
+      return;
+    }
+    el.textContent = format(secondsLeft);
+  }, 1000);
+}
+
+function stopUpsellCountdown() {
+  upsellOfferActive = false;
+  if (upsellCountdownInterval) {
+    clearInterval(upsellCountdownInterval);
+    upsellCountdownInterval = null;
+  }
+}
+
+// Stop countdown when upsell modal is closed by X or backdrop
+document.getElementById('upsellModal')?.addEventListener('hidden.bs.modal', stopUpsellCountdown);
+
 // Close upsell modal and continue with one-time purchase
 function closeUpsellAndContinue() {
   const upsellModal = document.getElementById('upsellModal');
   if (upsellModal) {
+    stopUpsellCountdown();
     moveFocusOutOfModal(upsellModal);
     if (window.bootstrap?.Modal) {
       const bsModal = bootstrap.Modal.getInstance(upsellModal);
@@ -1001,8 +1244,36 @@ function closeUpsellAndContinue() {
       upsellModal.classList.remove('show');
     }
   }
-  
-  // Show regular plan modal
+
+  // Golden Hour–only: go straight to Stripe after modal closes (await so redirect isn't lost)
+  if (pendingContextType === 'golden_only' && pendingGoldenLocation) {
+    const checkoutData = {
+      plan: 'single',
+      goldenOnly: true,
+      includeGoldenHour: true,
+      goldenLat: pendingGoldenLocation.lat,
+      goldenLng: pendingGoldenLocation.lng,
+      goldenLocationName: pendingGoldenLocation.label || 'Location',
+      userTimezone: getUserTimezone()
+    };
+    setTimeout(() => {
+      startCheckoutSession(checkoutData).catch((err) => {
+        console.error('Golden Hour checkout error:', err);
+        setVerificationBannerState({
+          title: 'Checkout unavailable',
+          message: err.message || 'Failed to start checkout. Please try again.',
+          variant: 'danger',
+          showResend: false,
+          showContinue: false,
+          showSelectLink: false,
+          showDismiss: true
+        });
+      });
+    }, 350);
+    return;
+  }
+
+  // Tide flow: show plan modal to choose plan and add-ons
   setTimeout(() => {
     const modal = document.getElementById('planModal');
     if (modal) {
@@ -1066,6 +1337,7 @@ const loadTideStations = async () => {
         const marker = L.marker([lat, lon], { icon: tideIcon });
 
         marker.on('click', () => {
+          lastClickedStationLatLon = { lat, lon };
           const content = renderModalContent(
             station.name,
             station.id,
@@ -1078,6 +1350,16 @@ const loadTideStations = async () => {
             .setLatLng([lat, lon])
             .setContent(content)
             .openOn(map);
+          // If user is Pro (unlimited), reveal the Golden Hour checkbox for this tide station
+          if (isUnlimitedProUser) {
+            const wrapId = `proGoldenWrap-${station.id}`;
+            setTimeout(() => {
+              const wrap = document.getElementById(wrapId);
+              if (wrap) {
+                wrap.classList.remove('d-none');
+              }
+            }, 0);
+          }
         });
 
         stationMarkerGroup.addLayer(marker);
@@ -1135,58 +1417,102 @@ const initMap = () => {
     collapsed: true
   }).addTo(map);
 
-  // Handle geocoder results
+  // Handle geocoder results: one persistent Golden Hour–only marker (replace previous)
   geocoder.on('markgeocode', function(e) {
     const result = e.geocode;
     const latlng = result.center;
+    const label = (result.name || (result.html && result.html.replace(/<[^>]+>/g, '').trim()) || 'Searched location').slice(0, 200);
 
-
-    // Pan to the result location with zoom level 12
     map.setView(latlng, 12);
 
-    // Add a temporary marker at the searched location
-    const searchMarker = L.marker(latlng, {
+    if (goldenSearchMarker) {
+      map.removeLayer(goldenSearchMarker);
+      goldenSearchMarker = null;
+    }
+
+    goldenSearchLocation = { lat: latlng.lat, lng: latlng.lng, label };
+
+    const popupContent = `
+      <div class="card">
+        <div class="card-body">
+          <p class="card-label">Golden Hour location</p>
+          <h6 class="fw-bolder">${label.replace(/</g, '&lt;')}</h6>
+          <p class="card-text small">Create a Golden Hour calendar for this location.</p>
+          <button class="btn download-btn" onclick="handleGoldenHourLocationClick()">
+            <img src="/img/whiteLogo.png" alt="calendar icon">Create Golden Hour Calendar
+          </button>
+        </div>
+      </div>`;
+
+    goldenSearchMarker = L.marker(latlng, {
       icon: L.divIcon({
-        className: 'search-marker',
-        html: '<div style="background-color: #007bff; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
+        className: 'golden-search-marker',
+        html: '<div style="background-color: #e6a800; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
       })
     }).addTo(map);
 
-    // Remove the marker after 5 seconds
-    setTimeout(() => {
-      map.removeLayer(searchMarker);
-    }, 5000);
+    goldenSearchMarker.bindPopup(popupContent, { className: 'leaflet-popup' });
   });
 
 
 
 
-  // Function to scroll to map AND find user's location
+  // Store current location for Golden Hour (Pro or planModal)
+  let currentLocationMarker = null;
+
   function findMyLocationAndScroll() {
-    // First scroll to the map
     const mapSection = document.getElementById('map');
     if (mapSection) {
-      const navOffset = 56; // navbar height
+      const navOffset = 56;
       const y = mapSection.getBoundingClientRect().top + window.pageYOffset - navOffset;
       window.scrollTo({ top: y, behavior: 'smooth' });
     }
-    
-    // Then get user's location and show on map
+
     navigator.geolocation.getCurrentPosition((position) => {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
-
-      const userLocation = L.marker([latitude, longitude], { icon: myIcon }).addTo(map);
-      userLocation.setLatLng([latitude, longitude]);
-      userLocation.setZIndexOffset(50);
+      if (currentLocationMarker) map.removeLayer(currentLocationMarker);
+      currentLocationMarker = L.marker([latitude, longitude], { icon: myIcon }).addTo(map);
+      currentLocationMarker.setZIndexOffset(50);
       map.panTo(new L.LatLng(latitude, longitude));
+      const popupContent = `
+        <div class="card">
+          <div class="card-body">
+            <p class="card-label">Current location</p>
+            <h6 class="fw-bolder">Your location</h6>
+            <p class="card-text small">Create a Golden Hour calendar for your current location.</p>
+            <button class="btn download-btn" onclick="handleCurrentLocationGoldenHour()">
+              <img src="/img/whiteLogo.png" alt="calendar icon">Create Golden Hour Calendar
+            </button>
+          </div>
+        </div>`;
+      currentLocationMarker.bindPopup(popupContent, { className: 'leaflet-popup' });
     }, (error) => {
       console.warn('Geolocation error:', error);
-      // Still scroll to map even if geolocation fails
     });
   }
+
+  async function handleCurrentLocationGoldenHour() {
+    if (!currentLocationMarker) return;
+    const latlng = currentLocationMarker.getLatLng();
+    pendingGoldenLocation = { lat: latlng.lat, lng: latlng.lng, label: 'Current Location' };
+    pendingContextType = 'golden_only';
+    pendingStationContext = null;
+    const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!authResponse.ok) {
+      openAuthModal('signup');
+      return;
+    }
+    const { user } = await authResponse.json();
+    if (!user) {
+      openAuthModal('signup');
+      return;
+    }
+    openPlanModal();
+  }
+  window.handleCurrentLocationGoldenHour = handleCurrentLocationGoldenHour;
 
   // Connect all "Find My Location" buttons
   document.getElementById('mapBtn')?.addEventListener('click', findMyLocationAndScroll);

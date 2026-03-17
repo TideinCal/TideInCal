@@ -328,11 +328,11 @@ function displaySubscriptionInfo(data) {
     const subscriptionInfo = document.getElementById('subscriptionInfo');
     if (!subscriptionInfo) return;
     
-    const { unlimited, unlimitedSince, subscriptionStatus, subscriptionCurrentPeriodEnd, oneTimePurchases } = data;
+    const { unlimited, unlimitedSince, subscriptionStatus, subscriptionCurrentPeriodEnd, oneTimePurchases, moonCalendar } = data;
     
     if (unlimited && subscriptionStatus === 'active') {
         const sinceDate = unlimitedSince ? new Date(unlimitedSince).toLocaleDateString() : 'Unknown';
-        const periodEnd = subscriptionCurrentPeriodEnd ? new Date(subscriptionCurrentPeriodEnd).toLocaleDateString() : 'Unknown';
+    const periodEnd = subscriptionCurrentPeriodEnd ? new Date(subscriptionCurrentPeriodEnd).toLocaleDateString() : null;
         subscriptionInfo.innerHTML = `
             <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                 <div>
@@ -341,7 +341,7 @@ function displaySubscriptionInfo(data) {
                         <span class="text-primary fw-bold">Active</span>
                     </div>
                     <p class="mb-0 text-muted">Unlimited access since ${sinceDate}</p>
-                    <small class="text-muted">Renews on ${periodEnd}</small>
+              ${periodEnd ? `<small class="text-muted">Renews on ${periodEnd}</small>` : `<small class="text-muted">Renewal date: Unknown</small>`}
                 </div>
                 <div class="text-end">
                     <div class="h5 mb-0 text-primary">∞</div>
@@ -349,7 +349,7 @@ function displaySubscriptionInfo(data) {
                 </div>
             </div>
             <div class="mt-3">
-                <a href="/#map" class="btn btn-gradient w-100 w-md-auto">Go to Map to Generate</a>
+                <a href="/#map" class="btn btn-gradient w-100 w-md-auto">Go to Map to Generate Tides &amp; Golden Hour</a>
             </div>
         `;
     } else {
@@ -374,6 +374,22 @@ function displaySubscriptionInfo(data) {
                 <button class="btn btn-gradient w-100 w-md-auto" onclick="upgradeToSubscription()">Upgrade to Subscription</button>
             </div>
         `;
+    }
+
+    // Moon calendar entitlement display
+    const moonSection = document.getElementById('moonCalendarSection');
+    const moonDetails = document.getElementById('moonCalendarDetails');
+    if (!moonSection || !moonDetails) return;
+
+    if (moonCalendar && moonCalendar.allowed && moonCalendar.endDate) {
+        const end = new Date(moonCalendar.endDate).toLocaleDateString();
+        moonDetails.textContent = `Access active. You can generate moon phases up to ${end}.`;
+        moonSection.classList.remove('d-none');
+    } else if (moonCalendar && moonCalendar.allowed) {
+        moonDetails.textContent = 'Access active for moon phases.';
+        moonSection.classList.remove('d-none');
+    } else {
+        moonSection.classList.add('d-none');
     }
 }
 
@@ -461,7 +477,8 @@ function showEmpty() {
     document.getElementById('purchasesContainer').classList.add('d-none');
 }
 
-// Show purchases table
+// Show purchases table.
+// Bundled tide + Golden Hour: one row (Tide + Golden Hour); download returns one combined ICS. Golden Hour (add-on) rows are hidden.
 function showPurchases(purchases, subscriptionDownloads = []) {
     document.getElementById('loadingState').classList.add('d-none');
     document.getElementById('errorState').classList.add('d-none');
@@ -497,10 +514,18 @@ function showPurchases(purchases, subscriptionDownloads = []) {
         const stationTitle = download.stationTitle || download.stationId || 'Unknown';
         const region = download.country || '—';
         const downloadDate = new Date(download.updatedAt || download.createdAt).toLocaleDateString();
+        const hasGolden = download.includeGoldenHour === true;
+        
+        const typeBadgeHtml = hasGolden
+            ? '<span class="badge bg-primary">Subscription Download</span> <span class="badge bg-warning text-dark ms-1">Tide + Golden Hour</span>'
+            : '<span class="badge bg-primary">Subscription Download</span>';
+        const stationCellHtml = hasGolden
+            ? `${stationTitle}<br><span class="small text-muted">Includes Golden Hour</span>`
+            : `${stationTitle}`;
         
         row.innerHTML = `
-            <td><span class="badge bg-primary">Subscription Download</span></td>
-            <td class="fw-medium">${stationTitle}</td>
+            <td>${typeBadgeHtml}</td>
+            <td class="fw-medium">${stationCellHtml}</td>
             <td class="text-muted">${region}</td>
             <td class="text-muted">${downloadDate}</td>
             <td class="text-muted">—</td>
@@ -515,10 +540,11 @@ function showPurchases(purchases, subscriptionDownloads = []) {
         tbody.appendChild(row);
 
         const cardRows = `
-            <div class="small text-muted">Type: Subscription Download</div>
+            <div class="small text-muted">Type: Subscription Download${hasGolden ? ' (Tide + Golden Hour)' : ''}</div>
             <div class="small text-muted">Station: ${stationTitle}</div>
             <div class="small text-muted">Region: ${region}</div>
             <div class="small text-muted">Last Download: ${downloadDate}</div>
+            ${hasGolden ? '<div class="small text-muted">Includes Golden Hour</div>' : ''}
         `;
         const cardAction = `
             <button class="btn btn-sm btn-gradient" onclick="generateSubscriptionDownload('${download.stationId}', '${stationTitle}', '${region}', this)">
@@ -529,10 +555,13 @@ function showPurchases(purchases, subscriptionDownloads = []) {
     });
     
     purchases.forEach(purchase => {
+        // Bundled Golden Hour is delivered with the tide purchase; do not show a separate row
+        if (purchase.product === 'golden' && purchase.regenerationParams?.bundledWithTide === true) {
+            return;
+        }
         const row = document.createElement('tr');
-        
         let typeBadge, stationTitle, region, purchaseDate, expiresAt, status, actionButton;
-        
+
         if (purchase.product === 'subscription') {
             typeBadge = '<span class="badge bg-primary">Subscription</span>';
             stationTitle = '—';
@@ -540,24 +569,44 @@ function showPurchases(purchases, subscriptionDownloads = []) {
             purchaseDate = new Date(purchase.createdAt).toLocaleDateString();
             const periodEnd = purchase.currentPeriodEnd ? new Date(purchase.currentPeriodEnd).toLocaleDateString() : 'Unknown';
             expiresAt = periodEnd;
-            status = purchase.isActive 
-                ? '<span class="badge bg-primary">Active</span>' 
+            status = purchase.isActive
+                ? '<span class="badge bg-primary">Active</span>'
                 : '<span class="badge bg-secondary">Inactive</span>';
-            actionButton = purchase.isActive 
+            actionButton = purchase.isActive
                 ? '<button class="btn btn-sm btn-gradient" onclick="window.location.href=\'/#map\'">Generate Files</button>'
                 : '<button class="btn btn-sm btn-outline-secondary" disabled>Expired</button>';
+        } else if (purchase.product === 'golden') {
+            const isAddOn = purchase.regenerationParams?.bundledWithTide === true;
+            typeBadge = isAddOn
+                ? '<span class="badge bg-warning text-dark">Golden Hour (add-on)</span>'
+                : '<span class="badge bg-warning text-dark">Golden Hour</span>';
+            stationTitle = purchase.regenerationParams?.locationName || 'Location';
+            region = '—';
+            purchaseDate = new Date(purchase.purchaseDate || purchase.createdAt).toLocaleDateString();
+            const expiresDate = purchase.expiresAt ? new Date(purchase.expiresAt) : new Date(new Date(purchase.purchaseDate || purchase.createdAt).getTime() + 365 * 24 * 60 * 60 * 1000);
+            expiresAt = expiresDate.toLocaleDateString();
+            const daysRemaining = purchase.daysRemaining !== undefined ? purchase.daysRemaining : Math.max(0, Math.ceil((expiresDate - new Date()) / (1000 * 60 * 60 * 24)));
+            const isExpired = purchase.isExpired !== undefined ? purchase.isExpired : expiresDate < new Date();
+            if (isExpired) {
+                status = '<span class="badge bg-danger">Expired</span>';
+                actionButton = '<button class="btn btn-sm btn-outline-secondary" disabled>Expired</button>';
+            } else {
+                const statusClass = daysRemaining > 30 ? 'success' : daysRemaining > 0 ? 'warning' : 'danger';
+                status = `<span class="badge bg-${statusClass}">${daysRemaining} days left</span>`;
+                actionButton = `<button class="btn btn-sm btn-gradient" onclick="downloadGoldenHour('${purchase._id}', this)">Download</button>`;
+            }
         } else {
-            // One-time purchase
-            typeBadge = '<span class="badge bg-primary">One-Time</span>';
+            const hasGolden = purchase.regenerationParams?.includeGoldenHour === true;
+            typeBadge = hasGolden
+                ? '<span class="badge bg-primary">Tide + Golden Hour</span>'
+                : '<span class="badge bg-primary">One-Time</span>';
             stationTitle = purchase.regenerationParams?.stationTitle || purchase.metadata?.stationTitle || 'Unknown';
             region = purchase.regenerationParams?.country || purchase.metadata?.country || '—';
             purchaseDate = new Date(purchase.purchaseDate || purchase.createdAt).toLocaleDateString();
             const expiresDate = purchase.expiresAt ? new Date(purchase.expiresAt) : new Date(new Date(purchase.purchaseDate || purchase.createdAt).getTime() + 365 * 24 * 60 * 60 * 1000);
             expiresAt = expiresDate.toLocaleDateString();
-            
             const daysRemaining = purchase.daysRemaining !== undefined ? purchase.daysRemaining : Math.max(0, Math.ceil((expiresDate - new Date()) / (1000 * 60 * 60 * 24)));
             const isExpired = purchase.isExpired !== undefined ? purchase.isExpired : expiresDate < new Date();
-            
             if (isExpired) {
                 status = '<span class="badge bg-danger">Expired</span>';
                 actionButton = '<button class="btn btn-sm btn-outline-secondary" disabled>Expired</button>';
@@ -567,7 +616,7 @@ function showPurchases(purchases, subscriptionDownloads = []) {
                 actionButton = `<button class="btn btn-sm btn-gradient" onclick="regeneratePurchase('${purchase._id}', this)">Download</button>`;
             }
         }
-        
+
         row.innerHTML = `
             <td>${typeBadge}</td>
             <td class="fw-medium">${stationTitle}</td>
@@ -577,7 +626,6 @@ function showPurchases(purchases, subscriptionDownloads = []) {
             <td>${status}</td>
             <td>${actionButton}</td>
         `;
-        
         tbody.appendChild(row);
 
         if (purchase.product === 'subscription') {
@@ -588,9 +636,19 @@ function showPurchases(purchases, subscriptionDownloads = []) {
                 <div class="small text-muted">Status: ${purchase.isActive ? 'Active' : 'Inactive'}</div>
             `;
             addCard('Subscription', cardRows, actionButton);
-        } else {
+        } else if (purchase.product === 'golden') {
+            const addOnNote = purchase.regenerationParams?.bundledWithTide ? ' (add-on, same location as tide)' : '';
             const cardRows = `
-                <div class="small text-muted">Type: One-Time</div>
+                <div class="small text-muted">Type: Golden Hour${addOnNote}</div>
+                <div class="small text-muted">Location: ${stationTitle}</div>
+                <div class="small text-muted">Purchase Date: ${purchaseDate}</div>
+                <div class="small text-muted">Expires: ${expiresAt}</div>
+            `;
+            addCard(stationTitle, cardRows, actionButton);
+        } else {
+            const tideNote = purchase.regenerationParams?.includeGoldenHour ? ' (includes Golden Hour)' : '';
+            const cardRows = `
+                <div class="small text-muted">Type: One-Time${tideNote}</div>
                 <div class="small text-muted">Station: ${stationTitle}</div>
                 <div class="small text-muted">Region: ${region}</div>
                 <div class="small text-muted">Purchase Date: ${purchaseDate}</div>
@@ -679,6 +737,55 @@ async function regeneratePurchase(purchaseId, button) {
     }
 }
 
+// Regenerate Golden Hour purchase
+async function downloadGoldenHour(purchaseId, button) {
+    try {
+        setButtonLoading(button, true, 'Generating...');
+        const token = await getCsrfToken();
+        const response = await fetch(`/api/downloads/golden/regenerate/${purchaseId}`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'X-CSRF-Token': token }
+        });
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to generate Golden Hour file');
+        }
+        const blob = await response.blob();
+        const filename = response.headers.get('Content-Disposition')?.match(/filename="?([^"]+)"?/)?.[1] || 'golden-hour.ics';
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        setVerificationBannerState({
+            title: 'Download ready',
+            message: 'Golden Hour calendar downloaded successfully.',
+            variant: 'success',
+            showResend: false,
+            showContinue: false,
+            showSelectLink: false,
+            showDismiss: true
+        });
+    } catch (error) {
+        console.error('[account] Error downloading Golden Hour:', error);
+        setVerificationBannerState({
+            title: 'Download failed',
+            message: error.message || 'Failed to generate Golden Hour calendar. Please try again.',
+            variant: 'danger',
+            showResend: false,
+            showContinue: false,
+            showSelectLink: false,
+            showDismiss: true
+        });
+    } finally {
+        setButtonLoading(button, false);
+    }
+}
+
 // Download again for subscription users
 async function generateSubscriptionDownload(stationId, stationTitle, country, button) {
     try {
@@ -752,10 +859,63 @@ async function generateSubscriptionDownload(stationId, stationTitle, country, bu
         setButtonLoading(button, false);
     }
 }
+async function downloadMoonCalendar(button) {
+    try {
+        setButtonLoading(button, true, 'Generating...');
+        const token = await getCsrfToken();
+        const response = await fetch('/api/downloads/moon', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'X-CSRF-Token': token
+            }
+        });
 
-// Make regeneratePurchase globally available
+        if (!response.ok) {
+            let message = 'Failed to generate moon calendar';
+            try {
+                const error = await response.json();
+                if (error && error.error) {
+                    message = error.error;
+                }
+            } catch (_) {
+                // ignore JSON parse errors
+            }
+            throw new Error(message);
+        }
+
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get('Content-Disposition');
+        const filename = contentDisposition?.match(/filename="?([^"]+)"?/)?.[1] || `moon-phases-${new Date().getFullYear()}.ics`;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('[account] Error generating moon calendar:', error);
+        setVerificationBannerState({
+            title: 'Moon calendar unavailable',
+            message: error.message || 'Failed to generate moon phases calendar. Please try again.',
+            variant: 'danger',
+            showResend: false,
+            showContinue: false,
+            showSelectLink: false,
+            showDismiss: true
+        });
+    } finally {
+        setButtonLoading(button, false);
+    }
+}
+
+// Make functions globally available
 window.regeneratePurchase = regeneratePurchase;
+window.downloadGoldenHour = downloadGoldenHour;
 window.generateSubscriptionDownload = generateSubscriptionDownload;
+window.downloadMoonCalendar = downloadMoonCalendar;
 
 async function upgradeToSubscription() {
     try {
