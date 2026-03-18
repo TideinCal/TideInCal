@@ -161,8 +161,15 @@ router.post('/session', csrfProtection, async (req, res) => {
       sessionConfig.allow_promotion_codes = true;
     }
 
-    if (user?.stripeCustomerId) {
-      sessionConfig.customer = user.stripeCustomerId;
+    // Prefer attaching an existing Stripe customer when we have a valid ID,
+    // but fall back to customer_email if the stored value is missing or malformed
+    let customerId = user?.stripeCustomerId;
+    if (customerId && typeof customerId === 'object') {
+      // Guard against legacy data where a full customer object/hash was stored
+      customerId = customerId.id || customerId.customer || null;
+    }
+    if (typeof customerId === 'string' && customerId.startsWith('cus_')) {
+      sessionConfig.customer = customerId;
     } else {
       sessionConfig.customer_email = req.user.email;
     }

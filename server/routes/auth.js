@@ -464,9 +464,13 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
         console.log('[entitlements] Verifying subscription with Stripe:', user.stripeSubscriptionId);
         const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
         
+        // Compute period ends from Stripe and stored fallback
+        const stripePeriodEnd = normalizeSubscriptionPeriodEnd(subscription);
+        const storedPeriodEnd = normalizeStoredPeriodEnd(user.subscriptionCurrentPeriodEnd);
+
         // Update subscription info from Stripe
         subscriptionStatus = subscription.status;
-        subscriptionCurrentPeriodEnd = normalizeSubscriptionPeriodEnd(subscription);
+        subscriptionCurrentPeriodEnd = stripePeriodEnd || storedPeriodEnd;
         
         hasActiveSubscription =
           subscription.status === 'active' &&
@@ -481,10 +485,9 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
             updatedAt: new Date()
           }
         };
-        if (subscriptionCurrentPeriodEnd) {
-          update.$set.subscriptionCurrentPeriodEnd = subscriptionCurrentPeriodEnd;
-        } else {
-          update.$unset = { subscriptionCurrentPeriodEnd: '' };
+        // Only persist period end when Stripe gives a valid value; do not unset fallback
+        if (stripePeriodEnd) {
+          update.$set.subscriptionCurrentPeriodEnd = stripePeriodEnd;
         }
         await db.collection('users').updateOne(
           { _id: new ObjectId(req.user._id) },
@@ -697,7 +700,9 @@ router.get('/me/purchases', requireAuth, async (req, res) => {
           try {
             console.log('[purchases] Verifying subscription purchase with Stripe:', p.stripeSubscriptionId);
             const subscription = await stripe.subscriptions.retrieve(p.stripeSubscriptionId);
-            periodEnd = normalizeSubscriptionPeriodEnd(subscription);
+            const stripePeriodEnd = normalizeSubscriptionPeriodEnd(subscription);
+            const storedPeriodEnd = normalizeStoredPeriodEnd(p.subscriptionCurrentPeriodEnd);
+            periodEnd = stripePeriodEnd || storedPeriodEnd;
             isActive = subscription.status === 'active' && periodEnd && periodEnd > now;
             
             // Update purchase record with latest info
@@ -707,10 +712,8 @@ router.get('/me/purchases', requireAuth, async (req, res) => {
                 updatedAt: new Date()
               }
             };
-            if (periodEnd) {
-              update.$set.subscriptionCurrentPeriodEnd = periodEnd;
-            } else {
-              update.$unset = { subscriptionCurrentPeriodEnd: '' };
+            if (stripePeriodEnd) {
+              update.$set.subscriptionCurrentPeriodEnd = stripePeriodEnd;
             }
             await db.collection('purchases').updateOne(
               { _id: p._id },
@@ -732,8 +735,18 @@ router.get('/me/purchases', requireAuth, async (req, res) => {
       
       return result;
     }));
-    
-    res.json({ purchases: purchasesWithStatus });
+
+    // Exclude legacy subscription marker rows that have no period end and are not active.
+    // These appear as: product: 'subscription', currentPeriodEnd: null, isActive: null/false.
+    const filtered = purchasesWithStatus.filter((p) => {
+      if (p.product !== 'subscription') return true;
+      if (p.currentPeriodEnd) return true;
+      if (p.isActive) return true;
+      // p.product === 'subscription' && !p.currentPeriodEnd && !p.isActive → exclude
+      return false;
+    });
+
+    res.json({ purchases: filtered });
   } catch (error) {
     console.error('Error fetching purchases:', error);
     res.status(500).json({ error: 'Internal server error' });
