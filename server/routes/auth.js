@@ -736,11 +736,13 @@ router.get('/me/purchases', requireAuth, async (req, res) => {
       return result;
     }));
 
-    // Exclude legacy broken subscription marker rows: inactive and no period end (Expires: Unknown, Action: Expired)
+    // Exclude legacy subscription marker rows that have no period end and are not active.
+    // These appear as: product: 'subscription', currentPeriodEnd: null, isActive: null/false.
     const filtered = purchasesWithStatus.filter((p) => {
       if (p.product !== 'subscription') return true;
-      if (p.isActive && p.currentPeriodEnd) return true;
       if (p.currentPeriodEnd) return true;
+      if (p.isActive) return true;
+      // p.product === 'subscription' && !p.currentPeriodEnd && !p.isActive → exclude
       return false;
     });
 
