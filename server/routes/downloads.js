@@ -257,25 +257,30 @@ router.post('/generate', csrfProtection, async (req, res) => {
         const currentPeriodEnd = subscription.current_period_end
           ? new Date(subscription.current_period_end * 1000)
           : null;
-        
-        // Update user record with current subscription info
+        const storedPeriodEnd = user.subscriptionCurrentPeriodEnd
+          ? new Date(user.subscriptionCurrentPeriodEnd)
+          : null;
+        const periodEnd = currentPeriodEnd || storedPeriodEnd;
+
+        // Update user record with current subscription info; only persist period end when Stripe provides it
+        const updateSet = {
+          stripeSubscriptionId: subscriptionId,
+          subscriptionStatus: subscription.status,
+          unlimited: isStripeActive && !!periodEnd && periodEnd > new Date(),
+          updatedAt: new Date()
+        };
+        if (currentPeriodEnd) {
+          updateSet.subscriptionCurrentPeriodEnd = currentPeriodEnd;
+        }
         await db.collection('users').updateOne(
           { _id: new ObjectId(req.user._id) },
-          { 
-            $set: { 
-              stripeSubscriptionId: subscriptionId,
-              subscriptionStatus: subscription.status,
-              subscriptionCurrentPeriodEnd: currentPeriodEnd,
-              unlimited: isStripeActive,
-              updatedAt: new Date()
-            }
-          }
+          { $set: updateSet }
         );
-        
+
         if (isStripeActive) {
           hasActiveSubscription = true;
-          if (currentPeriodEnd) {
-            subscriptionPeriodEnd = currentPeriodEnd;
+          if (periodEnd) {
+            subscriptionPeriodEnd = periodEnd;
           }
           console.log('[downloads] Stripe confirms subscription is active');
         } else {
