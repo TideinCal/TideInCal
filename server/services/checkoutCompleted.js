@@ -54,9 +54,20 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
     metadata.email ||
     null;
 
+  // Normalize Stripe customer id:
+  // - When session comes from verify() with expand: ['customer'], session.customer is an object
+  // - When coming from webhook without expansion, it's a string id
+  const rawCustomer = session.customer;
+  const stripeCustomerId =
+    typeof rawCustomer === 'string'
+      ? rawCustomer
+      : rawCustomer && typeof rawCustomer === 'object'
+        ? rawCustomer.id || rawCustomer.customer || null
+        : null;
+
   // 1) Update user with Stripe customer id and billing info
   const updateData = {
-    stripeCustomerId: session.customer,
+    stripeCustomerId,
     updatedAt: new Date(),
   };
 
@@ -158,6 +169,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       customerEmail: customerEmail,
       subscriptionStatus: subscription.status,
       createdAt: new Date(),
+      stripeCustomerId: stripeCustomerId || null
     };
     
     // Only add period end if we have a valid date
