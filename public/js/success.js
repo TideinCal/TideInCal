@@ -63,9 +63,9 @@ async function verifyPurchase() {
             const data = await response.json();
             
             if (data.ok && data.purchaseId) {
-                // Golden Hour-only: download lives on My Account, not dlFile.html
-                if (data.product === 'golden') {
-                    console.log('[success] Golden Hour-only purchase, redirecting to My Account');
+                // Subscriptions and Golden Hour-only: no station file to download
+                if (data.type === 'subscription' || data.product === 'subscription' || data.product === 'golden') {
+                    console.log('[success] Subscription or Golden Hour purchase, redirecting to My Account');
                     window.__verificationStarted = false;
                     window.location.href = '/account';
                     return;
@@ -96,7 +96,7 @@ async function verifyPurchase() {
                 // Legacy response format - try to extract purchaseId
                 if (data.purchaseId) {
                     window.__verificationStarted = false;
-                    if (data.product === 'golden') {
+                    if (data.type === 'subscription' || data.product === 'subscription' || data.product === 'golden') {
                         window.location.href = '/account';
                     } else {
                         window.location.href = `/dlFile.html?purchaseId=${data.purchaseId}`;

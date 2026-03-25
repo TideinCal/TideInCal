@@ -120,13 +120,24 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
     
     // Validate and convert subscription period end
     let currentPeriodEnd = null;
-    if (subscription.current_period_end && typeof subscription.current_period_end === 'number') {
-      currentPeriodEnd = new Date(subscription.current_period_end * 1000);
-      // Validate it's a reasonable date (not epoch start)
-      if (currentPeriodEnd.getTime() < new Date('2000-01-01').getTime()) {
-        console.error('[checkoutCompleted] Invalid current_period_end from Stripe:', subscription.current_period_end);
-        currentPeriodEnd = null;
+    const rawPeriodEnd = subscription.current_period_end;
+    console.log('[checkoutCompleted] Raw current_period_end:', typeof rawPeriodEnd, rawPeriodEnd);
+    if (rawPeriodEnd) {
+      const ts = typeof rawPeriodEnd === 'number' ? rawPeriodEnd : Number(rawPeriodEnd);
+      if (!isNaN(ts) && ts > 0) {
+        currentPeriodEnd = new Date(ts * 1000);
+        if (isNaN(currentPeriodEnd.getTime()) || currentPeriodEnd.getTime() < new Date('2000-01-01').getTime()) {
+          console.error('[checkoutCompleted] Invalid current_period_end from Stripe:', rawPeriodEnd);
+          currentPeriodEnd = null;
+        }
+      } else {
+        console.warn('[checkoutCompleted] current_period_end not numeric:', typeof rawPeriodEnd, rawPeriodEnd);
       }
+    }
+    // Fallback: active subscription with no period end gets 1-year window
+    if (!currentPeriodEnd && subscription.status === 'active') {
+      currentPeriodEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+      console.warn('[checkoutCompleted] periodEnd null for active subscription, using 1-year fallback:', currentPeriodEnd);
     }
 
     // Update user with subscription info
