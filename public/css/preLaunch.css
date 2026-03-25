@@ -28,16 +28,6 @@ canvas#rippleCanvas {
   position: relative;
   overflow: hidden; /* Required for wave clipping */
 }
-.hero::after {
-  content: "";
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 100%;
-  height: 150px;
-  background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1440 150" xmlns="http://www.w3.org/2000/svg"><path fill="white" d="M0,100 C480,0 960,200 1440,100 L1440,150 L0,150 Z"/></svg>') no-repeat bottom center;
-  background-size: cover;
-}
 
 @keyframes waveGradient {
   0% {
@@ -158,11 +148,18 @@ canvas#rippleCanvas {
   top: -1px;
 }
 
-.how-it-works h2 {
+.how-it-works-heading {
   font-size: 3rem;
-  color: #0B62AC;
+  font-family: 'Kanit', sans-serif;
+  color: #0B62AC !important;
   margin-bottom: 1.5em;
 }
+.golden-hour-heading {
+  font-size: 3rem;
+  color: white !important;
+  margin-bottom: 1.5em;
+}
+
 
 .steps {
   display: flex;
@@ -360,5 +357,564 @@ p {
   background-color: #0d1b48;
   color: white;
   font-weight: bold;
+}
+
+/* =============================================
+   RESPONSIVE WAVE DIVIDERS
+   ============================================= */
+
+.wave-divider {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  line-height: 0;
+  overflow: hidden;
+}
+
+.wave-divider svg {
+  display: block;
+  width: 100%;
+  height: 100px;
+}
+
+@media (min-width: 768px) {
+  .wave-divider svg {
+    height: 150px;
+  }
+}
+
+/* =============================================
+   HERO HEADING HIERARCHY
+   ============================================= */
+
+.hero-text h1.hero-title {
+  font-size: 3rem;
+}
+
+.hero-text h2 {
+  font-size: 2rem;
+  font-weight: 500;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+  margin-bottom: 0.5rem;
+}
+
+.hero-lead {
+  font-size: 1.15rem;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+  margin-bottom: 0;
+}
+
+/* =============================================
+   PLAN CHOICE STRIP
+   ============================================= */
+
+.plan-strip {
+  background: #f8f9fa;
+  padding: 4em 1.5em 9em;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+
+.plan-strip-heading {
+  font-family: 'Kanit', sans-serif;
+  font-size: 2.2rem;
+  color: #0B62AC;
+  margin-bottom: 0.4rem;
+}
+
+.plan-strip-sub {
+  color: #555;
+  font-size: 1.05rem;
+  margin-bottom: 2.5rem;
+}
+
+.plan-strip-cards {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2em;
+  max-width: 860px;
+  margin: 0 auto 2rem;
+}
+
+@media (min-width: 768px) {
+  .plan-strip-cards {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}
+
+.plan-strip-card {
+  flex: 1;
+  border: 2px solid #e9ecef;
+  border-radius: 1rem;
+  padding: 2rem 1.5rem;
+  text-align: left;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.plan-strip-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(11, 98, 172, 0.15);
+  border-color: #0B62AC;
+}
+
+.plan-strip-card--pro {
+  background: linear-gradient(160deg, rgba(21, 27, 72, 0.03) 0%, rgba(0, 199, 230, 0.07) 100%);
+  border-color: #0B62AC;
+  box-shadow: 0 8px 20px rgba(11, 98, 172, 0.12);
+}
+
+.plan-strip-badge {
+  display: inline-block;
+  background: #e9ecef;
+  color: #0B62AC;
+  font-family: 'Kanit', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2em 0.8em;
+  border-radius: 2em;
+  margin-bottom: 1rem;
+}
+
+.plan-strip-badge--pro {
+  background: linear-gradient(135deg, #0B62AC 20%, #00c7e6 80%);
+  color: white;
+}
+
+.plan-strip-name {
+  font-family: 'Kanit', sans-serif;
+  font-size: 1.6rem;
+  color: #0d1b48;
+  margin-bottom: 0.2rem;
+}
+
+.plan-strip-hook {
+  color: #666;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.plan-strip-price {
+  font-family: 'Kanit', sans-serif;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #0B62AC;
+  line-height: 1.1;
+  margin-bottom: 1.25rem;
+}
+
+.plan-strip-price small {
+  font-size: 1rem;
+  font-weight: 400;
+  color: #888;
+}
+
+.plan-strip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+}
+
+.plan-strip-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.plan-strip-list .bi-check-circle-fill {
+  color: #00c7e6;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.plan-strip-cta {
+  display: block;
+  text-align: center;
+  width: 100%;
+  margin-top: 0;
+  box-sizing: border-box;
+}
+
+.plan-strip-footer {
+  color: #888;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+/* =============================================
+   GOLDEN HOUR SECTION
+   ============================================= */
+
+.golden-hour-section {
+  background: linear-gradient(170deg, #3b6cb5 0%, #5a7fba 20%, #9a7a4a 50%, #c9a355 80%, #ddb960 100%);
+  padding: 5em 1.5em 4em;
+  text-align: center;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.gh-glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(90px);
+  opacity: 0.35;
+}
+.gh-glow-orb--1 {
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(circle, #e8b84a 0%, transparent 65%);
+  top: -100px;
+  right: -140px;
+  opacity: 0.3;
+  animation: ghFloat 12s ease-in-out infinite alternate;
+}
+.gh-glow-orb--2 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #d4a44a 0%, transparent 65%);
+  bottom: -80px;
+  left: -120px;
+  opacity: 0.25;
+  animation: ghFloat 14s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes ghFloat {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(30px, -20px); }
+}
+
+.golden-hour-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.gh-eyebrow {
+  display: inline-block;
+  font-family: 'Kanit', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #d4a44a;
+  border: 1px solid rgba(212, 164, 74);
+  border-radius: 2em;
+  padding: 0.3em 1.2em;
+  margin-bottom: 1.25rem;
+}
+
+.golden-hour-heading {
+  font-family: 'Kanit', sans-serif;
+  font-size: 2.4rem;
+  color: white;
+  margin-bottom: 1rem;
+  line-height: 1.15;
+}
+
+.gh-gold-text {
+  background: linear-gradient(135deg, #f5c842 0%, #d4a44a 40%, #e8b84a 70%, #f5d98a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 15px rgba(245, 200, 66, 0.1), 0 0 60px rgba(212, 164, 74, 0.2), 0 0 40px rgba(245, 200, 66, 0.4);
+
+}
+
+.golden-hour-lede {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255);
+  line-height: 1.75;
+  max-width: 560px;
+  margin: 0 auto 2.5rem;
+}
+
+.gh-feature-row {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .gh-feature-row {
+    flex-direction: row;
+    gap: 1.5rem;
+  }
+}
+
+.gh-feature-card {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(212, 164, 74, 0.85);
+  border-radius: 1rem;
+  padding: 2rem 1.5rem 1.75rem;
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.gh-feature-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(212, 164, 74, 0.55);
+  box-shadow: 0 8px 30px rgba(212, 164, 74, 0.15);
+}
+
+.gh-feature-icon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(212, 164, 74, 0.2), rgba(245, 200, 66, 0.1));
+  border: 1px solid rgba(212, 164, 74, 0.35);
+  color: #ffd96c;
+}
+
+.gh-feature-title {
+  font-family: 'Kanit', sans-serif;
+  font-size: 1.15rem;
+  color: #ffd96c;
+  margin-bottom: 0.5rem;
+}
+
+.gh-feature-desc {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255);
+  line-height: 1.65;
+  margin: 0;
+}
+
+.gh-how-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 2.5rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 0.75rem;
+}
+
+.gh-how-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255);
+}
+
+.gh-how-icon {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.gh-how-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(212, 164, 74, 0.35);
+}
+
+@media (max-width: 575px) {
+  .gh-how-divider { display: none; }
+  .gh-how-strip { flex-direction: column; gap: 0.5rem; }
+}
+
+.gh-pricing-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 576px) {
+  .gh-pricing-row {
+    flex-direction: row;
+    justify-content: center;
+    gap: 1.25rem;
+  }
+}
+
+.gh-price-option {
+  flex: 1;
+  max-width: 260px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+
+
+@property --gh-deg {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.gh-price-option--pro {
+  position: relative;
+  border: none;
+  background: linear-gradient(
+    var(--gh-deg),
+    #f5c842 0%, 
+    #f0f0f0 100%  
+  );
+  box-shadow:
+    0 0 15px rgba(245, 200, 66, 0.7),
+    0 0 40px rgba(212, 164, 74, 0.5),
+    0 0 80px rgba(245, 200, 66, 0.3);
+  transition: transform 0.5s ease, box-shadow 0.5s ease;
+  padding: 2px;
+  animation: ghBorderRotate 3s linear infinite;
+  overflow: hidden;
+}
+
+@keyframes ghBorderRotate {
+  to { --gh-deg: 360deg; }
+}
+
+.gh-price-option--pro .gh-pro-inner {
+  background: linear-gradient(160deg, rgba(100, 75, 20, 0.97) 0%, rgba(55, 40, 10, 0.98) 100%);
+  border-radius: calc(0.75rem - 2px);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.gh-price-option--pro:hover {
+  transform: translateY(-5px) scale(1.03);
+  box-shadow: 0 6px 30px rgba(245, 200, 66, 0.35), 0 0 60px rgba(212, 164, 74, 0.15);
+}
+
+.gh-price-label {
+  font-family: 'Kanit', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.gh-price-amount {
+  font-family: 'Kanit', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #f5c842;
+}
+
+.gh-price-note {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255);
+}
+
+.gh-price-or {
+  font-family: 'Kanit', sans-serif;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.gh-cta {
+  display: inline-block;
+  background: linear-gradient(135deg, #d4a44a 0%, #f5c842 50%, #d4a44a 100%);
+  background-size: 300% 300%;
+  background-position: 0% 50%;
+  color: rgba(255, 255, 255, 0.85);
+  border: none;
+  padding: 0.8em 2.2em;
+  font-family: 'Kanit', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  border-radius: 0.6em;
+  text-decoration: none;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  transition: background-position 0.8s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.gh-cta:hover, .gh-cta:focus {
+  background-position: 100% 50%;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(212, 164, 74, 0.45);
+}
+
+.golden-hour-trust {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255);
+  margin-top: 1rem;
+}
+
+/* =============================================
+   MAP INTRO HEADER
+   ============================================= */
+
+.map-intro-heading {
+  font-family: 'Kanit', sans-serif;
+  font-size: 1.8rem;
+  color: #0B62AC;
+  margin-bottom: 0.25rem;
+}
+
+.map-intro-sub {
+  color: #666;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* =============================================
+   BOTTOM CTA (below Why People Love It)
+   ============================================= */
+
+.love-cta {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.love-cta-sub {
+  margin-top: 0.75rem;
+  color: #888;
+  font-size: 0.88rem;
+}
+
+.golden-label-input {
+  margin: 0.4rem 0 0.5rem;
+  font-size: 0.82rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  padding: 0.35rem 0.55rem;
+}
+.golden-label-input::placeholder {
+  color: #aaa;
+  font-style: italic;
 }
 

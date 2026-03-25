@@ -511,47 +511,83 @@ function showPurchases(purchases, subscriptionDownloads = []) {
     // Render subscription downloads first (stations downloaded under subscription)
     subscriptionDownloads.forEach(download => {
         const row = document.createElement('tr');
-        const stationTitle = download.stationTitle || download.stationId || 'Unknown';
-        const region = download.country || '—';
+        const isGoldenHour = download.product === 'golden_hour';
         const downloadDate = new Date(download.updatedAt || download.createdAt).toLocaleDateString();
-        const hasGolden = download.includeGoldenHour === true;
-        
-        const typeBadgeHtml = hasGolden
-            ? '<span class="badge bg-primary">Subscription Download</span> <span class="badge bg-warning text-dark ms-1">Tide + Golden Hour</span>'
-            : '<span class="badge bg-primary">Subscription Download</span>';
-        const stationCellHtml = hasGolden
-            ? `${stationTitle}<br><span class="small text-muted">Includes Golden Hour</span>`
-            : `${stationTitle}`;
-        
-        row.innerHTML = `
-            <td>${typeBadgeHtml}</td>
-            <td class="fw-medium">${stationCellHtml}</td>
-            <td class="text-muted">${region}</td>
-            <td class="text-muted">${downloadDate}</td>
-            <td class="text-muted">—</td>
-            <td><span class="badge bg-primary">Active</span></td>
-            <td>
+
+        if (isGoldenHour) {
+            const locationName = download.locationName || 'Location';
+            const safeLocationName = locationName.replace(/'/g, "\\'");
+            const lat = download.lat;
+            const lng = download.lng;
+            const tz = (download.userTimezone || 'UTC').replace(/'/g, "\\'");
+
+            row.innerHTML = `
+                <td><span class="badge bg-primary">Subscription</span> <span class="badge bg-warning text-dark ms-1">Golden Hour</span></td>
+                <td class="fw-medium">${locationName}</td>
+                <td class="text-muted">—</td>
+                <td class="text-muted">${downloadDate}</td>
+                <td class="text-muted">—</td>
+                <td><span class="badge bg-primary">Active</span></td>
+                <td>
+                    <button class="btn btn-sm btn-gradient" onclick="generateGoldenHourSubscriptionDownload(${lat}, ${lng}, '${safeLocationName}', '${tz}', this)">
+                        Download
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+
+            const cardRows = `
+                <div class="small text-muted">Type: Subscription – Golden Hour</div>
+                <div class="small text-muted">Location: ${locationName}</div>
+                <div class="small text-muted">Last Download: ${downloadDate}</div>
+            `;
+            const cardAction = `
+                <button class="btn btn-sm btn-gradient" onclick="generateGoldenHourSubscriptionDownload(${lat}, ${lng}, '${safeLocationName}', '${tz}', this)">
+                    Download
+                </button>
+            `;
+            addCard(locationName, cardRows, cardAction);
+        } else {
+            const stationTitle = download.stationTitle || download.stationId || 'Unknown';
+            const region = download.country || '—';
+            const hasGolden = download.includeGoldenHour === true;
+
+            const typeBadgeHtml = hasGolden
+                ? '<span class="badge bg-primary">Subscription Download</span> <span class="badge bg-warning text-dark ms-1">Tide + Golden Hour</span>'
+                : '<span class="badge bg-primary">Subscription Download</span>';
+            const stationCellHtml = hasGolden
+                ? `${stationTitle}<br><span class="small text-muted">Includes Golden Hour</span>`
+                : `${stationTitle}`;
+
+            row.innerHTML = `
+                <td>${typeBadgeHtml}</td>
+                <td class="fw-medium">${stationCellHtml}</td>
+                <td class="text-muted">${region}</td>
+                <td class="text-muted">${downloadDate}</td>
+                <td class="text-muted">—</td>
+                <td><span class="badge bg-primary">Active</span></td>
+                <td>
+                    <button class="btn btn-sm btn-gradient" onclick="generateSubscriptionDownload('${download.stationId}', '${stationTitle}', '${region}', this)">
+                        Download
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+
+            const cardRows = `
+                <div class="small text-muted">Type: Subscription Download${hasGolden ? ' (Tide + Golden Hour)' : ''}</div>
+                <div class="small text-muted">Station: ${stationTitle}</div>
+                <div class="small text-muted">Region: ${region}</div>
+                <div class="small text-muted">Last Download: ${downloadDate}</div>
+                ${hasGolden ? '<div class="small text-muted">Includes Golden Hour</div>' : ''}
+            `;
+            const cardAction = `
                 <button class="btn btn-sm btn-gradient" onclick="generateSubscriptionDownload('${download.stationId}', '${stationTitle}', '${region}', this)">
                     Download
                 </button>
-            </td>
-        `;
-        
-        tbody.appendChild(row);
-
-        const cardRows = `
-            <div class="small text-muted">Type: Subscription Download${hasGolden ? ' (Tide + Golden Hour)' : ''}</div>
-            <div class="small text-muted">Station: ${stationTitle}</div>
-            <div class="small text-muted">Region: ${region}</div>
-            <div class="small text-muted">Last Download: ${downloadDate}</div>
-            ${hasGolden ? '<div class="small text-muted">Includes Golden Hour</div>' : ''}
-        `;
-        const cardAction = `
-            <button class="btn btn-sm btn-gradient" onclick="generateSubscriptionDownload('${download.stationId}', '${stationTitle}', '${region}', this)">
-                Download
-            </button>
-        `;
-        addCard(stationTitle, cardRows, cardAction);
+            `;
+            addCard(stationTitle, cardRows, cardAction);
+        }
     });
     
     purchases.forEach(purchase => {
@@ -786,6 +822,58 @@ async function downloadGoldenHour(purchaseId, button) {
     }
 }
 
+async function generateGoldenHourSubscriptionDownload(lat, lng, locationName, userTimezone, button) {
+    try {
+        setButtonLoading(button, true, 'Generating...');
+        const token = await getCsrfToken();
+        const response = await fetch('/api/downloads/golden', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': token
+            },
+            body: JSON.stringify({ lat, lng, locationName: locationName || 'Location', userTimezone: userTimezone || 'UTC' })
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error || 'Failed to generate Golden Hour file');
+        }
+        const blob = await response.blob();
+        const filename = response.headers.get('Content-Disposition')?.match(/filename="?([^"]+)"?/)?.[1] || 'golden-hour.ics';
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        setVerificationBannerState({
+            title: 'Download ready',
+            message: 'Golden Hour calendar downloaded successfully.',
+            variant: 'success',
+            showResend: false,
+            showContinue: false,
+            showSelectLink: false,
+            showDismiss: true
+        });
+    } catch (error) {
+        console.error('[account] Error generating Golden Hour subscription download:', error);
+        setVerificationBannerState({
+            title: 'Download failed',
+            message: error.message || 'Failed to generate Golden Hour calendar. Please try again.',
+            variant: 'danger',
+            showResend: false,
+            showContinue: false,
+            showSelectLink: false,
+            showDismiss: true
+        });
+    } finally {
+        setButtonLoading(button, false);
+    }
+}
+
 // Download again for subscription users
 async function generateSubscriptionDownload(stationId, stationTitle, country, button) {
     try {
@@ -915,6 +1003,7 @@ async function downloadMoonCalendar(button) {
 window.regeneratePurchase = regeneratePurchase;
 window.downloadGoldenHour = downloadGoldenHour;
 window.generateSubscriptionDownload = generateSubscriptionDownload;
+window.generateGoldenHourSubscriptionDownload = generateGoldenHourSubscriptionDownload;
 window.downloadMoonCalendar = downloadMoonCalendar;
 
 async function upgradeToSubscription() {

@@ -1,7 +1,7 @@
 // Define the custom icon for tide stations
 const tideIcon = L.icon({
   iconUrl: '/img/tideStations.png',
-  iconSize: [59, 59],
+  iconSize: [52, 70],
   iconAnchor: [22, 50],
   clickable: true,
   title: 'Tide Station',
@@ -904,7 +904,8 @@ let goldenSearchLocation = null;
 /** Called when user clicks "Create Golden Hour Calendar" on the Golden Hour search marker. Opens planModal (or Pro direct download). */
 async function handleGoldenHourLocationClick() {
   if (!goldenSearchLocation) return;
-  pendingGoldenLocation = { ...goldenSearchLocation };
+  const customLabel = document.getElementById('goldenSearchLabel')?.value?.trim() || goldenSearchLocation.label;
+  pendingGoldenLocation = { ...goldenSearchLocation, label: customLabel };
   pendingContextType = 'golden_only';
   pendingStationContext = null;
   const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
@@ -1382,7 +1383,11 @@ const initMap = () => {
   
 
   // Initialize the Leaflet map and assign it to the global `map` variable
-  map = L.map('map').setView([49.26083, -123.11389], 3);
+  map = L.map('map', {
+    minZoom: 2,
+    maxBounds: [[-85, -540], [85, 540]],
+    maxBoundsViscosity: 1.0,
+  }).setView([49.26083, -123.11389], 3);
 
   L.tileLayer(
     'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
@@ -1437,6 +1442,9 @@ const initMap = () => {
         <div class="card-body">
           <p class="card-label">Golden Hour location</p>
           <h6 class="fw-bolder">${label.replace(/</g, '&lt;')}</h6>
+          <input type="text" class="form-control form-control-sm golden-label-input" id="goldenSearchLabel"
+                 placeholder="Calendar label (e.g. Cabin, Mexico Villa)" maxlength="60"
+                 value="${label.replace(/"/g, '&quot;').replace(/</g, '&lt;')}" />
           <p class="card-text small">Create a Golden Hour calendar for this location.</p>
           <button class="btn download-btn" onclick="handleGoldenHourLocationClick()">
             <img src="/img/whiteLogo.png" alt="calendar icon">Create Golden Hour Calendar
@@ -1445,11 +1453,11 @@ const initMap = () => {
       </div>`;
 
     goldenSearchMarker = L.marker(latlng, {
-      icon: L.divIcon({
-        className: 'golden-search-marker',
-        html: '<div style="background-color: #e6a800; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
+      icon: L.icon({
+        iconUrl: '/img/goldenHourIcon.png',
+        iconSize: [52, 70],
+        iconAnchor: [22, 50],
+        className: 'golden-search-marker'
       })
     }).addTo(map);
 
@@ -1482,6 +1490,8 @@ const initMap = () => {
           <div class="card-body">
             <p class="card-label">Current location</p>
             <h6 class="fw-bolder">Your location</h6>
+            <input type="text" class="form-control form-control-sm golden-label-input" id="goldenCurrentLabel"
+                   placeholder="Calendar label (e.g. Home, Beach House)" maxlength="60" />
             <p class="card-text small">Create a Golden Hour calendar for your current location.</p>
             <button class="btn download-btn" onclick="handleCurrentLocationGoldenHour()">
               <img src="/img/whiteLogo.png" alt="calendar icon">Create Golden Hour Calendar
@@ -1497,7 +1507,8 @@ const initMap = () => {
   async function handleCurrentLocationGoldenHour() {
     if (!currentLocationMarker) return;
     const latlng = currentLocationMarker.getLatLng();
-    pendingGoldenLocation = { lat: latlng.lat, lng: latlng.lng, label: 'Current Location' };
+    const customLabel = document.getElementById('goldenCurrentLabel')?.value?.trim() || 'Current Location';
+    pendingGoldenLocation = { lat: latlng.lat, lng: latlng.lng, label: customLabel };
     pendingContextType = 'golden_only';
     pendingStationContext = null;
     const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
