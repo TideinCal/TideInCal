@@ -628,6 +628,35 @@ router.post('/golden', csrfProtection, async (req, res) => {
     const safeName = (validated.locationName || 'golden-hour').replace(/[^a-zA-Z0-9]/g, '_');
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${safeName}-golden-hour.ics"`);
+
+    try {
+      await db.collection('subscription_downloads').updateOne(
+        {
+          userId: new ObjectId(req.user._id),
+          product: 'golden_hour',
+          lat: validated.lat,
+          lng: validated.lng
+        },
+        {
+          $set: {
+            locationName: validated.locationName || 'Location',
+            userTimezone: timezone,
+            updatedAt: new Date(),
+            product: 'golden_hour'
+          },
+          $setOnInsert: {
+            createdAt: new Date()
+          },
+          $inc: {
+            downloadCount: 1
+          }
+        },
+        { upsert: true }
+      );
+    } catch (historyError) {
+      console.error('[downloads] Failed to track Golden Hour subscription download:', historyError);
+    }
+
     res.send(icsContent);
   } catch (error) {
     if (error.name === 'ZodError') {

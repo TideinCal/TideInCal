@@ -148,11 +148,18 @@ canvas#rippleCanvas {
   top: -1px;
 }
 
-.how-it-works h2 {
+.how-it-works-heading {
   font-size: 3rem;
-  color: white;
+  font-family: 'Kanit', sans-serif;
+  color: #0B62AC !important;
   margin-bottom: 1.5em;
 }
+.golden-hour-heading {
+  font-size: 3rem;
+  color: white !important;
+  margin-bottom: 1.5em;
+}
+
 
 .steps {
   display: flex;
@@ -848,7 +855,7 @@ p {
   font-weight: 700;
   border-radius: 0.6em;
   text-decoration: none;
-  box-shadow: 0 4px 16px rgba(212, 164, 74, 0.35);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
   transition: background-position 0.8s ease, transform 0.3s ease, box-shadow 0.3s ease;
   position: relative;
   z-index: 1;
@@ -897,5 +904,17 @@ p {
   margin-top: 0.75rem;
   color: #888;
   font-size: 0.88rem;
+}
+
+.golden-label-input {
+  margin: 0.4rem 0 0.5rem;
+  font-size: 0.82rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  padding: 0.35rem 0.55rem;
+}
+.golden-label-input::placeholder {
+  color: #aaa;
+  font-style: italic;
 }
 

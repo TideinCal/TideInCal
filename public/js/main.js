@@ -904,7 +904,8 @@ let goldenSearchLocation = null;
 /** Called when user clicks "Create Golden Hour Calendar" on the Golden Hour search marker. Opens planModal (or Pro direct download). */
 async function handleGoldenHourLocationClick() {
   if (!goldenSearchLocation) return;
-  pendingGoldenLocation = { ...goldenSearchLocation };
+  const customLabel = document.getElementById('goldenSearchLabel')?.value?.trim() || goldenSearchLocation.label;
+  pendingGoldenLocation = { ...goldenSearchLocation, label: customLabel };
   pendingContextType = 'golden_only';
   pendingStationContext = null;
   const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
@@ -1441,6 +1442,9 @@ const initMap = () => {
         <div class="card-body">
           <p class="card-label">Golden Hour location</p>
           <h6 class="fw-bolder">${label.replace(/</g, '&lt;')}</h6>
+          <input type="text" class="form-control form-control-sm golden-label-input" id="goldenSearchLabel"
+                 placeholder="Calendar label (e.g. Cabin, Mexico Villa)" maxlength="60"
+                 value="${label.replace(/"/g, '&quot;').replace(/</g, '&lt;')}" />
           <p class="card-text small">Create a Golden Hour calendar for this location.</p>
           <button class="btn download-btn" onclick="handleGoldenHourLocationClick()">
             <img src="/img/whiteLogo.png" alt="calendar icon">Create Golden Hour Calendar
@@ -1486,6 +1490,8 @@ const initMap = () => {
           <div class="card-body">
             <p class="card-label">Current location</p>
             <h6 class="fw-bolder">Your location</h6>
+            <input type="text" class="form-control form-control-sm golden-label-input" id="goldenCurrentLabel"
+                   placeholder="Calendar label (e.g. Home, Beach House)" maxlength="60" />
             <p class="card-text small">Create a Golden Hour calendar for your current location.</p>
             <button class="btn download-btn" onclick="handleCurrentLocationGoldenHour()">
               <img src="/img/whiteLogo.png" alt="calendar icon">Create Golden Hour Calendar
@@ -1501,7 +1507,8 @@ const initMap = () => {
   async function handleCurrentLocationGoldenHour() {
     if (!currentLocationMarker) return;
     const latlng = currentLocationMarker.getLatLng();
-    pendingGoldenLocation = { lat: latlng.lat, lng: latlng.lng, label: 'Current Location' };
+    const customLabel = document.getElementById('goldenCurrentLabel')?.value?.trim() || 'Current Location';
+    pendingGoldenLocation = { lat: latlng.lat, lng: latlng.lng, label: customLabel };
     pendingContextType = 'golden_only';
     pendingStationContext = null;
     const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
