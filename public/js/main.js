@@ -682,6 +682,7 @@ async function startCheckoutSession(checkoutData) {
     }
 
     if (response.status === 403 && responseData?.needsVerification) {
+      setCheckoutButtonsLoading(false);
       await handleVerificationRequired(checkoutData);
       return;
     }
@@ -964,6 +965,7 @@ async function generateGoldenHourProAndDownload() {
 
 // Plan chooser modal functions
 async function openPlanModal() {
+  setCheckoutButtonsLoading(false);
   try {
     const response = await fetch('/api/auth/me/entitlements', { credentials: 'include' });
     if (response.ok) {
@@ -1120,10 +1122,6 @@ async function selectPlan(plan, fromUpsell = false, _triggerButton = null) {
     if (plan === 'unlimited' && fromUpsell && upsellOfferActive) {
       checkoutData.useProOffer = true;
     }
-    if (plan === 'unlimited' && fromUpsell) {
-      console.log('[checkout] Upgrade from upsell: useProOffer=', !!checkoutData.useProOffer, 'upsellOfferActive=', upsellOfferActive);
-    }
-
     // Close modals (move focus out first to avoid aria-hidden + focused descendant)
     const planModal = document.getElementById('planModal');
     const upsellModal = document.getElementById('upsellModal');
@@ -1154,7 +1152,6 @@ async function selectPlan(plan, fromUpsell = false, _triggerButton = null) {
 
   } catch (error) {
     console.error('Plan selection error:', error);
-    setCheckoutButtonsLoading(false);
     const message = error?.message && error.message.includes('Too many requests')
       ? error.message
       : 'Failed to start checkout process. Please try again.';
@@ -1167,6 +1164,8 @@ async function selectPlan(plan, fromUpsell = false, _triggerButton = null) {
       showSelectLink: false,
       showDismiss: true
     });
+  } finally {
+    setCheckoutButtonsLoading(false);
   }
 }
 
@@ -1547,4 +1546,10 @@ const initMap = () => {
 // Wait for DOM to be ready before initializing the map
 document.addEventListener('DOMContentLoaded', () => {
   initMap();
+});
+
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) {
+    setCheckoutButtonsLoading(false);
+  }
 });
