@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tide In Calendar – Know the Tides Before You Arrive</title>
-  <meta name="description" content="Get 12 months of tide times from official stations—synced directly to your Google or Apple Calendar. No app. No clutter. One Download. Just tides." />
+  <meta name="description" content="Get 12 months of tide times from official stations, synced directly to your Google or Apple Calendar. No app. No clutter. One Download. Just tides." />
   <meta property="og:title" content="Tide In Calendar – Know The Tides Before You Arrive"/>
   <meta property="og:description" content="Add high and low tide data from official stations directly to your Google or Apple Calendar.">
   <meta property="og:image" content="https://tideincal.com/img/social-preview.png" />
@@ -124,22 +124,70 @@
   <div class="container hero-content">
     <div class="hero-text">
       <h1 class="hero-title">Tide In Calendar</h1>
-      <h1>Know the <span class="tides">TIDES</span> before you arrive<br> No App, No Clutter.</h1>
-      <h1 class="text-white" style="font-family: 'Kanit', sans-serif; font-size: 2.2rem;">
-        Get High and Low Tides for One location for Just <span style="color:#7DF9FF;">$5</span>
-        <div>or <span style="color:#7DF9FF;">GO PRO</span> for Unlimited Locations, Moon Phases, and Golden Hour.</div
-      </h1>
-
-      <a href="#steps" class="cta-button">Add Tides to My Calendar</a>
+      <h2 class="hero-tagline">Know the <span class="tides">TIDES</span> before you arrive</h2>
+      <p class="hero-lead">No App. No Clutter. Just Your Calendar.</p>
+      <a href="#mapSection" class="cta-button">Add Tides to My Calendar</a>
       <p><em>12 months of tides. Instant download.</em></p>
     </div>
     <div class="hero-image">
       <img src="/img/logo.png" alt="TideCal Preview">
     </div>
   </div>
-
+  <div class="wave-divider">
+    <svg viewBox="0 0 1440 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#f8f9fa" d="M0,50 C360,-15 1080,115 1440,50 L1440,100 L0,100 Z"/>
+    </svg>
+  </div>
 </header>
 
+
+<!-- PLAN CHOICE STRIP -->
+<section class="plan-strip" id="plan-strip">
+  <h2 class="plan-strip-heading">Choose Your Plan</h2>
+  <p class="plan-strip-sub">One download. Zero apps. The ocean in your calendar.</p>
+
+  <div class="plan-strip-cards">
+    <!-- Single Station -->
+    <div class="plan-strip-card">
+      <div class="plan-strip-badge">One-Time</div>
+      <h3 class="plan-strip-name">Single Station</h3>
+      <p class="plan-strip-hook">One spot. One payment. Done.</p>
+      <div class="plan-strip-price">$4.99 <small>one-time</small></div>
+      <ul class="plan-strip-list">
+        <li><i class="bi bi-check-circle-fill"></i> 12 months of high &amp; low tides</li>
+        <li><i class="bi bi-check-circle-fill"></i> One beach, harbor, or marina</li>
+        <li><i class="bi bi-check-circle-fill"></i> Download to Apple Calendar</li>
+        <li><i class="bi bi-check-circle-fill"></i> Works offline forever</li>
+        <li><i class="bi bi-check-circle-fill"></i> Add Golden Hour at checkout for $4.99</li>
+      </ul>
+      <a href="#mapSection" class="cta-button plan-strip-cta">Pick My Station</a>
+    </div>
+
+    <!-- Pro -->
+    <div class="plan-strip-card plan-strip-card--pro">
+      <div class="plan-strip-badge plan-strip-badge--pro">Best Value</div>
+      <h3 class="plan-strip-name">Go Pro</h3>
+      <p class="plan-strip-hook">Every coast. Every season. Every light.</p>
+      <div class="plan-strip-price">$24.99 <small>/ year</small></div>
+      <ul class="plan-strip-list">
+        <li><i class="bi bi-check-circle-fill"></i> Every beach, harbor and marina, unlimited stations</li>
+        <li><i class="bi bi-check-circle-fill"></i> Moon phases synced to your tides</li>
+        <li><i class="bi bi-check-circle-fill"></i> Golden Hour for every station you choose</li>
+        <li><i class="bi bi-check-circle-fill"></i> Your current location and searched places included</li>
+        <li><i class="bi bi-check-circle-fill"></i> Regenerate or refresh anytime, no extra cost, ever</li>
+        <li><i class="bi bi-check-circle-fill"></i> Just $2.08 a month for unlimited access</li>
+      </ul>
+      <a href="#mapSection" class="cta-button plan-strip-cta">Go Pro</a>
+    </div>
+  </div>
+
+  <p class="plan-strip-footer">Official tide data &middot; Works offline &middot; No app required &middot; Secure checkout with Stripe</p>
+  <div class="wave-divider">
+    <svg viewBox="0 0 1440 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+      <path fill="white" d="M0,50 C360,115 1080,-15 1440,50 L1440,100 L0,100 Z"/>
+    </svg>
+  </div>
+</section>
 
 <!-- HOW IT WORKS SECTION -->
 <section id="how-it-works" class="how-it-works">
@@ -191,13 +239,103 @@
 
 
   <section class="secondary-cta" id="find-location-section">
-    <a class="cta-button" href="#mapSection" id="mapBtn">Find My Location</a>
-    <p><em class="">Get Access Now <br> Includes 12 months of tides for your spot.</em></p>
+    <a class="cta-button" href="#mapSection" id="mapBtn">Find My Tide Station</a>
+    <p><em>Official data &middot; 12 months &middot; Works offline after import.</em></p>
   </section>
 
+  <!-- GOLDEN HOUR SECTION -->
+  <section class="golden-hour-section" id="golden-hour">
+    <div class="gh-glow-orb gh-glow-orb--1"></div>
+    <div class="gh-glow-orb gh-glow-orb--2"></div>
+
+    <div class="golden-hour-inner">
+      <span class="gh-eyebrow">Now Available</span>
+      <h2 class="golden-hour-heading">
+        Never Miss<br><span class="gh-gold-text">Golden Hour</span> Again
+      </h2>
+      <p class="golden-hour-lede">
+        That fleeting window when the light turns warm, the sky catches fire, and everything looks like a film.
+        Most people miss it. You won't.
+      </p>
+
+      <div class="gh-feature-row">
+        <div class="gh-feature-card">
+          <div class="gh-feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          </div>
+          <h3 class="gh-feature-title">Morning Golden Hour</h3>
+          <p class="gh-feature-desc">The soft, warm glow just after sunrise. Perfect for dawn patrols, photography, and starting your day on the water.</p>
+        </div>
+        <div class="gh-feature-card">
+          <div class="gh-feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 18a5 5 0 0 0-10 0"/>
+              <line x1="12" y1="9" x2="12" y2="2"/>
+              <line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/>
+              <line x1="1" y1="18" x2="3" y2="18"/>
+              <line x1="21" y1="18" x2="23" y2="18"/>
+              <line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/>
+            </svg>
+          </div>
+          <h3 class="gh-feature-title">Evening Golden Hour</h3>
+          <p class="gh-feature-desc">The last hour before sunset, when the ocean glows. Plan your sunset sessions, evening sails, and golden beach walks.</p>
+        </div>
+      </div>
+
+      <div class="gh-how-strip">
+        <div class="gh-how-item">
+          <img src="/img/tideStations.png" class="gh-how-icon" alt="Tide station">
+          <span>Any tide station</span>
+        </div>
+        <span class="gh-how-divider"></span>
+        <div class="gh-how-item">
+          <img src="/img/homeIcon.png" class="gh-how-icon" alt="Your location">
+          <span>Your location</span>
+        </div>
+        <span class="gh-how-divider"></span>
+        <div class="gh-how-item">
+          <img src="/img/goldenHourIcon.png" class="gh-how-icon" alt="Searched place">
+          <span>Any searched place</span>
+        </div>
+      </div>
+
+      <div class="gh-pricing-row">
+        <div class="gh-price-option">
+          <span class="gh-price-label">Add to any station</span>
+          <span class="gh-price-amount">$4.99</span>
+          <span class="gh-price-note">one-time add-on</span>
+        </div>
+        <span class="gh-price-or">or</span>
+        <div class="gh-price-option gh-price-option--pro">
+          <div class="gh-pro-inner">
+            <span class="gh-price-label">Go Pro</span>
+            <span class="gh-price-amount">Included</span>
+            <span class="gh-price-note">every station, every location, forever</span>
+          </div>
+        </div>
+      </div>
+
+      <a href="#mapSection" class="gh-cta">Add Golden Hour to My Calendar</a>
+      <p class="golden-hour-trust">Location-accurate &middot; Morning &amp; Evening windows &middot; Works offline &middot; No app needed</p>
+    </div>
+  </section>
 
   <!-- Map Section -->
   <div class="container-fluid p-3" id="mapSection">
+    <div class="map-intro text-center pt-3 pb-2">
+      <h2 class="map-intro-heading">Find Your Station</h2>
+      <p class="map-intro-sub">Select a pin &middot; Search a location &middot; add tides and Golden Hour &middot; download your .ics file</p>
+    </div>
     <div class="row justify-content-center" id="tideRow">
       <div class="row d-flex justify-content-center" id="mapRow">
         <div class="col-12 col-sm-10">
@@ -213,15 +351,26 @@
     <h2 class="fade-in-up">Why People Love Tide In Calendar</h2>
     <ul class="benefits-list">
       <li class="fade-in-up"><i class="bi bi-check-circle-fill"></i> No app to install - just tides where you need them.</li>
+      <li class="fade-in-up"><i class="bi bi-check-circle-fill"></i> Easiest way to plan ocean adventures.</li>
+      <li class="fade-in-up"><i class="bi bi-check-circle-fill"></i> Tides, Moon Phases and Golden Hour all in one place.</li>
       <li class="fade-in-up"><i class="bi bi-check-circle-fill"></i> Instant download after payment.</li>
       <li class="fade-in-up"><i class="bi bi-check-circle-fill"></i> Works offline, forever.</li>
       <li class="fade-in-up"><i class="bi bi-check-circle-fill"></i> Trusted by surfers, sailors, freedivers & ocean lovers.</li>
     </ul>
+    <div class="text-center love-cta">
+      <a href="#mapSection" class="cta-button">Get My Calendar File</a>
+      <p class="love-cta-sub">Secure checkout with Stripe &middot; Official tide data &middot; Download in seconds</p>
+    </div>
   </section>
 
   <footer class="footer">
     Built by an ocean-loving developer tired of bloated tide apps<br>
-    🌊 Secure checkout with Stripe
+    🌊 Secure checkout with Stripe<br>
+    <small class="d-block mt-2 opacity-75">Tide times are provided for planning purposes only and are not suitable for navigation or safety-critical decisions. Always consult official sources before going on the water.</small>
+    <small class="d-block mt-1 opacity-75">
+      <a href="/terms" class="text-secondary text-decoration-underline me-3">Terms of Use</a>
+      <a href="/privacy" class="text-secondary text-decoration-underline">Privacy Policy</a>
+    </small>
   </footer>
 
 
@@ -300,7 +449,7 @@
               <div class="card-body d-flex flex-column">
                 <h5 class="card-title">Single Station</h5>
                 <div class="price-display mb-3">
-                  <span class="price">$5</span>
+                  <span class="price">$4.99</span>
                   <small class="text-muted">one-time</small>
                 </div>
                 <ul class="list-unstyled text-start flex-grow-1">
@@ -390,7 +539,7 @@
 
         <div class="mt-4">
           <button class="btn btn-outline-secondary" onclick="closeUpsellAndContinue()">
-            Continue with One-Time Purchase ($5)
+            Continue with One-Time Purchase ($4.99)
           </button>
         </div>
       </div>

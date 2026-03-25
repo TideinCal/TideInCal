@@ -1,7 +1,7 @@
 // Define the custom icon for tide stations
 const tideIcon = L.icon({
   iconUrl: '/img/tideStations.png',
-  iconSize: [59, 59],
+  iconSize: [52, 70],
   iconAnchor: [22, 50],
   clickable: true,
   title: 'Tide Station',
@@ -1382,7 +1382,11 @@ const initMap = () => {
   
 
   // Initialize the Leaflet map and assign it to the global `map` variable
-  map = L.map('map').setView([49.26083, -123.11389], 3);
+  map = L.map('map', {
+    minZoom: 2,
+    maxBounds: [[-85, -540], [85, 540]],
+    maxBoundsViscosity: 1.0,
+  }).setView([49.26083, -123.11389], 3);
 
   L.tileLayer(
     'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}',
@@ -1445,11 +1449,11 @@ const initMap = () => {
       </div>`;
 
     goldenSearchMarker = L.marker(latlng, {
-      icon: L.divIcon({
-        className: 'golden-search-marker',
-        html: '<div style="background-color: #e6a800; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
+      icon: L.icon({
+        iconUrl: '/img/goldenHourIcon.png',
+        iconSize: [52, 70],
+        iconAnchor: [22, 50],
+        className: 'golden-search-marker'
       })
     }).addTo(map);
 
