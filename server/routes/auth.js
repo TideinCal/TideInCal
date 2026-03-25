@@ -70,10 +70,17 @@ function resolveStationTitle(country, stationId) {
 
 function normalizeSubscriptionPeriodEnd(subscription) {
   let periodEnd = null;
-  if (subscription?.current_period_end && typeof subscription.current_period_end === 'number') {
-    periodEnd = new Date(subscription.current_period_end * 1000);
-    if (isNaN(periodEnd.getTime()) || periodEnd.getTime() < new Date('2000-01-01').getTime()) {
-      periodEnd = null;
+  const raw = subscription?.current_period_end;
+  if (raw) {
+    const ts = typeof raw === 'number' ? raw : Number(raw);
+    if (!isNaN(ts) && ts > 0) {
+      periodEnd = new Date(ts * 1000);
+      if (isNaN(periodEnd.getTime()) || periodEnd.getTime() < new Date('2000-01-01').getTime()) {
+        console.warn('[normalizeSubscriptionPeriodEnd] Rejected period end:', raw, '->', periodEnd);
+        periodEnd = null;
+      }
+    } else {
+      console.warn('[normalizeSubscriptionPeriodEnd] current_period_end not numeric:', typeof raw, raw);
     }
   }
 
@@ -472,10 +479,15 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
         subscriptionStatus = subscription.status;
         subscriptionCurrentPeriodEnd = stripePeriodEnd || storedPeriodEnd;
         
+        // Active subscription with null periodEnd: compute a 1-year fallback
+        if (subscription.status === 'active' && !subscriptionCurrentPeriodEnd) {
+          subscriptionCurrentPeriodEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+          console.warn('[entitlements] periodEnd null for active subscription, using 1-year fallback:', subscriptionCurrentPeriodEnd);
+        }
+
         hasActiveSubscription =
           subscription.status === 'active' &&
-          subscriptionCurrentPeriodEnd &&
-          subscriptionCurrentPeriodEnd > new Date();
+          (!subscriptionCurrentPeriodEnd || subscriptionCurrentPeriodEnd > new Date());
         
         // Update user record with latest subscription info
         const update = {
@@ -506,8 +518,7 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
         subscriptionCurrentPeriodEnd = storedPeriodEnd;
         hasActiveSubscription =
           user.subscriptionStatus === 'active' &&
-          storedPeriodEnd &&
-          storedPeriodEnd > new Date();
+          (!storedPeriodEnd || storedPeriodEnd > new Date());
       }
     } else {
       // No Stripe subscription ID, check local status
@@ -515,8 +526,7 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
       subscriptionCurrentPeriodEnd = storedPeriodEnd;
       hasActiveSubscription =
         user.subscriptionStatus === 'active' &&
-        storedPeriodEnd &&
-        storedPeriodEnd > new Date();
+        (!storedPeriodEnd || storedPeriodEnd > new Date());
     }
     
     // Get one-time purchases that are not expired
