@@ -21,7 +21,7 @@ body {
   font-weight: 600;
   transition: background-position 0.8s ease, transform 0.3s ease, box-shadow 0.3s ease;
 }
-.btn-gradient:hover { 
+.btn-gradient:hover {
   background-position: 100% 50%;
   transform: translateY(-2px);
   box-shadow: 0 10px 20px rgba(0,0,0,0.4);
@@ -45,14 +45,14 @@ body {
     transition: all 0.3s ease !important;
     padding: 0.5rem 1rem !important; /* Match other buttons */
   }
-  
+
   .btn-outline-light:hover {
     background-position: 100% 50% !important;
     transform: translateY(-2px) !important;
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15) !important;
     color: #fff !important;
   }
-  
+
   /* Make login button same height as other buttons */
   .btn-gradient {
     padding: 0.5rem 1rem !important; /* Override btn-sm padding */
@@ -316,19 +316,19 @@ body {
   #authModal .modal-header {
     padding: 1rem;
   }
-  
+
   #authModal .modal-title {
     font-size: 1.1rem;
   }
-  
+
   #authModal .tab-content {
     padding: 1rem;
   }
-  
+
   #authModal .nav-tabs {
     padding: 0 1rem;
   }
-  
+
   #authModal .nav-tabs .nav-link {
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
@@ -373,7 +373,7 @@ body {
   #menuLogoutBtn, #logoutBtn {
     font-size: 1.1rem !important;
   }
-  
+
   /* Mobile menu Find My Location button padding to match logout button height */
   .list-group-item[href="#mapSection"] {
     padding: 0.75rem 1rem !important;
@@ -473,6 +473,8 @@ canvas#rippleCanvas {
 #mapSection {
   position: relative;
   z-index: 10000;
+  padding-top:2em !important;
+  padding-bottom: 2em !important;
 }
 
 #mapBtn {
@@ -481,7 +483,7 @@ canvas#rippleCanvas {
   background-position: 0% 50%;
   border: none;
   color: #fdfdfd;
-  margin-bottom: 1em;
+  margin-bottom: 2em;
   padding: 0.75em 2em;
   font-family: 'Kanit', sans-serif;
   font-size: 1.1rem;
@@ -920,11 +922,6 @@ color: white;
 
 
 
-.footer {
-  font-size: 0.85rem;
-  color: #888;
-  text-align: center;
-}
 
 .wave-trio {
   position: relative;
@@ -974,6 +971,11 @@ color: white;
   color: white;
   font-weight: bold;
 }
+
+.tandp {
+  font-size: 1.2em;
+}
+
 
 /* Responsive fix for map on small screens */
 @media (max-width: 8208px) {

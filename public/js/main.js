@@ -1,7 +1,7 @@
 // Define the custom icon for tide stations
 const tideIcon = L.icon({
   iconUrl: '/img/tideStations.png',
-  iconSize: [52, 70],
+  iconSize: [65, 65],
   iconAnchor: [22, 50],
   clickable: true,
   title: 'Tide Station',
@@ -13,7 +13,7 @@ const tideIcon = L.icon({
 // Define the custom icon for the user location
 const myIcon = L.icon({
   iconUrl: '/img/homeIcon.png',
-  iconSize: [59, 59],
+  iconSize: [65, 65],
   iconAnchor: [22, 50],
   clickable: true,
   title: 'Current Location',
@@ -39,7 +39,7 @@ async function refreshAuthUI() {
   try {
     const r = await fetch('/api/auth/me', { credentials: 'include' });
     let user = null;
-    
+
     if (r.ok) {
       const data = await r.json();
       user = data.user;
@@ -67,7 +67,7 @@ async function refreshAuthUI() {
                     const displayName = user.firstName || user.email.split('@')[0];
                     navUserName.textContent = displayName;
                   }
-                  
+
                   // Mobile navigation
                   if (menuLoginBtn) menuLoginBtn.style.display = 'none';
                   if (menuLogoutContainer) {
@@ -86,7 +86,7 @@ async function refreshAuthUI() {
                   if (navAccountLink) navAccountLink.style.display = 'none';
                   if (navLogoutBtn) navLogoutBtn.style.display = 'none';
                   if (navUserGreeting) navUserGreeting.style.display = 'none';
-                  
+
                   // Mobile navigation
                   if (menuLoginBtn) menuLoginBtn.style.display = 'block';
                   if (menuLogoutContainer) {
@@ -111,7 +111,7 @@ async function refreshAuthUI() {
                 if (navAccountLink) navAccountLink.style.display = 'none';
                 if (navLogoutBtn) navLogoutBtn.style.display = 'none';
                 if (navUserGreeting) navUserGreeting.style.display = 'none';
-                
+
                 // Mobile navigation
                 if (menuLoginBtn) menuLoginBtn.style.display = 'block';
                 if (menuLogoutContainer) {
@@ -129,13 +129,13 @@ function openAuthModal(mode = 'signup') {
     console.error('Auth modal not found');
     return;
   }
-  
+
   // Set active tab
   const loginTab = document.getElementById('loginTab');
   const signupTab = document.getElementById('signupTab');
   const loginPane = document.getElementById('loginPane');
   const signupPane = document.getElementById('signupPane');
-  
+
   if (mode === 'login') {
     loginTab.classList.add('active');
     signupTab.classList.remove('active');
@@ -147,7 +147,7 @@ function openAuthModal(mode = 'signup') {
     signupPane.classList.add('active', 'show');
     loginPane.classList.remove('active', 'show');
   }
-  
+
   resetForgotPasswordUI();
 
   // Show modal
@@ -182,10 +182,10 @@ async function handleAuth(formData, isSignup = false) {
       body: JSON.stringify(formData),
       credentials: 'include'
     });
-    
+
     if (!response.ok) {
       let errorMessage = 'Authentication failed';
-      
+
       if (response.status === 429) {
         errorMessage = 'Too many requests. Please wait a moment and try again.';
       } else {
@@ -196,15 +196,15 @@ async function handleAuth(formData, isSignup = false) {
           errorMessage = `Server error (${response.status})`;
         }
       }
-      
+
       throw new Error(errorMessage);
     }
-    
+
     const { user } = await response.json();
-    
+
     // New session: clear cached CSRF so logout/checkout get a token for this session
     csrfToken = null;
-    
+
     // Close modal: move focus out first to avoid aria-hidden + focused descendant
     const modal = document.getElementById('authModal');
     if (modal?.contains(document.activeElement)) {
@@ -218,17 +218,17 @@ async function handleAuth(formData, isSignup = false) {
       modal.style.display = 'none';
       modal.classList.remove('show');
     }
-    
+
     // Refresh auth UI
     refreshAuthUI();
-    
+
     // If we have pending station context, show plan chooser
     if (pendingStationContext) {
       setTimeout(() => {
         openPlanModal();
       }, 300); // Small delay to ensure modal closes properly
     }
-    
+
     return true;
   } catch (error) {
     console.error('Authentication error:', error);
@@ -429,13 +429,13 @@ window.addEventListener('DOMContentLoaded', () => {
     const href = item.getAttribute('href') || '';
     const isHash = href.startsWith('#');
     console.log('[offcanvas] Clicked:', href, 'isHash:', isHash, 'target:', item);
-    
+
     // For non-hash links (like /account), navigate explicitly
     if (!isHash && href && href !== '') {
       console.log('[offcanvas] Non-hash link detected, navigating to:', href);
       e.preventDefault(); // Prevent any default behavior
       e.stopPropagation(); // Stop event bubbling
-      
+
       // Close offcanvas first, then navigate
       const hideAndNavigate = () => {
         if (window.bootstrap?.Offcanvas) {
@@ -449,7 +449,7 @@ window.addEventListener('DOMContentLoaded', () => {
           window.location.href = href;
         }
       };
-      
+
       hideAndNavigate();
       return;
     }
@@ -989,7 +989,7 @@ async function openPlanModal() {
         window.location.href = `/dlFile.html?${params.toString()}`;
         return;
       }
-      
+
       // Show upsell on 2nd, 3rd, … purchase attempt (when user has 1+ one-time purchases, no subscription)
       const purchaseCount = oneTimePurchases ? oneTimePurchases.length : 0;
       if (purchaseCount >= 1) {
@@ -1011,7 +1011,7 @@ async function openPlanModal() {
           if (savingsText) {
             savingsText.textContent = `You've spent $${Number(totalSpent).toFixed(2)} on ${purchaseCount} ${stationWord}. Upgrade to Pro for $${Number(offerPrice).toFixed(2)} (save $${Math.abs(savings).toFixed(2)} more!)`;
           }
-          
+
           if (window.bootstrap?.Modal) {
             const bsModal = new bootstrap.Modal(upsellModal);
             bsModal.show();
@@ -1025,7 +1025,7 @@ async function openPlanModal() {
         }
       }
     }
-    
+
     // Regular plan chooser for non-unlimited users
     const modal = document.getElementById('planModal');
     if (!modal) {
@@ -1379,7 +1379,7 @@ const loadTideStations = async () => {
 
 // Initialize the map
 const initMap = () => {
-  
+
 
   // Initialize the Leaflet map and assign it to the global `map` variable
   map = L.map('map', {
@@ -1454,7 +1454,7 @@ const initMap = () => {
     goldenSearchMarker = L.marker(latlng, {
       icon: L.icon({
         iconUrl: '/img/goldenHourIcon.png',
-        iconSize: [52, 70],
+        iconSize: [65, 65],
         iconAnchor: [22, 50],
         className: 'golden-search-marker'
       })
@@ -1489,15 +1489,21 @@ const initMap = () => {
           <div class="card-body">
             <p class="card-label">Current location</p>
             <h6 class="fw-bolder">Your location</h6>
-            <input type="text" class="form-control form-control-sm golden-label-input" id="goldenCurrentLabel"
+            <input type="text" class="form-control form-control-sm golden-label-input " id="goldenCurrentLabel"
                    placeholder="Calendar label (e.g. Home, Beach House)" maxlength="60" />
             <p class="card-text small">Create a Golden Hour calendar for your current location.</p>
-            <button class="btn download-btn" onclick="handleCurrentLocationGoldenHour()">
-              <img src="/img/whiteLogo.png" alt="calendar icon">Create Golden Hour Calendar
+            <button class="btn download-btn text-center" onclick="handleCurrentLocationGoldenHour()">
+              <img src="/img/whiteLogo.png" alt="calendar icon">Golden Hour Calendar
             </button>
           </div>
         </div>`;
       currentLocationMarker.bindPopup(popupContent, { className: 'leaflet-popup' });
+      currentLocationMarker.on('popupopen', function () {
+        const input = document.getElementById('goldenCurrentLabel');
+        if (input) {
+          input.focus();
+        }
+      });
     }, (error) => {
       console.warn('Geolocation error:', error);
     });
@@ -1526,14 +1532,20 @@ const initMap = () => {
 
   // Connect all "Find My Location" buttons
   document.getElementById('mapBtn')?.addEventListener('click', findMyLocationAndScroll);
-  
+
+  // Golden Hour CTA — locate user on map just like "Find My Location"
+  document.getElementById('ghCtaBtn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    findMyLocationAndScroll();
+  });
+
   // Desktop menu "Find My Location" button
   document.querySelector('a[href="#map"]')?.addEventListener('click', (e) => {
     e.preventDefault();
     findMyLocationAndScroll();
   });
-  
-  // Mobile menu "Find My Location" button  
+
+  // Mobile menu "Find My Location" button
   document.querySelector('a[href="#mapSection"]')?.addEventListener('click', (e) => {
     e.preventDefault();
     findMyLocationAndScroll();
