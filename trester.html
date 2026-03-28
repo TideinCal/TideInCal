@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Water Wake Trail</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #0d1b48;
+    }
+
+    canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
+      mix-blend-mode: difference;
+    }
+  </style>
+</head>
+<body>
+<canvas id="rippleCanvas"></canvas>
+
+<script>
+  const canvas = document.getElementById('rippleCanvas');
+  const ctx = canvas.getContext('2d');
+  let width, height;
+
+  function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  let lastX = null;
+  let lastY = null;
+  const ripples = [];
+
+  document.addEventListener('mousemove', (e) => {
+    if (lastX !== null && lastY !== null) {
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      const angle = Math.atan2(dy, dx);
+
+      const behindOffset = -20;
+      const baseX = e.clientX + Math.cos(angle) * behindOffset;
+      const baseY = e.clientY + Math.sin(angle) * behindOffset;
+
+      ripples.push({ x: baseX, y: baseY, radius: 0, opacity: 0.5 });
+    }
+
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+
+  function animate() {
+    ctx.clearRect(0, 0, width, height);
+
+    for (let i = 0; i < ripples.length; i++) {
+      const r = ripples[i];
+
+      ctx.beginPath();
+      ctx.ellipse(r.x, r.y, r.radius * 2, r.radius, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${r.opacity})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      r.radius += 0.7;
+      r.opacity -= 0.015;
+
+      if (r.opacity <= 0) {
+        ripples.splice(i, 1);
+        i--;
+      }
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+</script>
+</body>
+</html>

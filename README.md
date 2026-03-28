@@ -1,14 +1,48 @@
 # TideInCal
-This is a web application that allows a user to put 1 year
-worth of High and Low Tide Time into their Calendar from a selected location.
 
-The user can allow us to automatically find their location
-on the map, or they type in their location on the to
-corner of the map.
+Get 12 months of tide times from official stations—synced directly to your Google or Apple Calendar. No app. No clutter. One Download. Just tides.
 
-Once they have found their location the user can select a
-designated marker (tide station) and download 1 year of high
-and low tide data of their desired location into their
-iCalendar, Google Calendar, or Outlook.
-# TideInCal
+## Quick Start
+
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+2. **Environment setup**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your values:
+   # - MONGO_URI: MongoDB Atlas connection string
+   # - SESSION_SECRET: Random secret for sessions
+   # - STRIPE_SECRET_KEY: Stripe secret key
+   # - STRIPE_WEBHOOK_SECRET: Stripe webhook secret
+   # - STRIPE_PRICE_*: Stripe price IDs
+   # - APP_URL: Your app URL
+   # - RESEND_API_KEY: Resend API key for emails
+   ```
+
+3. **Run development server**
+   ```bash
+   npm run dev
+   ```
+
+4. **Setup webhook (for testing)**
+   ```bash
+   npm run ngrok
+   # Set Stripe webhook endpoint to: https://<ngrok-url>/api/stripe/webhook
+   ```
+
+5. **Configure Stripe**
+   - Create products in Stripe dashboard
+   - Set price IDs in `.env`
+   - Configure webhook endpoint
+
+6. **Configure Resend**
+   - Verify your domain in Resend dashboard
+   - Set sender email in email templates
+
+## Development
+
+See `docs/DEV.md` for detailed development setup instructions.
 
