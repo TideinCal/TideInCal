@@ -497,6 +497,10 @@ let map;
 let isUnlimitedProUser = false;
 (async function initEntitlementsForMap() {
   try {
+    const authRes = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!authRes.ok) return;
+    const { user } = await authRes.json();
+    if (!user) return;
     const res = await fetch('/api/auth/me/entitlements', { credentials: 'include' });
     if (res.ok) {
       const { unlimited } = await res.json();
