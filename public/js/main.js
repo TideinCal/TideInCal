@@ -1,7 +1,7 @@
 // Define the custom icon for tide stations
 const tideIcon = L.icon({
   iconUrl: '/img/tideStations.png',
-  iconSize: [55, 65],
+  iconSize: [60, 65],
   iconAnchor: [22, 50],
   clickable: true,
   title: 'Tide Station',
@@ -13,7 +13,7 @@ const tideIcon = L.icon({
 // Define the custom icon for the user location
 const myIcon = L.icon({
   iconUrl: '/img/homeIcon.png',
-  iconSize: [55, 65],
+  iconSize: [60, 65],
   iconAnchor: [22, 50],
   clickable: true,
   title: 'Current Location',
@@ -1454,7 +1454,7 @@ const initMap = () => {
     goldenSearchMarker = L.marker(latlng, {
       icon: L.icon({
         iconUrl: '/img/goldenHourIcon.png',
-        iconSize: [55, 65],
+        iconSize: [60, 65],
         iconAnchor: [22, 50],
         className: 'golden-search-marker'
       })
