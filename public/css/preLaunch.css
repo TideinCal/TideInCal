@@ -490,6 +490,7 @@ p {
   padding: 0.2em 0.8em;
   border-radius: 2em;
   margin-bottom: 1rem;
+  width: fit-content;
 }
 
 .plan-strip-badge--pro {
