@@ -226,7 +226,10 @@ async function handleAuth(formData, isSignup = false) {
     if (pendingStationContext) {
       setTimeout(() => {
         openPlanModal();
-      }, 300); // Small delay to ensure modal closes properly
+      }, 300);
+    } else if (pendingGoProAfterAuth) {
+      pendingGoProAfterAuth = false;
+      setTimeout(() => goProDirect(), 400);
     }
 
     return true;
@@ -1291,6 +1294,44 @@ function closeUpsellAndContinue() {
     }
   }, 300);
 }
+
+/** Go Pro directly — used by the "Go Pro" CTA on the landing page and Moon Phase section.
+ *  Checks auth, opens auth modal if needed, then starts unlimited checkout. */
+let pendingGoProAfterAuth = false;
+
+async function goProDirect(e) {
+  if (e) e.preventDefault();
+  try {
+    const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!authResponse.ok) {
+      pendingGoProAfterAuth = true;
+      openAuthModal('signup');
+      return;
+    }
+    const { user } = await authResponse.json();
+    if (!user) {
+      pendingGoProAfterAuth = true;
+      openAuthModal('signup');
+      return;
+    }
+    pendingStationContext = null;
+    pendingContextType = 'tide';
+    pendingGoldenLocation = null;
+    await startCheckoutSession({ plan: 'unlimited', userTimezone: getUserTimezone() });
+  } catch (error) {
+    console.error('Go Pro error:', error);
+    setVerificationBannerState({
+      title: 'Checkout unavailable',
+      message: 'Failed to start checkout. Please try again.',
+      variant: 'danger',
+      showResend: false,
+      showContinue: false,
+      showSelectLink: false,
+      showDismiss: true
+    });
+  }
+}
+window.goProDirect = goProDirect;
 
 // Make functions globally available
 window.selectPlan = selectPlan;
