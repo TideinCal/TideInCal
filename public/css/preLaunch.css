@@ -958,11 +958,12 @@ p {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.65em 1.5em;
+  gap: 0.4rem;
+  padding: 0.65em 1.3em 1.1em;
   font-family: 'Kanit', sans-serif;
   font-size: 1rem;
   font-weight: 600;
+  line-height: 1.15;
   border-radius: 0;
   text-decoration: none;
   transition: filter 0.3s ease, box-shadow 0.3s ease;
@@ -982,6 +983,7 @@ p {
 .offer-btn--moon {
   background: linear-gradient(135deg, #151b48, #3b4a8a);
   color: #c8d2ff;
+  padding-right: 2.2em;
 }
 
 .offer-btn:hover {
