@@ -1,7 +1,7 @@
 // Define the custom icon for tide stations
 const tideIcon = L.icon({
   iconUrl: '/img/tideStations.png',
-  iconSize: [65, 65],
+  iconSize: [60, 65],
   iconAnchor: [22, 50],
   clickable: true,
   title: 'Tide Station',
@@ -13,7 +13,7 @@ const tideIcon = L.icon({
 // Define the custom icon for the user location
 const myIcon = L.icon({
   iconUrl: '/img/homeIcon.png',
-  iconSize: [65, 65],
+  iconSize: [60, 65],
   iconAnchor: [22, 50],
   clickable: true,
   title: 'Current Location',
@@ -226,7 +226,10 @@ async function handleAuth(formData, isSignup = false) {
     if (pendingStationContext) {
       setTimeout(() => {
         openPlanModal();
-      }, 300); // Small delay to ensure modal closes properly
+      }, 300);
+    } else if (pendingGoProAfterAuth) {
+      pendingGoProAfterAuth = false;
+      setTimeout(() => goProDirect(), 400);
     }
 
     return true;
@@ -497,6 +500,10 @@ let map;
 let isUnlimitedProUser = false;
 (async function initEntitlementsForMap() {
   try {
+    const authRes = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!authRes.ok) return;
+    const { user } = await authRes.json();
+    if (!user) return;
     const res = await fetch('/api/auth/me/entitlements', { credentials: 'include' });
     if (res.ok) {
       const { unlimited } = await res.json();
@@ -1288,6 +1295,44 @@ function closeUpsellAndContinue() {
   }, 300);
 }
 
+/** Go Pro directly - used by the "Go Pro" CTA on the landing page and Moon Phase section.
+ *  Checks auth, opens auth modal if needed, then starts unlimited checkout. */
+let pendingGoProAfterAuth = false;
+
+async function goProDirect(e) {
+  if (e) e.preventDefault();
+  try {
+    const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!authResponse.ok) {
+      pendingGoProAfterAuth = true;
+      openAuthModal('signup');
+      return;
+    }
+    const { user } = await authResponse.json();
+    if (!user) {
+      pendingGoProAfterAuth = true;
+      openAuthModal('signup');
+      return;
+    }
+    pendingStationContext = null;
+    pendingContextType = 'tide';
+    pendingGoldenLocation = null;
+    await startCheckoutSession({ plan: 'unlimited', userTimezone: getUserTimezone() });
+  } catch (error) {
+    console.error('Go Pro error:', error);
+    setVerificationBannerState({
+      title: 'Checkout unavailable',
+      message: 'Failed to start checkout. Please try again.',
+      variant: 'danger',
+      showResend: false,
+      showContinue: false,
+      showSelectLink: false,
+      showDismiss: true
+    });
+  }
+}
+window.goProDirect = goProDirect;
+
 // Make functions globally available
 window.selectPlan = selectPlan;
 window.closeUpsellAndContinue = closeUpsellAndContinue;
@@ -1454,7 +1499,7 @@ const initMap = () => {
     goldenSearchMarker = L.marker(latlng, {
       icon: L.icon({
         iconUrl: '/img/goldenHourIcon.png',
-        iconSize: [65, 65],
+        iconSize: [60, 65],
         iconAnchor: [22, 50],
         className: 'golden-search-marker'
       })
