@@ -946,15 +946,16 @@ p {
 }
 
 .offer-btn-group {
-  display: flex;
+  display: inline-flex;
   justify-content: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  max-width: 600px;
   margin: 0 auto;
+  border-radius: 2em;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
 }
 
 .offer-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -962,34 +963,45 @@ p {
   font-family: 'Kanit', sans-serif;
   font-size: 1rem;
   font-weight: 600;
-  border-radius: 2em;
+  border-radius: 0;
   text-decoration: none;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  border: 2px solid transparent;
+  transition: filter 0.3s ease, box-shadow 0.3s ease;
+  border: none;
 }
 
 .offer-btn--tides {
   background: linear-gradient(135deg, #0B62AC, #00c7e6);
   color: white;
-  box-shadow: 0 3px 10px rgba(11, 98, 172, 0.25);
 }
 
 .offer-btn--golden {
   background: linear-gradient(135deg, #d4a44a, #f5c842);
   color: white;
-  box-shadow: 0 3px 10px rgba(212, 164, 74, 0.25);
 }
 
 .offer-btn--moon {
   background: linear-gradient(135deg, #151b48, #3b4a8a);
   color: #c8d2ff;
-  box-shadow: 0 3px 10px rgba(21, 27, 72, 0.25);
 }
 
 .offer-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  filter: brightness(1.12);
   color: white;
+}
+
+.offer-pro-pill {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0B62AC;
+  padding: 0.1em 0.5em;
+  border-radius: 1em;
+  line-height: 1.4;
 }
 
 /* =============================================

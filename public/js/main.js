@@ -1295,7 +1295,7 @@ function closeUpsellAndContinue() {
   }, 300);
 }
 
-/** Go Pro directly — used by the "Go Pro" CTA on the landing page and Moon Phase section.
+/** Go Pro directly - used by the "Go Pro" CTA on the landing page and Moon Phase section.
  *  Checks auth, opens auth modal if needed, then starts unlimited checkout. */
 let pendingGoProAfterAuth = false;
 
