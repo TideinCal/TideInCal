@@ -1019,34 +1019,6 @@ p {
   overflow: hidden;
 }
 
-.moon-glow-orb {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  filter: blur(80px);
-}
-.moon-glow-orb--1 {
-  width: 500px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(180, 195, 255, 0.45) 0%, transparent 60%);
-  top: -115px;
-  left: -126px;
-  animation: moonFloat 14s ease-in-out infinite alternate;
-}
-.moon-glow-orb--2 {
-  width: 450px;
-  height: 450px;
-  background: radial-gradient(circle, rgba(0, 199, 230, 0.3) 0%, transparent 60%);
-  bottom: -30px;
-  right: -40px;
-  animation: moonFloat 16s ease-in-out infinite alternate-reverse;
-}
-
-@keyframes moonFloat {
-  0%   { transform: translate(0, 0) scale(1); }
-  50%  { transform: translate(30px, -20px) scale(1.25); }
-  100% { transform: translate(-20px, 15px) scale(0.9); }
-}
 
 .moon-phase-inner {
   max-width: 900px;
