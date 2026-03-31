@@ -1029,8 +1029,8 @@ p {
   width: 500px;
   height: 500px;
   background: radial-gradient(circle, rgba(180, 195, 255, 0.45) 0%, transparent 60%);
-  top: -40px;
-  left: -60px;
+  top: -115px;
+  left: -126px;
   animation: moonFloat 14s ease-in-out infinite alternate;
 }
 .moon-glow-orb--2 {
@@ -1043,8 +1043,9 @@ p {
 }
 
 @keyframes moonFloat {
-  0%   { transform: translate(0, 0); }
-  100% { transform: translate(20px, -15px); }
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(30px, -20px) scale(1.25); }
+  100% { transform: translate(-20px, 15px) scale(0.9); }
 }
 
 .moon-phase-inner {
