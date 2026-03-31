@@ -959,7 +959,7 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.65em 1.3em 1.1em;
+  padding: 1em 1.3em 1.1em;
   font-family: 'Kanit', sans-serif;
   font-size: 1rem;
   font-weight: 600;
