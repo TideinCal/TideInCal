@@ -1023,22 +1023,22 @@ p {
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
-  filter: blur(100px);
+  filter: blur(80px);
 }
 .moon-glow-orb--1 {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(200, 210, 255, 0.15) 0%, transparent 65%);
-  top: -80px;
-  left: -100px;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(180, 195, 255, 0.45) 0%, transparent 60%);
+  top: -40px;
+  left: -60px;
   animation: moonFloat 14s ease-in-out infinite alternate;
 }
 .moon-glow-orb--2 {
-  width: 350px;
-  height: 350px;
-  background: radial-gradient(circle, rgba(0, 199, 230, 0.1) 0%, transparent 65%);
-  bottom: -60px;
-  right: -80px;
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle, rgba(0, 199, 230, 0.3) 0%, transparent 60%);
+  bottom: -30px;
+  right: -40px;
   animation: moonFloat 16s ease-in-out infinite alternate-reverse;
 }
 
