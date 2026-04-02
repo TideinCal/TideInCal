@@ -74,7 +74,12 @@ router.post('/session', csrfProtection, async (req, res) => {
                                    user?.subscriptionCurrentPeriodEnd && 
                                    new Date(user.subscriptionCurrentPeriodEnd) > new Date();
     
-    // If user has active subscription and is requesting single station (tide), allow free generation
+    // Block double-charge: active subscribers should not be able to purchase again
+    if (hasActiveSubscription && plan === 'unlimited') {
+      return res.status(400).json({ 
+        error: 'You already have an active Pro subscription.' 
+      });
+    }
     if (hasActiveSubscription && plan === 'single' && !goldenOnly) {
       return res.status(400).json({ 
         error: 'You have an active subscription. Please use the dashboard to generate files for free.' 

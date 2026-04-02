@@ -498,6 +498,65 @@ let map;
 
 // Entitlements cache (used to show Pro-only UI like Golden Hour checkbox on tide popup)
 let isUnlimitedProUser = false;
+
+function applyProSubscriberUI() {
+  // Plan strip: replace two cards with single subscriber card
+  const planStripCards = document.querySelector('.plan-strip-cards');
+  if (planStripCards) {
+    planStripCards.innerHTML = `
+      <div class="plan-strip-card plan-strip-card--pro" style="max-width:520px; margin:0 auto;">
+        <div class="plan-strip-badge plan-strip-badge--pro">Pro Subscriber</div>
+        <h3 class="plan-strip-name">You're a Pro</h3>
+        <p class="plan-strip-hook">You have unlimited access to everything TideInCal offers.</p>
+        <ul class="plan-strip-list">
+          <li><i class="bi bi-check-circle-fill"></i> Unlimited tide stations, any beach, harbor or marina</li>
+          <li><i class="bi bi-check-circle-fill"></i> 🌕 Moon Phases synced to your calendar</li>
+          <li><i class="bi bi-check-circle-fill"></i> Golden Hour for every station and location</li>
+          <li><i class="bi bi-check-circle-fill"></i> Your current location and searched places included</li>
+          <li><i class="bi bi-check-circle-fill"></i> Regenerate or refresh anytime, no extra cost</li>
+        </ul>
+        <a href="/account" class="cta-button plan-strip-cta">Go to My Account</a>
+        <a href="#mapSection" class="cta-button plan-strip-cta" style="background:linear-gradient(135deg,rgba(21,27,72,1) 20%,#3b4a8a 80%); margin-top:0.5em;">Find My Station</a>
+      </div>`;
+  }
+
+  // Plan strip heading
+  const planStripHeading = document.querySelector('.plan-strip-heading');
+  if (planStripHeading) planStripHeading.textContent = 'Your Pro Plan';
+  const planStripSub = document.querySelector('.plan-strip-sub');
+  if (planStripSub) planStripSub.textContent = 'Unlimited access. Every feature. No extra charges.';
+
+  // Moon phase section: swap CTA
+  const moonCta = document.querySelector('.moon-cta');
+  if (moonCta) {
+    moonCta.textContent = '🌕 Get Moon Phases';
+    moonCta.setAttribute('href', '/account');
+    moonCta.removeAttribute('onclick');
+  }
+  const moonCallout = document.querySelector('.moon-pro-callout');
+  if (moonCallout) {
+    const badge = moonCallout.querySelector('.moon-pro-badge');
+    if (badge) badge.textContent = 'You Have This';
+    const text = moonCallout.querySelector('.moon-pro-text');
+    if (text) text.textContent = 'Moon Phases are ready and waiting in your account. Download them anytime.';
+    const trust = moonCallout.querySelector('.moon-trust');
+    if (trust) trust.textContent = 'Included with your Pro subscription';
+  }
+
+  // Moon eyebrow
+  const moonEyebrow = document.querySelector('.moon-eyebrow');
+  if (moonEyebrow) moonEyebrow.textContent = 'Included In Your Plan';
+
+  // Golden Hour section: update Go Pro pricing card for subscribers
+  const ghProInner = document.querySelector('.gh-pro-inner');
+  if (ghProInner) {
+    const label = ghProInner.querySelector('.gh-price-label');
+    if (label) label.textContent = 'Your Plan';
+    const note = ghProInner.querySelector('.gh-price-note');
+    if (note) note.textContent = 'included with your Pro subscription';
+  }
+}
+
 (async function initEntitlementsForMap() {
   try {
     const authRes = await fetch('/api/auth/me', { credentials: 'include' });
@@ -508,6 +567,9 @@ let isUnlimitedProUser = false;
     if (res.ok) {
       const { unlimited } = await res.json();
       isUnlimitedProUser = !!unlimited;
+      if (isUnlimitedProUser) {
+        applyProSubscriberUI();
+      }
     }
   } catch (e) {
     // Ignore; non-auth users simply won't see Pro-only UI
@@ -1082,6 +1144,11 @@ function moveFocusOutOfModal(modal) {
 
 async function selectPlan(plan, fromUpsell = false, _triggerButton = null) {
   try {
+    if (plan === 'unlimited' && isUnlimitedProUser) {
+      window.location.href = '/account';
+      return;
+    }
+
     const includeMoon = document.getElementById('planIncludeMoon')?.checked === true;
     const includeGoldenHour = document.getElementById('planIncludeGoldenHour')?.checked === true;
 
@@ -1301,6 +1368,10 @@ let pendingGoProAfterAuth = false;
 
 async function goProDirect(e) {
   if (e) e.preventDefault();
+  if (isUnlimitedProUser) {
+    window.location.href = '/account';
+    return;
+  }
   try {
     const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
     if (!authResponse.ok) {
@@ -1313,6 +1384,16 @@ async function goProDirect(e) {
       pendingGoProAfterAuth = true;
       openAuthModal('signup');
       return;
+    }
+    const entRes = await fetch('/api/auth/me/entitlements', { credentials: 'include' });
+    if (entRes.ok) {
+      const { unlimited } = await entRes.json();
+      if (unlimited) {
+        isUnlimitedProUser = true;
+        applyProSubscriberUI();
+        window.location.href = '/account';
+        return;
+      }
     }
     pendingStationContext = null;
     pendingContextType = 'tide';
