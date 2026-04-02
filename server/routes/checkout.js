@@ -360,4 +360,36 @@ router.get('/verify', async (req, res) => {
   }
 });
 
+// POST /api/checkout/portal - Create a Stripe Customer Portal session for subscription management
+router.post('/portal', csrfProtection, async (req, res) => {
+  try {
+    const db = getDatabase();
+    const { ObjectId } = await import('mongodb');
+    const user = await db.collection('users').findOne({ _id: new ObjectId(req.user._id) });
+
+    let customerId = user?.stripeCustomerId;
+    if (customerId && typeof customerId === 'object') {
+      customerId = customerId.id || customerId.customer || null;
+    }
+    if (!customerId || typeof customerId !== 'string' || !customerId.startsWith('cus_')) {
+      return res.status(400).json({ error: 'No Stripe customer found for this account.' });
+    }
+
+    const appUrl = process.env.APP_URL?.trim();
+    if (!appUrl) {
+      return res.status(503).json({ error: 'Portal is not fully configured.' });
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${appUrl}/account`
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error('[portal] Billing portal error:', error?.message ?? error);
+    res.status(500).json({ error: 'Unable to open subscription management.' });
+  }
+});
+
 export default router;

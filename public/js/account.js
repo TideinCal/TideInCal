@@ -348,8 +348,9 @@ function displaySubscriptionInfo(data) {
                     <small class="text-muted">Unlimited</small>
                 </div>
             </div>
-            <div class="mt-3">
-                <a href="/#map" class="btn btn-gradient w-100 w-md-auto">Go to Map to Generate Tides &amp; Golden Hour</a>
+            <div class="mt-3 d-flex flex-column flex-md-row gap-2">
+                <a href="/#map" class="btn btn-gradient">Go to Map to Generate Tides &amp; Golden Hour</a>
+                <button class="btn btn-outline-secondary" onclick="openBillingPortal(this)">Manage Subscription</button>
             </div>
         `;
     } else {
@@ -405,6 +406,36 @@ function displaySubscriptionError() {
         </div>
     `;
 }
+
+async function openBillingPortal(btn) {
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Loading...';
+    try {
+        const token = await getCsrfToken();
+        const res = await fetch('/api/checkout/portal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
+            credentials: 'include'
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'Unable to open subscription management.');
+        }
+        const { url } = await res.json();
+        if (url) {
+            window.location.href = url;
+            return;
+        }
+        throw new Error('No portal URL received.');
+    } catch (e) {
+        console.error('Billing portal error:', e);
+        alert(e.message || 'Unable to open subscription management. Please try again.');
+        btn.disabled = false;
+        btn.textContent = origText;
+    }
+}
+window.openBillingPortal = openBillingPortal;
 
 // Load user purchases and subscription downloads
 async function loadPurchases() {
