@@ -1,5 +1,13 @@
 // Account page functionality
 
+function getUserTimezone() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz && typeof tz === 'string') return tz;
+  } catch (e) {}
+  return 'UTC';
+}
+
 // Check authentication status
 async function checkAuth() {
     try {
@@ -986,8 +994,10 @@ async function downloadMoonCalendar(button) {
             method: 'POST',
             credentials: 'include',
             headers: {
+                'Content-Type': 'application/json',
                 'X-CSRF-Token': token
-            }
+            },
+            body: JSON.stringify({ userTimezone: getUserTimezone() })
         });
 
         if (!response.ok) {

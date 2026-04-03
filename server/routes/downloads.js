@@ -6,9 +6,37 @@ import { attachUser, requireAuth } from '../auth/index.js';
 import { generateICS, mergeTideAndGoldenHourICS } from '../ics/index.js';
 import { generateMoonCalendar, addCalendarYear } from '../ics/moonCalendar.js';
 import { generateGoldenHourICS } from '../ics/goldenHour.js';
+import { find as findTimezone } from 'geo-tz';
 import { z } from 'zod';
 import Stripe from 'stripe';
 import csurf from 'csurf';
+
+/**
+ * Derive IANA timezone from latitude/longitude using geo-tz.
+ * Returns the first match or null on failure.
+ */
+function timezoneFromCoords(lat, lng) {
+  try {
+    const results = findTimezone(Number(lat), Number(lng));
+    if (results && results.length > 0) return results[0];
+  } catch (_) {}
+  return null;
+}
+
+/**
+ * Persist the resolved timezone on the user record so it can be reused
+ * by location-independent features like the moon calendar.
+ */
+async function storeTimezoneOnUser(db, userId, timezone) {
+  if (!timezone || timezone === 'UTC') return;
+  try {
+    const { ObjectId } = await import('mongodb');
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { lastKnownTimezone: timezone } }
+    );
+  } catch (_) {}
+}
 
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -38,6 +66,17 @@ function resolveStationTitle(country, stationID) {
   if (!stations) return null;
   const match = stations.find((station) => String(station.id) === String(stationID));
   return match?.name || null;
+}
+
+function resolveStationCoords(country, stationID) {
+  const stations = getStationsForCountry(country);
+  if (!stations) return null;
+  const match = stations.find((station) => String(station.id) === String(stationID));
+  if (!match) return null;
+  const lat = match.lat || match.latitude || match.Latitude;
+  const lon = match.lon || match.lng || match.longitude || match.Longitude;
+  if (typeof lat === 'number' && typeof lon === 'number') return { lat, lon };
+  return null;
 }
 
 // Apply middleware
@@ -148,6 +187,11 @@ router.post('/regenerate/:purchaseId', csrfProtection, async (req, res) => {
       }
     }
     
+    // Store timezone from station coordinates if available
+    const regenCoords = resolveStationCoords(params.country, params.stationId);
+    const regenTz = regenCoords ? timezoneFromCoords(regenCoords.lat, regenCoords.lon) : null;
+    if (regenTz) storeTimezoneOnUser(db, req.user._id, regenTz);
+
     // Generate ICS content on-demand
     console.log('[downloads] Regenerating ICS for purchase:', purchaseId, includeGolden ? '(tide + Golden Hour)' : '');
     const tideIcs = await generateICS({
@@ -320,6 +364,13 @@ router.post('/generate', csrfProtection, async (req, res) => {
       }
     }
 
+    // Derive timezone from station coordinates when possible
+    const stationCoords = resolveStationCoords(country, stationID);
+    const derivedTz = stationCoords ? timezoneFromCoords(stationCoords.lat, stationCoords.lon) : null;
+    if (derivedTz) {
+      storeTimezoneOnUser(db, req.user._id, derivedTz);
+    }
+
     // Generate ICS content on-demand
     console.log('[downloads] Generating ICS for subscription user:', req.user._id);
     const icsContent = await generateICS({
@@ -477,9 +528,16 @@ router.post('/moon', csrfProtection, async (req, res) => {
       });
     }
 
-    const userTimezone = (req.body && req.body.userTimezone != null)
-      ? String(req.body.userTimezone).trim() || 'UTC'
-      : 'UTC';
+    // Timezone resolution: browser hint → stored user timezone → UTC fallback
+    const browserTz = (req.body && req.body.userTimezone)
+      ? String(req.body.userTimezone).trim() || null
+      : null;
+    const storedTz = user.lastKnownTimezone || null;
+    const userTimezone = (browserTz && browserTz !== 'UTC' ? browserTz : null)
+      || (storedTz && storedTz !== 'UTC' ? storedTz : null)
+      || browserTz
+      || storedTz
+      || 'UTC';
     const icsContent = generateMoonCalendar(todayUtc, endUtc, userTimezone);
     const year = todayUtc.getUTCFullYear();
     const filename = `moon-phases-${year}.ics`;
@@ -533,7 +591,9 @@ router.post('/golden/regenerate/:purchaseId', csrfProtection, async (req, res) =
       : purchaseDate
         ? new Date(new Date(purchaseDate).getTime() + 365 * 24 * 60 * 60 * 1000)
         : new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000);
-    const timezone = (params.userTimezone && String(params.userTimezone).trim()) || 'UTC';
+    const goldenGeoTz = timezoneFromCoords(params.lat, params.lng);
+    const timezone = goldenGeoTz || (params.userTimezone && String(params.userTimezone).trim()) || 'UTC';
+    storeTimezoneOnUser(db, req.user._id, timezone);
     const icsContent = generateGoldenHourICS({
       lat: params.lat,
       lng: params.lng,
@@ -616,7 +676,9 @@ router.post('/golden', csrfProtection, async (req, res) => {
     }
     const endDate = subscriptionEnd;
     const startDate = new Date();
-    const timezone = (validated.userTimezone && String(validated.userTimezone).trim()) || 'UTC';
+    const geoTz = timezoneFromCoords(validated.lat, validated.lng);
+    const browserTz = (validated.userTimezone && String(validated.userTimezone).trim()) || null;
+    const timezone = geoTz || browserTz || 'UTC';
     const icsContent = generateGoldenHourICS({
       lat: validated.lat,
       lng: validated.lng,
@@ -625,6 +687,9 @@ router.post('/golden', csrfProtection, async (req, res) => {
       endDate,
       timezone
     });
+
+    storeTimezoneOnUser(db, req.user._id, timezone);
+
     const safeName = (validated.locationName || 'golden-hour').replace(/[^a-zA-Z0-9]/g, '_');
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${safeName}-golden-hour.ics"`);
