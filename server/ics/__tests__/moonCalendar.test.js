@@ -239,3 +239,106 @@ describe('daily event coverage', () => {
     ]);
   });
 });
+
+// ─── No duplicate events or double-assigned phases ─────────────────────────
+
+describe('no duplicate or double-assigned phases (full year 2026)', () => {
+  const ics = generateMoonCalendar('2026-01-01', '2026-12-31', 'America/New_York');
+  const allEvents = parseEvents(ics);
+  const moonEvents = allEvents.filter((e) => e.UID?.includes('moon-'));
+
+  it('every moon event has a unique date (no duplicate days)', () => {
+    const dates = moonEvents.map((e) => e['DTSTART;VALUE=DATE']);
+    const uniqueDates = new Set(dates);
+    expect(dates.length).toBe(uniqueDates.size);
+  });
+
+  it('every moon event has a unique UID', () => {
+    const uids = moonEvents.map((e) => e.UID);
+    const uniqueUids = new Set(uids);
+    expect(uids.length).toBe(uniqueUids.size);
+  });
+
+  it('each full moon date appears exactly once', () => {
+    const fullMoonDates = moonEvents
+      .filter((e) => e.SUMMARY?.includes('🌕'))
+      .map((e) => e['DTSTART;VALUE=DATE']);
+    const unique = new Set(fullMoonDates);
+    expect(fullMoonDates.length).toBe(unique.size);
+  });
+
+  it('each new moon date appears exactly once', () => {
+    const newMoonDates = moonEvents
+      .filter((e) => e.SUMMARY?.includes('🌑'))
+      .map((e) => e['DTSTART;VALUE=DATE']);
+    const unique = new Set(newMoonDates);
+    expect(newMoonDates.length).toBe(unique.size);
+  });
+
+  it('each first quarter date appears exactly once', () => {
+    const fqDates = moonEvents
+      .filter((e) => e.SUMMARY?.includes('🌓'))
+      .map((e) => e['DTSTART;VALUE=DATE']);
+    const unique = new Set(fqDates);
+    expect(fqDates.length).toBe(unique.size);
+  });
+
+  it('each last quarter date appears exactly once', () => {
+    const lqDates = moonEvents
+      .filter((e) => e.SUMMARY?.includes('🌗'))
+      .map((e) => e['DTSTART;VALUE=DATE']);
+    const unique = new Set(lqDates);
+    expect(lqDates.length).toBe(unique.size);
+  });
+
+  it('no day has more than one major phase label', () => {
+    const majorEmojis = ['🌑', '🌓', '🌕', '🌗'];
+    for (const event of moonEvents) {
+      const matches = majorEmojis.filter((e) => event.SUMMARY?.includes(e));
+      expect(matches.length).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('produces the expected count of major phases for a full year', () => {
+    const fullMoons = moonEvents.filter((e) => e.SUMMARY?.includes('🌕'));
+    const newMoons = moonEvents.filter((e) => e.SUMMARY?.includes('🌑'));
+    const firstQuarters = moonEvents.filter((e) => e.SUMMARY?.includes('🌓'));
+    const lastQuarters = moonEvents.filter((e) => e.SUMMARY?.includes('🌗'));
+
+    expect(fullMoons.length).toBeGreaterThanOrEqual(12);
+    expect(fullMoons.length).toBeLessThanOrEqual(14);
+    expect(newMoons.length).toBeGreaterThanOrEqual(12);
+    expect(newMoons.length).toBeLessThanOrEqual(14);
+    expect(firstQuarters.length).toBeGreaterThanOrEqual(12);
+    expect(firstQuarters.length).toBeLessThanOrEqual(14);
+    expect(lastQuarters.length).toBeGreaterThanOrEqual(12);
+    expect(lastQuarters.length).toBeLessThanOrEqual(14);
+  });
+});
+
+// ─── No duplicates across multiple timezones ───────────────────────────────
+
+describe('no duplicates across different timezones', () => {
+  const timezones = ['America/New_York', 'America/Los_Angeles', 'America/Chicago', 'America/Vancouver', 'UTC'];
+
+  for (const tz of timezones) {
+    it(`no duplicate dates in ${tz}`, () => {
+      const ics = generateMoonCalendar('2026-01-01', '2026-12-31', tz);
+      const moonEvents = parseEvents(ics).filter((e) => e.UID?.includes('moon-'));
+      const dates = moonEvents.map((e) => e['DTSTART;VALUE=DATE']);
+      const uniqueDates = new Set(dates);
+      expect(dates.length).toBe(uniqueDates.size);
+    });
+
+    it(`exactly one full moon per lunation in ${tz}`, () => {
+      const ics = generateMoonCalendar('2026-01-01', '2026-12-31', tz);
+      const fullMoons = parseEvents(ics)
+        .filter((e) => e.SUMMARY?.includes('🌕'))
+        .map((e) => e['DTSTART;VALUE=DATE'])
+        .sort();
+      const unique = new Set(fullMoons);
+      expect(fullMoons.length).toBe(unique.size);
+      expect(fullMoons.length).toBe(13);
+    });
+  }
+});
