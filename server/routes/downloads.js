@@ -453,6 +453,33 @@ router.post('/moon', csrfProtection, async (req, res) => {
       ? new Date(user.subscriptionCurrentPeriodEnd)
       : null;
 
+    // Verify directly with Stripe when possible (mirrors entitlements endpoint logic)
+    if (!hasActiveSubscription && user.stripeSubscriptionId) {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+        if (subscription.status === 'active') {
+          hasActiveSubscription = true;
+          if (subscription.current_period_end) {
+            subscriptionEnd = new Date(subscription.current_period_end * 1000);
+          } else if (!subscriptionEnd) {
+            subscriptionEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+          }
+          const updateSet = {
+            subscriptionStatus: subscription.status,
+            unlimited: true,
+            updatedAt: new Date()
+          };
+          if (subscriptionEnd) updateSet.subscriptionCurrentPeriodEnd = subscriptionEnd;
+          await db.collection('users').updateOne(
+            { _id: new ObjectId(req.user._id) },
+            { $set: updateSet }
+          );
+        }
+      } catch (stripeErr) {
+        console.error('[moon] Stripe verification error:', stripeErr.message);
+      }
+    }
+
     // Fallback: check purchases for subscription info if needed
     if (!hasActiveSubscription) {
       const subscriptionPurchase = await db.collection('purchases').findOne(
@@ -641,13 +668,23 @@ router.post('/golden', csrfProtection, async (req, res) => {
     if (!hasActiveSubscription && user.stripeSubscriptionId) {
       try {
         const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-        hasActiveSubscription = subscription.status === 'active';
-        if (subscription.current_period_end) {
-          const periodEnd = new Date(subscription.current_period_end * 1000);
-          if (periodEnd > new Date()) {
-            hasActiveSubscription = true;
-            subscriptionEnd = periodEnd;
+        if (subscription.status === 'active') {
+          hasActiveSubscription = true;
+          if (subscription.current_period_end) {
+            subscriptionEnd = new Date(subscription.current_period_end * 1000);
+          } else if (!subscriptionEnd) {
+            subscriptionEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
           }
+          const updateSet = {
+            subscriptionStatus: subscription.status,
+            unlimited: true,
+            updatedAt: new Date()
+          };
+          if (subscriptionEnd) updateSet.subscriptionCurrentPeriodEnd = subscriptionEnd;
+          await db.collection('users').updateOne(
+            { _id: new ObjectId(req.user._id) },
+            { $set: updateSet }
+          );
         }
       } catch (_) {}
     }
@@ -669,10 +706,8 @@ router.post('/golden', csrfProtection, async (req, res) => {
     }
 
     if (!subscriptionEnd) {
-      return res.status(400).json({
-        error: 'Subscription period end unavailable',
-        message: 'Unable to determine your subscription period end. Please try again or contact support.'
-      });
+      subscriptionEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+      console.warn('[golden] subscriptionEnd null for active subscription, using 1-year fallback');
     }
     const endDate = subscriptionEnd;
     const startDate = new Date();
