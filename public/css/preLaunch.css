@@ -172,7 +172,7 @@ canvas#rippleCanvas {
   gap: 2em;
   align-items: center;
   justify-content: center;
-  padding: 0 1.5em; /* Add horizontal padding */
+  padding: 1em 1.5em;; /* Add horizontal padding */
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -193,7 +193,7 @@ canvas#rippleCanvas {
   padding: 2em 1.5em;
   min-height: 350px;
   width: 100%;
-  max-width: 280px;
+ 
   border-radius: 1rem;
   overflow: hidden;
   color: #ffffff;
@@ -201,6 +201,12 @@ canvas#rippleCanvas {
   z-index: 10000;
   box-shadow: 0 10px 10px rgba(0, 0, 0, 0.5); /* Darker, lower shadow */
   transition: transform 0.3s ease, box-shadow 0.3s ease, filter 0.3s ease;
+}
+
+@media (min-width: 450px) {
+  .step-card {
+    max-width: 280px;
+  }
 }
 
 .step-card:hover {
@@ -418,7 +424,7 @@ p {
 
 .plan-strip {
   background: #f8f9fa;
-  padding: 1em 1em 8em;
+  padding: 1em 1.5em 8em; 
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -889,7 +895,7 @@ p {
 
 .map-intro-heading {
   font-family: 'Kanit', sans-serif;
-  font-size: 1.8rem;
+  font-size: 3rem;
   color: #0B62AC;
   margin-bottom: 0.25rem;
 }
@@ -940,7 +946,7 @@ p {
 
 .what-we-offer-heading {
   font-family: 'Kanit', sans-serif;
-  font-size: 1.6rem;
+  font-size: 2.2rem;
   color: #0B62AC;
   margin-bottom: 1.25rem;
 }
@@ -959,7 +965,7 @@ p {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.65em 1.3em 1.1em;
+  padding: 1em 1.3em 1.1em;
   font-family: 'Kanit', sans-serif;
   font-size: 1rem;
   font-weight: 600;
@@ -1019,33 +1025,6 @@ p {
   overflow: hidden;
 }
 
-.moon-glow-orb {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  filter: blur(100px);
-}
-.moon-glow-orb--1 {
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(200, 210, 255, 0.15) 0%, transparent 65%);
-  top: -80px;
-  left: -100px;
-  animation: moonFloat 14s ease-in-out infinite alternate;
-}
-.moon-glow-orb--2 {
-  width: 350px;
-  height: 350px;
-  background: radial-gradient(circle, rgba(0, 199, 230, 0.1) 0%, transparent 65%);
-  bottom: -60px;
-  right: -80px;
-  animation: moonFloat 16s ease-in-out infinite alternate-reverse;
-}
-
-@keyframes moonFloat {
-  0%   { transform: translate(0, 0); }
-  100% { transform: translate(20px, -15px); }
-}
 
 .moon-phase-inner {
   max-width: 900px;

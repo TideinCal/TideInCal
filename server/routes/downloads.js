@@ -6,9 +6,38 @@ import { attachUser, requireAuth } from '../auth/index.js';
 import { generateICS, mergeTideAndGoldenHourICS } from '../ics/index.js';
 import { generateMoonCalendar, addCalendarYear } from '../ics/moonCalendar.js';
 import { generateGoldenHourICS } from '../ics/goldenHour.js';
+import { find as findTimezone } from 'geo-tz';
 import { z } from 'zod';
 import Stripe from 'stripe';
 import csurf from 'csurf';
+import { hasProSubscriptionFullyRefundedPurchase, purchaseNotFullyRefundedFilter } from '../services/refund/purchaseRefundHelpers.js';
+
+/**
+ * Derive IANA timezone from latitude/longitude using geo-tz.
+ * Returns the first match or null on failure.
+ */
+function timezoneFromCoords(lat, lng) {
+  try {
+    const results = findTimezone(Number(lat), Number(lng));
+    if (results && results.length > 0) return results[0];
+  } catch (_) {}
+  return null;
+}
+
+/**
+ * Persist the resolved timezone on the user record so it can be reused
+ * by location-independent features like the moon calendar.
+ */
+async function storeTimezoneOnUser(db, userId, timezone) {
+  if (!timezone || timezone === 'UTC') return;
+  try {
+    const { ObjectId } = await import('mongodb');
+    await db.collection('users').updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { lastKnownTimezone: timezone } }
+    );
+  } catch (_) {}
+}
 
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -38,6 +67,17 @@ function resolveStationTitle(country, stationID) {
   if (!stations) return null;
   const match = stations.find((station) => String(station.id) === String(stationID));
   return match?.name || null;
+}
+
+function resolveStationCoords(country, stationID) {
+  const stations = getStationsForCountry(country);
+  if (!stations) return null;
+  const match = stations.find((station) => String(station.id) === String(stationID));
+  if (!match) return null;
+  const lat = match.lat || match.latitude || match.Latitude;
+  const lon = match.lon || match.lng || match.longitude || match.Longitude;
+  if (typeof lat === 'number' && typeof lon === 'number') return { lat, lon };
+  return null;
 }
 
 // Apply middleware
@@ -89,6 +129,13 @@ router.post('/regenerate/:purchaseId', csrfProtection, async (req, res) => {
     
     if (!purchase) {
       return res.status(404).json({ error: 'Purchase not found or access denied' });
+    }
+
+    if (purchase.fullyRefundedAt) {
+      return res.status(403).json({
+        error: 'Access revoked',
+        message: 'This purchase was fully refunded. Access is no longer available.'
+      });
     }
     
     // Check if purchase is expired
@@ -148,6 +195,11 @@ router.post('/regenerate/:purchaseId', csrfProtection, async (req, res) => {
       }
     }
     
+    // Store timezone from station coordinates if available
+    const regenCoords = resolveStationCoords(params.country, params.stationId);
+    const regenTz = regenCoords ? timezoneFromCoords(regenCoords.lat, regenCoords.lon) : null;
+    if (regenTz) storeTimezoneOnUser(db, req.user._id, regenTz);
+
     // Generate ICS content on-demand
     console.log('[downloads] Regenerating ICS for purchase:', purchaseId, includeGolden ? '(tide + Golden Hour)' : '');
     const tideIcs = await generateICS({
@@ -228,7 +280,8 @@ router.post('/generate', csrfProtection, async (req, res) => {
       const subscriptionPurchase = await db.collection('purchases').findOne({
         userId: new ObjectId(req.user._id),
         product: 'subscription',
-        subscriptionStatus: 'active'
+        subscriptionStatus: 'active',
+        $and: [purchaseNotFullyRefundedFilter]
       }, {
         sort: { createdAt: -1 } // Get most recent
       });
@@ -245,6 +298,16 @@ router.post('/generate', csrfProtection, async (req, res) => {
             console.log('[downloads] Subscription period is valid until:', periodEnd);
           }
         }
+      }
+    }
+
+    if (subscriptionId) {
+      const proRefunded = await hasProSubscriptionFullyRefundedPurchase(req.user._id, subscriptionId);
+      if (proRefunded) {
+        return res.status(403).json({
+          error: 'Access revoked',
+          message: 'This subscription was fully refunded. Pro access is no longer available.'
+        });
       }
     }
     
@@ -320,6 +383,13 @@ router.post('/generate', csrfProtection, async (req, res) => {
       }
     }
 
+    // Derive timezone from station coordinates when possible
+    const stationCoords = resolveStationCoords(country, stationID);
+    const derivedTz = stationCoords ? timezoneFromCoords(stationCoords.lat, stationCoords.lon) : null;
+    if (derivedTz) {
+      storeTimezoneOnUser(db, req.user._id, derivedTz);
+    }
+
     // Generate ICS content on-demand
     console.log('[downloads] Generating ICS for subscription user:', req.user._id);
     const icsContent = await generateICS({
@@ -393,6 +463,19 @@ router.post('/moon', csrfProtection, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    if (user.stripeSubscriptionId) {
+      const proRefunded = await hasProSubscriptionFullyRefundedPurchase(
+        req.user._id,
+        user.stripeSubscriptionId
+      );
+      if (proRefunded) {
+        return res.status(403).json({
+          error: 'Access revoked',
+          message: 'This subscription was fully refunded. Pro access is no longer available.'
+        });
+      }
+    }
+
     // Determine Pro (subscription) entitlement
     let hasActiveSubscription = user.subscriptionStatus === 'active' &&
       user.subscriptionCurrentPeriodEnd &&
@@ -402,12 +485,40 @@ router.post('/moon', csrfProtection, async (req, res) => {
       ? new Date(user.subscriptionCurrentPeriodEnd)
       : null;
 
+    // Verify directly with Stripe when possible (mirrors entitlements endpoint logic)
+    if (!hasActiveSubscription && user.stripeSubscriptionId) {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+        if (subscription.status === 'active') {
+          hasActiveSubscription = true;
+          if (subscription.current_period_end) {
+            subscriptionEnd = new Date(subscription.current_period_end * 1000);
+          } else if (!subscriptionEnd) {
+            subscriptionEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+          }
+          const updateSet = {
+            subscriptionStatus: subscription.status,
+            unlimited: true,
+            updatedAt: new Date()
+          };
+          if (subscriptionEnd) updateSet.subscriptionCurrentPeriodEnd = subscriptionEnd;
+          await db.collection('users').updateOne(
+            { _id: new ObjectId(req.user._id) },
+            { $set: updateSet }
+          );
+        }
+      } catch (stripeErr) {
+        console.error('[moon] Stripe verification error:', stripeErr.message);
+      }
+    }
+
     // Fallback: check purchases for subscription info if needed
     if (!hasActiveSubscription) {
       const subscriptionPurchase = await db.collection('purchases').findOne(
         {
           userId: new ObjectId(req.user._id),
-          product: 'subscription'
+          product: 'subscription',
+          $and: [purchaseNotFullyRefundedFilter]
         },
         { sort: { createdAt: -1 } }
       );
@@ -421,11 +532,30 @@ router.post('/moon', csrfProtection, async (req, res) => {
       }
     }
 
+    const stripeSubForRefundCheck =
+      user.stripeSubscriptionId ||
+      (
+        await db.collection('purchases').findOne(
+          { userId: new ObjectId(req.user._id), product: 'subscription' },
+          { sort: { createdAt: -1 } }
+        )
+      )?.stripeSubscriptionId;
+    if (
+      stripeSubForRefundCheck &&
+      (await hasProSubscriptionFullyRefundedPurchase(req.user._id, stripeSubForRefundCheck))
+    ) {
+      return res.status(403).json({
+        error: 'Access revoked',
+        message: 'This subscription was fully refunded. Pro access is no longer available.'
+      });
+    }
+
     // Determine standalone moon entitlements
     const moonPurchases = await db.collection('purchases')
       .find({
         userId: new ObjectId(req.user._id),
-        product: 'moon'
+        product: 'moon',
+        $and: [purchaseNotFullyRefundedFilter]
       })
       .toArray();
 
@@ -435,6 +565,7 @@ router.post('/moon', csrfProtection, async (req, res) => {
     let standaloneAllowed = false;
 
     for (const p of moonPurchases) {
+      if (p.fullyRefundedAt) continue;
       const purchaseDate = p.purchaseDate || p.createdAt;
       if (!purchaseDate) continue;
       const entitlementEnd = p.entitlementEnd || addCalendarYear(purchaseDate);
@@ -477,9 +608,16 @@ router.post('/moon', csrfProtection, async (req, res) => {
       });
     }
 
-    const userTimezone = (req.body && req.body.userTimezone != null)
-      ? String(req.body.userTimezone).trim() || 'UTC'
-      : 'UTC';
+    // Timezone resolution: browser hint → stored user timezone → UTC fallback
+    const browserTz = (req.body && req.body.userTimezone)
+      ? String(req.body.userTimezone).trim() || null
+      : null;
+    const storedTz = user.lastKnownTimezone || null;
+    const userTimezone = (browserTz && browserTz !== 'UTC' ? browserTz : null)
+      || (storedTz && storedTz !== 'UTC' ? storedTz : null)
+      || browserTz
+      || storedTz
+      || 'UTC';
     const icsContent = generateMoonCalendar(todayUtc, endUtc, userTimezone);
     const year = todayUtc.getUTCFullYear();
     const filename = `moon-phases-${year}.ics`;
@@ -515,6 +653,13 @@ router.post('/golden/regenerate/:purchaseId', csrfProtection, async (req, res) =
     if (!purchase) {
       return res.status(404).json({ error: 'Purchase not found or access denied' });
     }
+
+    if (purchase.fullyRefundedAt) {
+      return res.status(403).json({
+        error: 'Access revoked',
+        message: 'This purchase was fully refunded. Access is no longer available.'
+      });
+    }
     const now = new Date();
     if (purchase.expiresAt && new Date(purchase.expiresAt) < now) {
       return res.status(410).json({
@@ -533,7 +678,9 @@ router.post('/golden/regenerate/:purchaseId', csrfProtection, async (req, res) =
       : purchaseDate
         ? new Date(new Date(purchaseDate).getTime() + 365 * 24 * 60 * 60 * 1000)
         : new Date(startDate.getTime() + 365 * 24 * 60 * 60 * 1000);
-    const timezone = (params.userTimezone && String(params.userTimezone).trim()) || 'UTC';
+    const goldenGeoTz = timezoneFromCoords(params.lat, params.lng);
+    const timezone = goldenGeoTz || (params.userTimezone && String(params.userTimezone).trim()) || 'UTC';
+    storeTimezoneOnUser(db, req.user._id, timezone);
     const icsContent = generateGoldenHourICS({
       lat: params.lat,
       lng: params.lng,
@@ -572,6 +719,19 @@ router.post('/golden', csrfProtection, async (req, res) => {
     const user = await db.collection('users').findOne({ _id: new ObjectId(req.user._id) });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+    if (user.stripeSubscriptionId) {
+      const proRefunded = await hasProSubscriptionFullyRefundedPurchase(
+        req.user._id,
+        user.stripeSubscriptionId
+      );
+      if (proRefunded) {
+        return res.status(403).json({
+          error: 'Access revoked',
+          message: 'This subscription was fully refunded. Pro access is no longer available.'
+        });
+      }
+    }
+
     let hasActiveSubscription = user.subscriptionStatus === 'active' &&
       user.subscriptionCurrentPeriodEnd &&
       new Date(user.subscriptionCurrentPeriodEnd) > new Date();
@@ -581,26 +741,56 @@ router.post('/golden', csrfProtection, async (req, res) => {
     if (!hasActiveSubscription && user.stripeSubscriptionId) {
       try {
         const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
-        hasActiveSubscription = subscription.status === 'active';
-        if (subscription.current_period_end) {
-          const periodEnd = new Date(subscription.current_period_end * 1000);
-          if (periodEnd > new Date()) {
-            hasActiveSubscription = true;
-            subscriptionEnd = periodEnd;
+        if (subscription.status === 'active') {
+          hasActiveSubscription = true;
+          if (subscription.current_period_end) {
+            subscriptionEnd = new Date(subscription.current_period_end * 1000);
+          } else if (!subscriptionEnd) {
+            subscriptionEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
           }
+          const updateSet = {
+            subscriptionStatus: subscription.status,
+            unlimited: true,
+            updatedAt: new Date()
+          };
+          if (subscriptionEnd) updateSet.subscriptionCurrentPeriodEnd = subscriptionEnd;
+          await db.collection('users').updateOne(
+            { _id: new ObjectId(req.user._id) },
+            { $set: updateSet }
+          );
         }
       } catch (_) {}
     }
     if (!hasActiveSubscription) {
       const subPurchase = await db.collection('purchases').findOne({
         userId: new ObjectId(req.user._id),
-        product: 'subscription'
+        product: 'subscription',
+        $and: [purchaseNotFullyRefundedFilter]
       }, { sort: { createdAt: -1 } });
       if (subPurchase?.subscriptionCurrentPeriodEnd && new Date(subPurchase.subscriptionCurrentPeriodEnd) > new Date()) {
         hasActiveSubscription = true;
         subscriptionEnd = new Date(subPurchase.subscriptionCurrentPeriodEnd);
       }
     }
+
+    const stripeSubGolden =
+      user.stripeSubscriptionId ||
+      (
+        await db.collection('purchases').findOne(
+          { userId: new ObjectId(req.user._id), product: 'subscription' },
+          { sort: { createdAt: -1 } }
+        )
+      )?.stripeSubscriptionId;
+    if (
+      stripeSubGolden &&
+      (await hasProSubscriptionFullyRefundedPurchase(req.user._id, stripeSubGolden))
+    ) {
+      return res.status(403).json({
+        error: 'Access revoked',
+        message: 'This subscription was fully refunded. Pro access is no longer available.'
+      });
+    }
+
     if (!hasActiveSubscription) {
       return res.status(403).json({
         error: 'Pro subscription required',
@@ -609,14 +799,14 @@ router.post('/golden', csrfProtection, async (req, res) => {
     }
 
     if (!subscriptionEnd) {
-      return res.status(400).json({
-        error: 'Subscription period end unavailable',
-        message: 'Unable to determine your subscription period end. Please try again or contact support.'
-      });
+      subscriptionEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+      console.warn('[golden] subscriptionEnd null for active subscription, using 1-year fallback');
     }
     const endDate = subscriptionEnd;
     const startDate = new Date();
-    const timezone = (validated.userTimezone && String(validated.userTimezone).trim()) || 'UTC';
+    const geoTz = timezoneFromCoords(validated.lat, validated.lng);
+    const browserTz = (validated.userTimezone && String(validated.userTimezone).trim()) || null;
+    const timezone = geoTz || browserTz || 'UTC';
     const icsContent = generateGoldenHourICS({
       lat: validated.lat,
       lng: validated.lng,
@@ -625,6 +815,9 @@ router.post('/golden', csrfProtection, async (req, res) => {
       endDate,
       timezone
     });
+
+    storeTimezoneOnUser(db, req.user._id, timezone);
+
     const safeName = (validated.locationName || 'golden-hour').replace(/[^a-zA-Z0-9]/g, '_');
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${safeName}-golden-hour.ics"`);

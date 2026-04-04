@@ -23,7 +23,9 @@ import checkoutRoutes from './server/routes/checkout.js';
 // NOTE: do NOT import webhook as a router; we mount a raw handler inline
 import filesRoutes from './server/routes/files.js';
 import downloadsRoutes from './server/routes/downloads.js';
+import adminApiRoutes from './server/routes/adminApi.js';
 import { attachUser } from './server/auth/index.js';
+import { requireAdminPage } from './server/middleware/requireAdmin.js';
 import { assertStripeEnv } from './server/bootstrap/envGuard.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -277,6 +279,19 @@ async function startServer() {
     app.use('/api/checkout', checkoutLimiter, checkoutRoutes);
     app.use('/api/files', filesUserLimiter, filesIPLimiter, filesRoutes);
     app.use('/api/downloads', downloadsUserLimiter, downloadsIPLimiter, downloadsRoutes);
+    app.use('/api/admin', adminApiRoutes);
+
+    // Admin HTML lives outside /public so express.static cannot bypass requireAdminPage.
+    const adminViewsDir = path.join(__dirname, 'server', 'views', 'admin');
+    app.get('/admin/customers/:userId', requireAdminPage, (req, res) => {
+      res.sendFile(path.join(adminViewsDir, 'customer-detail.html'));
+    });
+    app.get('/admin/customers', requireAdminPage, (_req, res) => {
+      res.sendFile(path.join(adminViewsDir, 'customers.html'));
+    });
+    app.get('/admin', requireAdminPage, (_req, res) => {
+      res.sendFile(path.join(adminViewsDir, 'dashboard.html'));
+    });
   } else {
     // Mount routes with error handlers for DB-dependent endpoints
     app.use('/api/auth', (req, res) => {
@@ -289,6 +304,9 @@ async function startServer() {
       res.status(503).json({ error: 'Database not available. MongoDB connection required.' });
     });
     app.use('/api/downloads', (req, res) => {
+      res.status(503).json({ error: 'Database not available. MongoDB connection required.' });
+    });
+    app.use('/api/admin', (req, res) => {
       res.status(503).json({ error: 'Database not available. MongoDB connection required.' });
     });
   }

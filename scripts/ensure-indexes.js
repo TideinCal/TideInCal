@@ -44,7 +44,31 @@ async function ensureIndexes() {
       { unique: true, name: 'stripeSessionId_unique' }
     );
     console.log('✓ purchases.stripeSessionId unique index');
-    
+
+    await db.collection('admin_notes').createIndex(
+      { userId: 1, createdAt: -1 },
+      { name: 'admin_notes_userId_createdAt' }
+    );
+    console.log('✓ admin_notes.userId + createdAt index');
+
+    await db.collection('admin_audit_logs').createIndex(
+      { targetUserId: 1, createdAt: -1 },
+      { name: 'admin_audit_target_createdAt' }
+    );
+    console.log('✓ admin_audit_logs.targetUserId + createdAt index');
+
+    await db.collection('webhook_events').createIndex(
+      { eventId: 1 },
+      { unique: true, name: 'webhook_events_eventId_unique' }
+    );
+    console.log('✓ webhook_events.eventId unique index');
+
+    await db.collection('purchases').createIndex(
+      { stripePaymentIntentId: 1 },
+      { sparse: true, name: 'purchases_stripePaymentIntentId' }
+    );
+    console.log('✓ purchases.stripePaymentIntentId index');
+
     console.log('All indexes ensured successfully!');
     process.exit(0);
   } catch (error) {

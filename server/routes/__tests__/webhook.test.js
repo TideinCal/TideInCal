@@ -22,6 +22,11 @@ vi.mock('../../services/checkoutCompleted.js', () => ({
   handleCheckoutCompleted: mockHandleCheckoutCompleted
 }));
 
+const mockHandleChargeRefunded = vi.fn();
+vi.mock('../../services/refund/handleChargeRefunded.js', () => ({
+  handleChargeRefunded: mockHandleChargeRefunded
+}));
+
 function buildApp() {
   const app = express();
   
@@ -67,6 +72,8 @@ describe('Stripe webhook (offline)', () => {
       console.log('[test] Mock handleCheckoutCompleted called');
       return true;
     });
+
+    mockHandleChargeRefunded.mockResolvedValue(undefined);
   });
 
   it('returns 200 for checkout.session.completed', async () => {
@@ -142,6 +149,41 @@ describe('Stripe webhook (offline)', () => {
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({ error: 'Webhook processing failed' });
+  });
+
+  it('calls handleChargeRefunded for charge.refunded events', async () => {
+    mockConstructEvent.mockImplementationOnce(() => ({
+      id: 'evt_refund_1',
+      type: 'charge.refunded',
+      data: {
+        object: {
+          id: 'ch_test_1',
+          amount: 1000,
+          amount_refunded: 1000,
+          currency: 'usd'
+        }
+      }
+    }));
+
+    const payload = Buffer.from(JSON.stringify({ any: 'payload' }));
+
+    const res = await request(app)
+      .post('/api/stripe/webhook')
+      .set('stripe-signature', 't.sig.placeholder')
+      .set('content-type', 'application/json')
+      .send(payload);
+
+    expect(res.status).toBe(200);
+    expect(mockHandleChargeRefunded).toHaveBeenCalledTimes(1);
+    expect(mockHandleChargeRefunded).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'evt_refund_1',
+        type: 'charge.refunded',
+        data: expect.objectContaining({
+          object: expect.objectContaining({ id: 'ch_test_1' })
+        })
+      })
+    );
   });
 
   it('ignores non-checkout events', async () => {

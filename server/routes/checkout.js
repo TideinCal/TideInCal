@@ -74,7 +74,12 @@ router.post('/session', csrfProtection, async (req, res) => {
                                    user?.subscriptionCurrentPeriodEnd && 
                                    new Date(user.subscriptionCurrentPeriodEnd) > new Date();
     
-    // If user has active subscription and is requesting single station (tide), allow free generation
+    // Block double-charge: active subscribers should not be able to purchase again
+    if (hasActiveSubscription && plan === 'unlimited') {
+      return res.status(400).json({ 
+        error: 'You already have an active Pro subscription.' 
+      });
+    }
     if (hasActiveSubscription && plan === 'single' && !goldenOnly) {
       return res.status(400).json({ 
         error: 'You have an active subscription. Please use the dashboard to generate files for free.' 
@@ -352,6 +357,38 @@ router.get('/verify', async (req, res) => {
   } catch (error) {
     console.error('[verify] Checkout verification error:', error);
     res.status(500).json({ ok: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/checkout/portal - Create a Stripe Customer Portal session for subscription management
+router.post('/portal', csrfProtection, async (req, res) => {
+  try {
+    const db = getDatabase();
+    const { ObjectId } = await import('mongodb');
+    const user = await db.collection('users').findOne({ _id: new ObjectId(req.user._id) });
+
+    let customerId = user?.stripeCustomerId;
+    if (customerId && typeof customerId === 'object') {
+      customerId = customerId.id || customerId.customer || null;
+    }
+    if (!customerId || typeof customerId !== 'string' || !customerId.startsWith('cus_')) {
+      return res.status(400).json({ error: 'No Stripe customer found for this account.' });
+    }
+
+    const appUrl = process.env.APP_URL?.trim();
+    if (!appUrl) {
+      return res.status(503).json({ error: 'Portal is not fully configured.' });
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${appUrl}/account`
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error('[portal] Billing portal error:', error?.message ?? error);
+    res.status(500).json({ error: 'Unable to open subscription management.' });
   }
 });
 
