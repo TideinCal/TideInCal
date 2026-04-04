@@ -57,7 +57,12 @@ export async function connectToDatabase() {
     
     // Create index on purchases.userId
     await db.collection('purchases').createIndex({ userId: 1 });
-    
+
+    await db.collection('webhook_events').createIndex(
+      { eventId: 1 },
+      { unique: true, name: 'webhook_events_eventId_unique' }
+    );
+
     console.log('Connected to MongoDB (database: %s) and created indexes', databaseName);
     return { client, db };
   } catch (error) {

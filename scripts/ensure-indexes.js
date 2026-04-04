@@ -57,6 +57,18 @@ async function ensureIndexes() {
     );
     console.log('✓ admin_audit_logs.targetUserId + createdAt index');
 
+    await db.collection('webhook_events').createIndex(
+      { eventId: 1 },
+      { unique: true, name: 'webhook_events_eventId_unique' }
+    );
+    console.log('✓ webhook_events.eventId unique index');
+
+    await db.collection('purchases').createIndex(
+      { stripePaymentIntentId: 1 },
+      { sparse: true, name: 'purchases_stripePaymentIntentId' }
+    );
+    console.log('✓ purchases.stripePaymentIntentId index');
+
     console.log('All indexes ensured successfully!');
     process.exit(0);
   } catch (error) {

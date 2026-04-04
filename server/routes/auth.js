@@ -14,6 +14,7 @@ import {
   attachUser,
   requireAuth
 } from '../auth/index.js';
+import { hasProSubscriptionFullyRefundedPurchase, purchaseNotFullyRefundedFilter } from '../services/refund/purchaseRefundHelpers.js';
 import { 
   sendEmailVerification,
   sendPasswordReset,
@@ -488,7 +489,15 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
         hasActiveSubscription =
           subscription.status === 'active' &&
           (!subscriptionCurrentPeriodEnd || subscriptionCurrentPeriodEnd > new Date());
-        
+
+        const proRefunded = await hasProSubscriptionFullyRefundedPurchase(
+          req.user._id,
+          user.stripeSubscriptionId
+        );
+        if (proRefunded) {
+          hasActiveSubscription = false;
+        }
+
         // Update user record with latest subscription info
         const update = {
           $set: {
@@ -519,6 +528,13 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
         hasActiveSubscription =
           user.subscriptionStatus === 'active' &&
           (!storedPeriodEnd || storedPeriodEnd > new Date());
+        const proRefundedCatch = await hasProSubscriptionFullyRefundedPurchase(
+          req.user._id,
+          user.stripeSubscriptionId
+        );
+        if (proRefundedCatch) {
+          hasActiveSubscription = false;
+        }
       }
     } else {
       // No Stripe subscription ID, check local status
@@ -535,17 +551,22 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
       .find({
         userId: new ObjectId(req.user._id),
         product: 'single',
-        $or: [
-          { expiresAt: { $gt: now } },
-          { expiresAt: { $exists: false } }, // Legacy purchases without expiresAt
-          { 
-            // Check purchaseDate or createdAt
-            $expr: {
-              $lt: [
-                { $divide: [{ $subtract: [now, { $ifNull: ['$purchaseDate', '$createdAt'] }] }, 86400000] },
-                365
-              ]
-            }
+        $and: [
+          purchaseNotFullyRefundedFilter,
+          {
+            $or: [
+              { expiresAt: { $gt: now } },
+              { expiresAt: { $exists: false } }, // Legacy purchases without expiresAt
+              {
+                // Check purchaseDate or createdAt
+                $expr: {
+                  $lt: [
+                    { $divide: [{ $subtract: [now, { $ifNull: ['$purchaseDate', '$createdAt'] }] }, 86400000] },
+                    365
+                  ]
+                }
+              }
+            ]
           }
         ]
       })
@@ -556,7 +577,8 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
     const moonPurchases = await db.collection('purchases')
       .find({
         userId: new ObjectId(req.user._id),
-        product: 'moon'
+        product: 'moon',
+        $and: [purchaseNotFullyRefundedFilter]
       })
       .toArray();
     let moonStandaloneAllowed = false;
@@ -564,6 +586,7 @@ router.get('/me/entitlements', requireAuth, async (req, res) => {
     let moonStandaloneEnd = null;
 
     for (const p of moonPurchases) {
+      if (p.fullyRefundedAt) continue;
       const purchaseDate = p.purchaseDate || p.createdAt;
       if (!purchaseDate) continue;
 

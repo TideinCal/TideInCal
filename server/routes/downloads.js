@@ -10,6 +10,7 @@ import { find as findTimezone } from 'geo-tz';
 import { z } from 'zod';
 import Stripe from 'stripe';
 import csurf from 'csurf';
+import { hasProSubscriptionFullyRefundedPurchase, purchaseNotFullyRefundedFilter } from '../services/refund/purchaseRefundHelpers.js';
 
 /**
  * Derive IANA timezone from latitude/longitude using geo-tz.
@@ -128,6 +129,13 @@ router.post('/regenerate/:purchaseId', csrfProtection, async (req, res) => {
     
     if (!purchase) {
       return res.status(404).json({ error: 'Purchase not found or access denied' });
+    }
+
+    if (purchase.fullyRefundedAt) {
+      return res.status(403).json({
+        error: 'Access revoked',
+        message: 'This purchase was fully refunded. Access is no longer available.'
+      });
     }
     
     // Check if purchase is expired
@@ -272,7 +280,8 @@ router.post('/generate', csrfProtection, async (req, res) => {
       const subscriptionPurchase = await db.collection('purchases').findOne({
         userId: new ObjectId(req.user._id),
         product: 'subscription',
-        subscriptionStatus: 'active'
+        subscriptionStatus: 'active',
+        $and: [purchaseNotFullyRefundedFilter]
       }, {
         sort: { createdAt: -1 } // Get most recent
       });
@@ -289,6 +298,16 @@ router.post('/generate', csrfProtection, async (req, res) => {
             console.log('[downloads] Subscription period is valid until:', periodEnd);
           }
         }
+      }
+    }
+
+    if (subscriptionId) {
+      const proRefunded = await hasProSubscriptionFullyRefundedPurchase(req.user._id, subscriptionId);
+      if (proRefunded) {
+        return res.status(403).json({
+          error: 'Access revoked',
+          message: 'This subscription was fully refunded. Pro access is no longer available.'
+        });
       }
     }
     
@@ -444,6 +463,19 @@ router.post('/moon', csrfProtection, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    if (user.stripeSubscriptionId) {
+      const proRefunded = await hasProSubscriptionFullyRefundedPurchase(
+        req.user._id,
+        user.stripeSubscriptionId
+      );
+      if (proRefunded) {
+        return res.status(403).json({
+          error: 'Access revoked',
+          message: 'This subscription was fully refunded. Pro access is no longer available.'
+        });
+      }
+    }
+
     // Determine Pro (subscription) entitlement
     let hasActiveSubscription = user.subscriptionStatus === 'active' &&
       user.subscriptionCurrentPeriodEnd &&
@@ -485,7 +517,8 @@ router.post('/moon', csrfProtection, async (req, res) => {
       const subscriptionPurchase = await db.collection('purchases').findOne(
         {
           userId: new ObjectId(req.user._id),
-          product: 'subscription'
+          product: 'subscription',
+          $and: [purchaseNotFullyRefundedFilter]
         },
         { sort: { createdAt: -1 } }
       );
@@ -499,11 +532,30 @@ router.post('/moon', csrfProtection, async (req, res) => {
       }
     }
 
+    const stripeSubForRefundCheck =
+      user.stripeSubscriptionId ||
+      (
+        await db.collection('purchases').findOne(
+          { userId: new ObjectId(req.user._id), product: 'subscription' },
+          { sort: { createdAt: -1 } }
+        )
+      )?.stripeSubscriptionId;
+    if (
+      stripeSubForRefundCheck &&
+      (await hasProSubscriptionFullyRefundedPurchase(req.user._id, stripeSubForRefundCheck))
+    ) {
+      return res.status(403).json({
+        error: 'Access revoked',
+        message: 'This subscription was fully refunded. Pro access is no longer available.'
+      });
+    }
+
     // Determine standalone moon entitlements
     const moonPurchases = await db.collection('purchases')
       .find({
         userId: new ObjectId(req.user._id),
-        product: 'moon'
+        product: 'moon',
+        $and: [purchaseNotFullyRefundedFilter]
       })
       .toArray();
 
@@ -513,6 +565,7 @@ router.post('/moon', csrfProtection, async (req, res) => {
     let standaloneAllowed = false;
 
     for (const p of moonPurchases) {
+      if (p.fullyRefundedAt) continue;
       const purchaseDate = p.purchaseDate || p.createdAt;
       if (!purchaseDate) continue;
       const entitlementEnd = p.entitlementEnd || addCalendarYear(purchaseDate);
@@ -600,6 +653,13 @@ router.post('/golden/regenerate/:purchaseId', csrfProtection, async (req, res) =
     if (!purchase) {
       return res.status(404).json({ error: 'Purchase not found or access denied' });
     }
+
+    if (purchase.fullyRefundedAt) {
+      return res.status(403).json({
+        error: 'Access revoked',
+        message: 'This purchase was fully refunded. Access is no longer available.'
+      });
+    }
     const now = new Date();
     if (purchase.expiresAt && new Date(purchase.expiresAt) < now) {
       return res.status(410).json({
@@ -659,6 +719,19 @@ router.post('/golden', csrfProtection, async (req, res) => {
     const user = await db.collection('users').findOne({ _id: new ObjectId(req.user._id) });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+    if (user.stripeSubscriptionId) {
+      const proRefunded = await hasProSubscriptionFullyRefundedPurchase(
+        req.user._id,
+        user.stripeSubscriptionId
+      );
+      if (proRefunded) {
+        return res.status(403).json({
+          error: 'Access revoked',
+          message: 'This subscription was fully refunded. Pro access is no longer available.'
+        });
+      }
+    }
+
     let hasActiveSubscription = user.subscriptionStatus === 'active' &&
       user.subscriptionCurrentPeriodEnd &&
       new Date(user.subscriptionCurrentPeriodEnd) > new Date();
@@ -691,13 +764,33 @@ router.post('/golden', csrfProtection, async (req, res) => {
     if (!hasActiveSubscription) {
       const subPurchase = await db.collection('purchases').findOne({
         userId: new ObjectId(req.user._id),
-        product: 'subscription'
+        product: 'subscription',
+        $and: [purchaseNotFullyRefundedFilter]
       }, { sort: { createdAt: -1 } });
       if (subPurchase?.subscriptionCurrentPeriodEnd && new Date(subPurchase.subscriptionCurrentPeriodEnd) > new Date()) {
         hasActiveSubscription = true;
         subscriptionEnd = new Date(subPurchase.subscriptionCurrentPeriodEnd);
       }
     }
+
+    const stripeSubGolden =
+      user.stripeSubscriptionId ||
+      (
+        await db.collection('purchases').findOne(
+          { userId: new ObjectId(req.user._id), product: 'subscription' },
+          { sort: { createdAt: -1 } }
+        )
+      )?.stripeSubscriptionId;
+    if (
+      stripeSubGolden &&
+      (await hasProSubscriptionFullyRefundedPurchase(req.user._id, stripeSubGolden))
+    ) {
+      return res.status(403).json({
+        error: 'Access revoked',
+        message: 'This subscription was fully refunded. Pro access is no longer available.'
+      });
+    }
+
     if (!hasActiveSubscription) {
       return res.status(403).json({
         error: 'Pro subscription required',

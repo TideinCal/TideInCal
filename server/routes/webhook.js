@@ -36,8 +36,11 @@ export default async function webhookHandler(req, res) {
       // Handle subscription cancellation
       const subscription = event.data.object;
       await handleSubscriptionDeleted(subscription);
+    } else if (event.type === 'charge.refunded') {
+      const { handleChargeRefunded } = await import('../services/refund/handleChargeRefunded.js');
+      await handleChargeRefunded(event);
     }
-    
+
     return res.status(200).json({ received: true });
   } catch (e) {
     console.error('[webhook] Processing error for event:', event?.type, event?.id);
