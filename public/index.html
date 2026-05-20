@@ -684,7 +684,11 @@
             </form>
           </div>
           <div class="tab-pane fade show active" id="signupPane" role="tabpanel" aria-labelledby="signupTab">
-            <form id="signupForm" class="mt-3">
+            <form id="signupForm" class="mt-3" autocomplete="on">
+              <div aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">
+                <label for="signupCompany">Company</label>
+                <input type="text" id="signupCompany" name="company" tabindex="-1" autocomplete="off">
+              </div>
               <div class="mb-3">
                 <label for="signupEmail" class="form-label">Email</label>
                 <input type="email" class="form-control" id="signupEmail" name="email" required>

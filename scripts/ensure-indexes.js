@@ -18,6 +18,12 @@ async function ensureIndexes() {
       { unique: true, name: 'email_unique' }
     );
     console.log('✓ users.email unique index');
+
+    await db.collection('users').createIndex(
+      { normalizedEmail: 1 },
+      { unique: true, sparse: true, name: 'users_normalizedEmail_unique' }
+    );
+    console.log('✓ users.normalizedEmail unique (sparse) index');
     
     // Files collection indexes
     await db.collection('files').createIndex(

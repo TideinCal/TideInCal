@@ -122,6 +122,25 @@ async function refreshAuthUI() {
   }
 }
 
+// Signup form time-trap: timestamp issued by the server when the modal opens.
+// We attach it to the submission so the server can reject forms that POST too
+// fast (a strong bot signal). Re-fetched each time the modal opens so the
+// minimum-age check is enforced even if the user revisits the modal.
+let signupFormIssuedAt = 0;
+
+async function refreshSignupFormToken() {
+  try {
+    const res = await fetch('/api/auth/signup-form-token', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    signupFormIssuedAt = Number(data?.issuedAt) || Date.now();
+  } catch (e) {
+    // If this fails the server will fall back to the body-supplied timestamp;
+    // we still set a reasonable value so honest users aren't blocked.
+    signupFormIssuedAt = Date.now();
+  }
+}
+
 // Auth modal functions
 function openAuthModal(mode = 'signup') {
   const modal = document.getElementById('authModal');
@@ -149,6 +168,8 @@ function openAuthModal(mode = 'signup') {
   }
 
   resetForgotPasswordUI();
+
+  refreshSignupFormToken();
 
   // Show modal
   if (window.bootstrap?.Modal) {
@@ -200,7 +221,26 @@ async function handleAuth(formData, isSignup = false) {
       throw new Error(errorMessage);
     }
 
-    const { user } = await response.json();
+    const payload = await response.json();
+    const { user } = payload;
+
+    // Idempotent signup path: server accepted the request without creating a
+    // new session (either the address already has an account, or the form
+    // tripped the honeypot/time-trap). We show a generic "check your email"
+    // banner that's identical to the legitimate-new-account case so the form
+    // can't be used to enumerate which emails are registered.
+    if (isSignup && !user) {
+      setVerificationBannerState({
+        title: 'Check your email',
+        message: 'If we were able to create or update your account, a verification email is on its way. It can take a few minutes to arrive — check your spam folder too.',
+        variant: 'info',
+        showResend: false,
+        showContinue: false,
+        showSelectLink: false,
+        showDismiss: true
+      });
+      return true;
+    }
 
     // New session: clear cached CSRF so logout/checkout get a token for this session
     csrfToken = null;
@@ -338,7 +378,7 @@ forgotPasswordForm?.addEventListener('submit', async (e) => {
       body: JSON.stringify({ email })
     });
 
-    let message = 'If that email exists, we sent a reset link.';
+    let message = 'If an account uses that email, we just sent a reset link. Check your inbox (and spam folder) in the next few minutes.';
     if (!response.ok) {
       try {
         const data = await response.json();
@@ -367,7 +407,9 @@ document.getElementById('signupForm')?.addEventListener('submit', async (e) => {
     email: formData.get('email'),
     password: formData.get('password'),
     firstName: formData.get('firstName') || undefined,
-    lastName: formData.get('lastName') || undefined
+    lastName: formData.get('lastName') || undefined,
+    company: formData.get('company') || '',
+    formIssuedAt: signupFormIssuedAt
   };
   await handleAuth(data, true);
 });

@@ -51,6 +51,15 @@ export async function connectToDatabase() {
       { email: 1 },
       { unique: true }
     );
+
+    // Unique index on users.normalizedEmail so the Gmail dot/plus trick can't
+    // create multiple accounts that resolve to the same inbox. Sparse so
+    // legacy rows without this field don't block index creation; the backfill
+    // script (scripts/backfillNormalizedEmail.js) populates them.
+    await db.collection('users').createIndex(
+      { normalizedEmail: 1 },
+      { unique: true, sparse: true, name: 'users_normalizedEmail_unique' }
+    );
     
     // Create index on files.userId for efficient queries
     await db.collection('files').createIndex({ userId: 1 });

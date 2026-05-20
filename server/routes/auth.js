@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { promises as dns } from 'dns';
 import csurf from 'csurf';
 import { getDatabase } from '../db/index.js';
 import { 
@@ -14,6 +15,7 @@ import {
   attachUser,
   requireAuth
 } from '../auth/index.js';
+import { normalizeEmail } from '../auth/normalizeEmail.js';
 import { hasProSubscriptionFullyRefundedPurchase, purchaseNotFullyRefundedFilter } from '../services/refund/purchaseRefundHelpers.js';
 import { 
   sendEmailVerification,
@@ -97,39 +99,243 @@ function normalizeStoredPeriodEnd(value) {
   return date;
 }
 
-// Brute-force protection: only login, signup, forgot-password, reset-password
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+// Rate-limit handler shared by all auth limiters
+const rateLimitHandler = (_req, res) => {
+  res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
+};
+
+// Login: brute-force protection by IP (10 / 15 min). Bad credentials still 401,
+// so honest users hitting an empty cache won't usually hit this.
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
   limit: 10,
-  handler: (_req, res) => {
-    res.status(429).json({ error: 'Too many requests. Please wait a moment.' });
-  },
+  handler: rateLimitHandler,
 });
+
+// Signup: tight by IP because every successful signup triggers a verification
+// email. Bombing attacks rotate IPs so this is not the only defense (see
+// honeypot, time-trap, MX check, and normalized-email uniqueness below).
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 5,
+  handler: rateLimitHandler,
+});
+
+// Reset-password (the *token redemption* endpoint, not the request endpoint):
+// brute-force protection on the token. Per IP.
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  handler: rateLimitHandler,
+});
+
+// Forgot-password by IP — same network can't blast many addresses.
+const forgotPasswordIpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 5,
+  handler: rateLimitHandler,
+});
+
+// Forgot-password by NORMALIZED email — the most important limiter for the
+// reset-email bombing pattern. Caps reset emails to any one inbox even when
+// the attacker rotates IPs and dot-trick variants. Falls back to the request
+// IP if no email is provided (so a bad body still gets rate-limited).
+const forgotPasswordEmailLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 24 hours
+  limit: 3,
+  keyGenerator: (req) => {
+    const normalized = normalizeEmail(req.body?.email || '');
+    return normalized || `ip:${ipKeyGenerator(req.ip)}`;
+  },
+  handler: rateLimitHandler,
+});
+
+// Resend-verification by IP and by normalized email — analogous to the
+// forgot-password pair. Without this, a bot can repeatedly hit /resend-verification
+// for an account it just created to bomb the inbox.
+const resendVerificationIpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 5,
+  handler: rateLimitHandler,
+});
+
+const resendVerificationEmailLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 24 hours
+  limit: 3,
+  keyGenerator: (req) => {
+    const candidate = req.body?.email || req.user?.email || '';
+    const normalized = normalizeEmail(candidate);
+    return normalized || `ip:${ipKeyGenerator(req.ip)}`;
+  },
+  handler: rateLimitHandler,
+});
+
+// How long after signup we suppress an automatic re-verification email for an
+// idempotent re-signup against an existing unverified account. Long enough
+// that a bot replay doesn't trigger another send; short enough that a real
+// user who didn't get the first email can still resend via the modal.
+const RESEND_VERIFICATION_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
+
+// Minimum age of the signup form before we accept a submission (defeats most
+// scripted bots that POST instantly without rendering the page). Real users
+// take far longer than this just to type an email + password.
+const SIGNUP_MIN_FORM_AGE_MS = 1500;
+
+// MX cache so we don't re-query DNS for popular domains (gmail.com, etc.).
+// Entries live for 1 hour. Failures cached for 5 minutes so a flaky DNS
+// blip doesn't lock out legitimate signups for long.
+const mxCache = new Map();
+const MX_CACHE_OK_MS = 60 * 60 * 1000;
+const MX_CACHE_FAIL_MS = 5 * 60 * 1000;
+
+async function domainHasMx(domain) {
+  if (!domain) return false;
+  const cached = mxCache.get(domain);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) {
+    return cached.ok;
+  }
+  try {
+    const records = await dns.resolveMx(domain);
+    const ok = Array.isArray(records) && records.length > 0;
+    mxCache.set(domain, { ok, expiresAt: now + (ok ? MX_CACHE_OK_MS : MX_CACHE_FAIL_MS) });
+    return ok;
+  } catch (err) {
+    // ENOTFOUND / ENODATA / SERVFAIL etc. all mean "can't deliver mail here".
+    mxCache.set(domain, { ok: false, expiresAt: now + MX_CACHE_FAIL_MS });
+    return false;
+  }
+}
 
 // Apply attachUser to all auth routes
 router.use(attachUser);
 
+// GET /api/auth/signup-form-token
+// Issues a short-lived signed timestamp that the signup form must POST back.
+// Used as a server-side time-trap: if the form is submitted faster than
+// SIGNUP_MIN_FORM_AGE_MS, it's almost certainly a bot.
+router.get('/signup-form-token', (req, res) => {
+  if (!req.session) {
+    return res.status(500).json({ error: 'Session unavailable' });
+  }
+  req.session.signupFormIssuedAt = Date.now();
+  res.json({ issuedAt: req.session.signupFormIssuedAt });
+});
+
 // POST /api/auth/signup
-router.post('/signup', authLimiter, async (req, res) => {
+//
+// Hardened against the bombing pattern seen in production: bots create real
+// accounts using dot-trick Gmail variants of one victim's address, then trigger
+// verification + reset emails to bomb that inbox. Defenses (in order):
+//
+//   1. Honeypot field (`company`): a hidden input real users never see. If it's
+//      filled in, the request is silently accepted with a fake success shape so
+//      the bot can't tell it was caught. No DB write, no email.
+//   2. Time-trap: the client must request /signup-form-token first and submit
+//      back the issuedAt. Submissions faster than SIGNUP_MIN_FORM_AGE_MS are
+//      treated like honeypot hits (silent fake success).
+//   3. MX check: the email's domain must have at least one MX record.
+//   4. Email normalization: uniqueness is checked against `normalizedEmail`,
+//      not the raw email, so dot/plus variants collapse to one account.
+//   5. Idempotent response: existing-account signups return the same 201 shape
+//      as a brand-new signup so the form can't be used as an enumeration oracle.
+//      A new verification email is only sent if the existing account is still
+//      unverified AND the last one was sent more than RESEND_VERIFICATION_COOLDOWN_MS ago.
+router.post('/signup', signupLimiter, async (req, res) => {
+  // Generic success shape used for honeypot/time-trap rejections and for the
+  // idempotent "already exists" case. Deliberately reveals nothing.
+  const fakeSuccess = () => res.status(201).json({
+    user: null,
+    verificationSent: true
+  });
+
   try {
+    // (1) Honeypot
+    if (req.body && typeof req.body.company === 'string' && req.body.company.trim() !== '') {
+      console.warn('[auth] Signup honeypot tripped from IP', req.ip);
+      return fakeSuccess();
+    }
+
+    // (2) Time-trap. We accept either the session-stored issuedAt (set by
+    // GET /signup-form-token) or a body-supplied issuedAt as a fallback for
+    // older clients; the session-stored value wins if both are present.
+    const sessionIssuedAt = Number(req.session?.signupFormIssuedAt) || 0;
+    const bodyIssuedAt = Number(req.body?.formIssuedAt) || 0;
+    const issuedAt = sessionIssuedAt || bodyIssuedAt;
+    if (!issuedAt || Date.now() - issuedAt < SIGNUP_MIN_FORM_AGE_MS) {
+      console.warn('[auth] Signup time-trap tripped from IP', req.ip, '(form age:', Date.now() - issuedAt, 'ms)');
+      return fakeSuccess();
+    }
+    // One-shot: clear the issuedAt so the same token can't be reused.
+    if (req.session) {
+      req.session.signupFormIssuedAt = null;
+    }
+
     const validated = signupSchema.parse(req.body);
     const { email, password, firstName, lastName } = validated;
-    
-    const db = getDatabase();
-    
-    // Check if user already exists
-    const existingUser = await db.collection('users').findOne({ email });
-    if (existingUser) {
-      return res.status(409).json({ error: 'User already exists' });
+    const normalizedEmail = normalizeEmail(email);
+    const [, domain] = email.split('@');
+
+    // (3) MX check
+    const mxOk = await domainHasMx(domain);
+    if (!mxOk) {
+      return res.status(400).json({
+        error: 'That email domain doesn\'t look reachable. Please use a different email.'
+      });
     }
-    
-    // Hash password and create user
+
+    const db = getDatabase();
+
+    // (4 + 5) Existing account check — by normalized email so dot/plus variants
+    // collapse to one record. We deliberately return the same success shape
+    // either way (idempotent / non-enumerating). If the existing account is
+    // unverified and hasn't had a verification email recently, we re-send.
+    const existingUser = await db.collection('users').findOne({
+      $or: [
+        { normalizedEmail },
+        { email } // backstop until backfill is run
+      ]
+    });
+
+    if (existingUser) {
+      const lastIssued = existingUser.emailVerificationTokenExpiresAt
+        ? new Date(existingUser.emailVerificationTokenExpiresAt).getTime() - EMAIL_VERIFICATION_TTL_MS
+        : 0;
+      const shouldResend =
+        !existingUser.emailVerifiedAt &&
+        Date.now() - lastIssued > RESEND_VERIFICATION_COOLDOWN_MS;
+
+      if (shouldResend) {
+        const verification = createEmailVerificationToken();
+        await db.collection('users').updateOne(
+          { _id: existingUser._id },
+          {
+            $set: {
+              emailVerificationTokenHash: verification.tokenHash,
+              emailVerificationTokenExpiresAt: verification.expiresAt,
+              updatedAt: new Date()
+            }
+          }
+        );
+        if (process.env.MOCK_EMAILS !== 'true') {
+          sendEmailVerification({ to: existingUser.email, token: verification.token })
+            .catch((error) => console.error('[auth] Failed to send verification email:', error));
+        }
+      }
+
+      // DO NOT log the existing user in — that would let a bot hijack a session
+      // for any address whose owner happens to have an account. The legitimate
+      // user can log in normally with their real password.
+      return fakeSuccess();
+    }
+
     const passwordHash = await hashPassword(password);
     const now = new Date();
     const verification = createEmailVerificationToken();
-    
+
     const result = await db.collection('users').insertOne({
       email,
+      normalizedEmail,
       passwordHash,
       firstName: firstName || null,
       lastName: lastName || null,
@@ -143,18 +349,16 @@ router.post('/signup', authLimiter, async (req, res) => {
       createdAt: now,
       updatedAt: now
     });
-    
-    // Set session
+
     req.session.userId = result.insertedId;
-    
-    // Return user without sensitive data
+
     const user = {
       _id: result.insertedId,
       email,
       firstName,
       lastName
     };
-    
+
     if (process.env.MOCK_EMAILS !== 'true') {
       sendEmailVerification({ to: email, token: verification.token })
         .catch((error) => console.error('[auth] Failed to send verification email:', error));
@@ -165,21 +369,34 @@ router.post('/signup', authLimiter, async (req, res) => {
     if (error.name === 'ZodError') {
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
+    // Unique-index collision on normalizedEmail in the race between our findOne
+    // and insertOne: return the same idempotent fake success.
+    if (error?.code === 11000) {
+      return res.status(201).json({ user: null, verificationSent: true });
+    }
     console.error('Signup error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // POST /api/auth/login
-router.post('/login', authLimiter, async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const validated = loginSchema.parse(req.body);
     const { email, password } = validated;
-    
+    const normalizedEmail = normalizeEmail(email);
+
     const db = getDatabase();
-    
-    // Find user
-    const user = await db.collection('users').findOne({ email });
+
+    // Look up by exact email first (covers historical rows and the common case)
+    // then by normalizedEmail (covers users whose stored canonical form differs
+    // from what they just typed — e.g. they signed up as "a.lice@gmail" and now
+    // typed "alice@gmail").
+    const user =
+      (await db.collection('users').findOne({ email })) ||
+      (normalizedEmail
+        ? await db.collection('users').findOne({ normalizedEmail })
+        : null);
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -249,15 +466,28 @@ router.get('/verify-email', async (req, res) => {
 });
 
 // POST /api/auth/resend-verification
-router.post('/resend-verification', async (req, res) => {
+//
+// Rate-limited by both IP and normalized email so the bombing pattern
+// (many requests targeting the same canonical inbox via dot/plus variants)
+// is capped at 3 emails / 24h per inbox.
+router.post(
+  '/resend-verification',
+  resendVerificationIpLimiter,
+  resendVerificationEmailLimiter,
+  async (req, res) => {
   try {
     const email = (req.body?.email || req.user?.email || '').toString().toLowerCase();
     if (!email) {
       return res.status(400).json({ error: 'Email is required' });
     }
+    const normalizedEmail = normalizeEmail(email);
 
     const db = getDatabase();
-    const user = await db.collection('users').findOne({ email });
+    const user =
+      (await db.collection('users').findOne({ email })) ||
+      (normalizedEmail
+        ? await db.collection('users').findOne({ normalizedEmail })
+        : null);
 
     if (!user || user.emailVerifiedAt) {
       return res.json({ ok: true });
@@ -276,7 +506,7 @@ router.post('/resend-verification', async (req, res) => {
     );
 
     if (process.env.MOCK_EMAILS !== 'true') {
-      sendEmailVerification({ to: email, token: verification.token })
+      sendEmailVerification({ to: user.email, token: verification.token })
         .catch((error) => console.error('[auth] Failed to resend verification email:', error));
     }
 
@@ -288,17 +518,41 @@ router.post('/resend-verification', async (req, res) => {
 });
 
 // POST /api/auth/forgot-password
-router.post('/forgot-password', authLimiter, async (req, res) => {
+//
+// Two-layer rate limit: per-IP (5/h) and per normalized email (3/24h).
+// The per-email layer is what stops the "3 resets in a row to the same
+// inbox" pattern even when the attacker rotates IPs.
+//
+// Also: we only send a reset email if the account is verified. Bombing
+// campaigns sign up fake accounts and immediately trigger resets; those
+// accounts are never verified, so this single rule breaks the chain.
+router.post(
+  '/forgot-password',
+  forgotPasswordIpLimiter,
+  forgotPasswordEmailLimiter,
+  async (req, res) => {
   const schema = z.object({
     email: z.string().email().toLowerCase()
   });
 
   try {
     const { email } = schema.parse(req.body || {});
+    const normalizedEmail = normalizeEmail(email);
     const db = getDatabase();
-    const user = await db.collection('users').findOne({ email });
+    const user =
+      (await db.collection('users').findOne({ email })) ||
+      (normalizedEmail
+        ? await db.collection('users').findOne({ normalizedEmail })
+        : null);
 
-    if (user) {
+    // Three suppressed cases that ALL look identical to the client (the
+    // response is `{ ok: true }` regardless, to preserve non-enumeration):
+    //   - no account                  → nothing to reset
+    //   - account exists but not yet verified → bot/abuse pattern
+    //   - account exists, verified, in rate-limit window → user must wait
+    //
+    // Only the case below this guard actually sends mail.
+    if (user && user.emailVerifiedAt) {
       const reset = createPasswordResetToken();
       await db.collection('users').updateOne(
         { _id: user._id },
@@ -312,9 +566,11 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
       );
 
       if (process.env.MOCK_EMAILS !== 'true') {
-        sendPasswordReset({ to: email, token: reset.token })
+        sendPasswordReset({ to: user.email, token: reset.token })
           .catch((error) => console.error('[auth] Failed to send password reset email:', error));
       }
+    } else if (user && !user.emailVerifiedAt) {
+      console.warn('[auth] Suppressed password reset for unverified account', { userId: user._id });
     }
 
     res.json({ ok: true });
@@ -328,7 +584,7 @@ router.post('/forgot-password', authLimiter, async (req, res) => {
 });
 
 // POST /api/auth/reset-password
-router.post('/reset-password', authLimiter, async (req, res) => {
+router.post('/reset-password', resetPasswordLimiter, async (req, res) => {
   const schema = z.object({
     token: z.string().min(1),
     password: passwordSchema
