@@ -365,10 +365,37 @@ const setForgotState = (show) => {
 forgotPasswordLink?.addEventListener('click', () => setForgotState(true));
 forgotPasswordBack?.addEventListener('click', () => setForgotState(false));
 
+// Lock the submit button for `seconds` with a visible countdown, then restore.
+// Pure UX: makes accidental double-clicks impossible and gives bots one fewer
+// trivially-cheap signal to spam. The real defense is server-side rate limiting.
+function lockButtonWithCountdown(button, seconds) {
+  if (!button) return;
+  const originalText = button.dataset.originalText || button.textContent;
+  button.dataset.originalText = originalText;
+  button.disabled = true;
+
+  let remaining = seconds;
+  button.textContent = `Wait ${remaining}s`;
+  const tick = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(tick);
+      button.disabled = false;
+      button.textContent = originalText;
+      delete button.dataset.originalText;
+    } else {
+      button.textContent = `Wait ${remaining}s`;
+    }
+  }, 1000);
+}
+
 forgotPasswordForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const formData = new FormData(e.target);
   const email = formData.get('email');
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+
+  lockButtonWithCountdown(submitBtn, 10);
 
   try {
     const response = await fetch('/api/auth/forgot-password', {

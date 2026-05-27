@@ -11,6 +11,7 @@
     "ngrok": "ngrok http 3000",
     "test": "vitest run",
     "test:ui": "vitest",
+    "verify:webhooks": "node scripts/verify-webhooks.js",
     "lint": "eslint ."
   },
   "directories": {

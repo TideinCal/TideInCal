@@ -1,5 +1,7 @@
 # Development Setup
 
+**Confused by localhost + live Stripe + live database + webhooks?** Read [LOCALHOST_AND_STRIPE.md](./LOCALHOST_AND_STRIPE.md) first (short, plain language).
+
 ## Quick Start
 
 1. **Start development server**
@@ -102,7 +104,8 @@ MOCK_EMAILS=true
 
 3. Configure webhook endpoint:
    - URL: `https://<your-domain>/api/stripe/webhook`
-   - Events: `checkout.session.completed`
+   - Events (all required): `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `charge.refunded`
+   - Verify setup: `npm run verify:webhooks` (with `npm run dev` running for local HTTP tests)
 
 ## Resend Setup
 

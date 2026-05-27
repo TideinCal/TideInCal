@@ -16,7 +16,7 @@ const getResend = () => {
   return resend;
 };
 
-const FROM_EMAIL = 'TideInCal <noreply@tideincal.com>';
+const FROM_EMAIL = 'TideInCal <no-reply@tideincal.com>';
 
 // Headers we attach to every transactional auth email (verification, reset,
 // confirmation). These help mailbox providers (Gmail, Outlook) classify the
@@ -31,7 +31,7 @@ const FROM_EMAIL = 'TideInCal <noreply@tideincal.com>';
 //   message so auto-responders don't reply and threading clients treat it
 //   appropriately.
 const AUTH_EMAIL_HEADERS = {
-  'List-Unsubscribe': '<mailto:noreply@tideincal.com?subject=unsubscribe>',
+  'List-Unsubscribe': '<mailto:no-reply@tideincal.com?subject=unsubscribe>',
   'Auto-Submitted': 'auto-generated',
 };
 
