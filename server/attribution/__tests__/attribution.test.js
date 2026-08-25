@@ -52,6 +52,21 @@ describe('attribution allowlisting and normalization', () => {
     expect(attributionTouchFromQuery({ foo: 'bar' }, '/')).toBeNull();
   });
 
+  it('ignores generic source/medium/campaign/content aliases; only utm_* counts', () => {
+    expect(
+      attributionTouchFromQuery({ source: 'instagram' }, '/')
+    ).toBeNull();
+    expect(
+      attributionTouchFromQuery(
+        { source: 'instagram', medium: 'organic_social', campaign: 'x', content: 'y' },
+        '/'
+      )
+    ).toBeNull();
+    expect(
+      attributionTouchFromQuery({ utm_source: 'instagram' }, '/')
+    ).toMatchObject({ source: 'instagram' });
+  });
+
   it('rejects malformed, PII-like, and free-form values', () => {
     expect(sanitizeSource('not-a-source')).toBeNull();
     expect(sanitizeMedium('newsletter')).toBeNull();

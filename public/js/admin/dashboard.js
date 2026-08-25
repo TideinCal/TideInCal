@@ -26,6 +26,7 @@ async function load() {
             <div class="card-body">
               <h2 class="h5 card-title">Total users</h2>
               <p class="display-6 mb-0">${data.totalUsers}</p>
+              <p class="small text-muted mb-0">Business accounts only (excludes test)</p>
             </div>
           </div>
         </div>
@@ -34,7 +35,25 @@ async function load() {
             <div class="card-body">
               <h2 class="h5 card-title">Active subscribers</h2>
               <p class="display-6 mb-0">${data.activeSubscribers}</p>
-              <p class="small text-muted mb-0">subscriptionStatus active and period end in the future</p>
+              <p class="small text-muted mb-0">Business only: subscriptionStatus active and period end in the future</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card shadow-sm border-info">
+            <div class="card-body">
+              <h2 class="h5 card-title">Test users</h2>
+              <p class="display-6 mb-0">${data.testActivity?.totalUsers ?? 0}</p>
+              <p class="small text-muted mb-0">Test activity (not included in business totals)</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card shadow-sm border-info">
+            <div class="card-body">
+              <h2 class="h5 card-title">Test active subscribers</h2>
+              <p class="display-6 mb-0">${data.testActivity?.activeSubscribers ?? 0}</p>
+              <p class="small text-muted mb-0">Test activity (not included in business totals)</p>
             </div>
           </div>
         </div>

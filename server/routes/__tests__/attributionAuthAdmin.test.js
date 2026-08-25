@@ -199,20 +199,8 @@ describe('auth attribution persistence helpers (signup / login)', () => {
 });
 
 describe('admin setCustomerIsTest', () => {
-  it('requires boolean, updates user + purchases, and audits', async () => {
-    const targetUserId = new ObjectId();
-    const adminUserId = new ObjectId();
-    const purchaseIds = [new ObjectId(), new ObjectId()];
-    const auditInserts = [];
-    let userDoc = { _id: targetUserId, isTest: false };
-    const purchases = purchaseIds.map((id) => ({
-      _id: id,
-      userId: targetUserId,
-      isTest: false,
-    }));
-
-    vi.resetModules();
-    vi.doMock('../../db/index.js', () => ({
+  function mockDbForIsTest({ userDoc, purchases, auditInserts }) {
+    return {
       getDatabase: () => ({
         collection(name) {
           if (name === 'users') {
@@ -226,13 +214,14 @@ describe('admin setCustomerIsTest', () => {
           }
           if (name === 'purchases') {
             return {
-              updateMany: async (_f, update) => {
+              updateMany: async (filter, update) => {
                 let modifiedCount = 0;
                 for (const p of purchases) {
-                  if (p.userId.equals(targetUserId)) {
-                    Object.assign(p, update.$set);
-                    modifiedCount += 1;
-                  }
+                  if (!p.userId.equals(filter.userId)) continue;
+                  const ne = filter.isTest?.$ne;
+                  if (ne !== undefined && p.isTest === ne) continue;
+                  Object.assign(p, update.$set);
+                  modifiedCount += 1;
                 }
                 return { modifiedCount };
               },
@@ -249,7 +238,25 @@ describe('admin setCustomerIsTest', () => {
           throw new Error(name);
         },
       }),
+    };
+  }
+
+  it('requires boolean, updates user + purchases, and audits', async () => {
+    const targetUserId = new ObjectId();
+    const adminUserId = new ObjectId();
+    const purchaseIds = [new ObjectId(), new ObjectId()];
+    const auditInserts = [];
+    let userDoc = { _id: targetUserId, isTest: false };
+    const purchases = purchaseIds.map((id) => ({
+      _id: id,
+      userId: targetUserId,
+      isTest: false,
     }));
+
+    vi.resetModules();
+    vi.doMock('../../db/index.js', () =>
+      mockDbForIsTest({ userDoc, purchases, auditInserts })
+    );
 
     const { setCustomerIsTest } = await import('../../services/admin/setCustomerIsTest.js');
 
@@ -274,5 +281,49 @@ describe('admin setCustomerIsTest', () => {
     expect(auditInserts[0].actionType).toBe('customer_marked_test');
     expect(auditInserts[0].oldValue).toEqual({ isTest: false });
     expect(auditInserts[0].newValue).toEqual({ isTest: true });
+  });
+
+  it('retries after partial failure: repairs purchase flags when user already matches', async () => {
+    const targetUserId = new ObjectId();
+    const adminUserId = new ObjectId();
+    const auditInserts = [];
+    // Simulate: first attempt set user.isTest=true then failed before purchases
+    let userDoc = { _id: targetUserId, isTest: true };
+    const purchases = [
+      { _id: new ObjectId(), userId: targetUserId, isTest: false },
+      { _id: new ObjectId(), userId: targetUserId, isTest: false },
+    ];
+
+    vi.resetModules();
+    vi.doMock('../../db/index.js', () =>
+      mockDbForIsTest({ userDoc, purchases, auditInserts })
+    );
+
+    const { setCustomerIsTest } = await import('../../services/admin/setCustomerIsTest.js');
+
+    const result = await setCustomerIsTest({
+      targetUserId,
+      adminUserId,
+      isTest: true,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.unchanged).toBe(false);
+    expect(result.repaired).toBe(true);
+    expect(result.purchasesUpdated).toBe(2);
+    expect(purchases.every((p) => p.isTest === true)).toBe(true);
+    expect(auditInserts).toHaveLength(1);
+    expect(auditInserts[0].actionType).toBe('customer_test_flag_reconciled');
+    expect(auditInserts[0].metadata.repaired).toBe(true);
+
+    // Fully reconciled retry is a no-op
+    const noop = await setCustomerIsTest({
+      targetUserId,
+      adminUserId,
+      isTest: true,
+    });
+    expect(noop.unchanged).toBe(true);
+    expect(noop.purchasesUpdated).toBe(0);
+    expect(auditInserts).toHaveLength(1);
   });
 });

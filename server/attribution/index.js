@@ -155,14 +155,14 @@ export function buildTouch({
 }
 
 /**
- * Parse query-string UTMs. Requires at least one recognized UTM field.
- * Timestamps are server-generated.
+ * Parse query-string UTMs. Only explicit utm_* parameters are accepted.
+ * Requires at least one recognized UTM field. Timestamps are server-generated.
  */
 export function attributionTouchFromQuery(query = {}, landingPath, now = new Date()) {
-  const source = sanitizeSource(query.utm_source ?? query.source);
-  const medium = sanitizeMedium(query.utm_medium ?? query.medium);
-  const campaign = sanitizeSlug(query.utm_campaign ?? query.campaign);
-  const content = sanitizeSlug(query.utm_content ?? query.content);
+  const source = sanitizeSource(query.utm_source);
+  const medium = sanitizeMedium(query.utm_medium);
+  const campaign = sanitizeSlug(query.utm_campaign);
+  const content = sanitizeSlug(query.utm_content);
 
   if (!source && !medium && !campaign && !content) {
     return null;

@@ -2,7 +2,7 @@
 import { getDatabase } from '../db/index.js';
 import { sendDownloadReady } from '../auth/email.js';
 import Stripe from 'stripe';
-import { attributionFromStripeMetadata } from '../attribution/index.js';
+import { attributionFromStripeMetadata, UNKNOWN } from '../attribution/index.js';
 
 /**
  * Attach sanitized attribution + isTest from Stripe metadata onto a purchase doc.
@@ -14,6 +14,50 @@ function withAttributionFields(purchaseData, metadata) {
     attribution,
     isTest,
   };
+}
+
+/**
+ * Pro / subscription selected-station from Checkout metadata.
+ * Preserves a real station when supplied; otherwise unknown. Never invents a location.
+ */
+export function selectedStationFromMetadata(metadata = {}) {
+  const stationId = metadata.stationID != null ? String(metadata.stationID).trim() : '';
+  const stationTitle =
+    metadata.stationTitle != null ? String(metadata.stationTitle).trim() : '';
+  const country = metadata.country != null ? String(metadata.country).trim() : '';
+
+  const hasReal =
+    stationId !== '' &&
+    stationId !== UNKNOWN &&
+    stationTitle !== '' &&
+    stationTitle !== UNKNOWN &&
+    country !== '' &&
+    country !== UNKNOWN;
+
+  if (!hasReal) {
+    return {
+      stationId: UNKNOWN,
+      stationTitle: UNKNOWN,
+      country: UNKNOWN,
+    };
+  }
+
+  const out = {
+    stationId,
+    stationTitle,
+    country,
+  };
+
+  if (metadata.stationLat !== undefined && metadata.stationLat !== '' && metadata.stationLat != null) {
+    const lat = Number(metadata.stationLat);
+    if (!Number.isNaN(lat)) out.latitude = lat;
+  }
+  if (metadata.stationLng !== undefined && metadata.stationLng !== '' && metadata.stationLng != null) {
+    const lng = Number(metadata.stationLng);
+    if (!Number.isNaN(lng)) out.longitude = lng;
+  }
+
+  return out;
 }
 /**
  * Creates a purchase record from a Stripe checkout session
@@ -192,7 +236,8 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       customerEmail: customerEmail,
       subscriptionStatus: subscription.status,
       createdAt: new Date(),
-      stripeCustomerId: stripeCustomerId || null
+      stripeCustomerId: stripeCustomerId || null,
+      selectedStation: selectedStationFromMetadata(metadata),
     }, metadata);
     
     // Only add period end if we have a valid date

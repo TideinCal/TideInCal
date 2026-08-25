@@ -260,6 +260,43 @@ describe('createPurchaseFromSession attribution persistence', () => {
     expect(sub.product).toBe('subscription');
     expect(sub.attribution.source).toBe('instagram');
     expect(sub.isTest).toBe(false);
+    expect(sub.selectedStation).toEqual({
+      stationId: UNKNOWN,
+      stationTitle: UNKNOWN,
+      country: UNKNOWN,
+    });
+  });
+
+  it('persists a real Pro selected station on subscription purchases', async () => {
+    const sub = await createPurchaseFromSession(
+      {
+        id: 'cs_sub_station',
+        mode: 'subscription',
+        amount_total: 2999,
+        currency: 'usd',
+        subscription: 'sub_test',
+        metadata: {
+          plan: 'subscription',
+          userId: new ObjectId().toString(),
+          stationID: '9414290',
+          stationTitle: 'San Francisco',
+          country: 'usa',
+          stationLat: '37.8',
+          stationLng: '-122.4',
+          ...baseAttr,
+        },
+      },
+      mockDb(),
+      ObjectId
+    );
+    expect(sub.product).toBe('subscription');
+    expect(sub.selectedStation).toEqual({
+      stationId: '9414290',
+      stationTitle: 'San Francisco',
+      country: 'usa',
+      latitude: 37.8,
+      longitude: -122.4,
+    });
   });
 
   it('uses safe unknown attribution when metadata is missing or malformed', async () => {
