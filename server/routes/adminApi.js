@@ -38,12 +38,14 @@ router.get('/dashboard', async (_req, res) => {
   }
 });
 
-// GET /api/admin/customers?query=
+// GET /api/admin/customers?query=&page=&limit=
 router.get('/customers', async (req, res) => {
   try {
     const query = typeof req.query.query === 'string' ? req.query.query : '';
-    const customers = await searchCustomers(query);
-    res.json({ customers });
+    const page = req.query.page;
+    const limit = req.query.limit;
+    const result = await searchCustomers(query, { page, limit });
+    res.json(result);
   } catch (error) {
     console.error('[admin] customers search error:', error);
     res.status(500).json({ error: 'Internal server error' });

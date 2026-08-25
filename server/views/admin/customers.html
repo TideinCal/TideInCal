@@ -9,14 +9,15 @@
 <body class="bg-light">
   <div id="adminNav"></div>
   <main class="container pb-5">
-    <h1 class="h3 mb-4">Customer search</h1>
+    <h1 class="h3 mb-4">Customers</h1>
+    <p class="text-muted small mb-3">Browse all account records, or search by email, name, user id, cus_, sub_, cs_, pi_, or purchase id.</p>
     <form id="searchForm" class="row g-2 mb-4">
       <div class="col-md-8">
         <label for="queryInput" class="visually-hidden">Search</label>
-        <input type="text" class="form-control" id="queryInput" name="query" placeholder="Email, name, user id, cus_, sub_, cs_, pi_, purchase id…" autocomplete="off">
+        <input type="text" class="form-control" id="queryInput" name="query" placeholder="Leave empty to browse all, or search email, name, user id, cus_, sub_, cs_, pi_, purchase id…" autocomplete="off">
       </div>
       <div class="col-md-4">
-        <button type="submit" class="btn btn-primary w-100">Search</button>
+        <button type="submit" class="btn btn-primary w-100">Search / Browse</button>
       </div>
     </form>
     <div id="searchResults"></div>
