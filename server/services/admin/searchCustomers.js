@@ -1,15 +1,20 @@
 import { getDatabase } from '../../db/index.js';
 import { PAYING_PURCHASE_MATCH } from './getDashboardData.js';
+import { purchaseNotFullyRefundedFilter } from '../refund/purchaseRefundHelpers.js';
 import {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
   SEARCH_STRATEGY_MATCH_CAP,
   buildPaginationMeta,
   compareBySortSpec,
+  computeBusinessStatusFlags,
+  isStatusSort,
   resolveEffectivePage,
   resolveLimit,
   resolveSortKey,
   resolveSortSpec,
+  statusRankForFlag,
+  statusSortConfig,
 } from './customerListParams.js';
 
 export {
@@ -45,28 +50,28 @@ function stripSensitive(user) {
     acquisition: _acq,
     billingAddress: _ba,
     billingName: _bn,
+    qualifyingPurchases: _qp,
+    _statusRank: _sr,
+    _verified: _v,
+    _paying: _p,
+    _activeSub: _a,
+    _isTest: _t,
     ...rest
   } = user;
   return rest;
 }
 
-function isValidVerifiedAt(value) {
-  return value instanceof Date && !Number.isNaN(value.getTime());
-}
-
-function isActiveSubscriber(user, now = new Date()) {
-  const hasPeriodEnd =
-    user.subscriptionCurrentPeriodEnd &&
-    new Date(user.subscriptionCurrentPeriodEnd) > now;
-  return user.subscriptionStatus === 'active' && !!hasPeriodEnd;
-}
-
 /**
  * Enrich list rows with compact status flags used by the admin UI.
+ * Matches status-sort definitions: test users are never paying / active-sub.
  */
 export function enrichCustomerListRow(user, { payingUserIds = new Set(), now = new Date() } = {}) {
   const clean = stripSensitive(user);
   const idStr = clean._id?.toString?.() || String(clean._id);
+  const flags = computeBusinessStatusFlags(clean, {
+    isPaying: payingUserIds.has(idStr),
+    now,
+  });
   return {
     _id: clean._id,
     email: clean.email || null,
@@ -76,10 +81,10 @@ export function enrichCustomerListRow(user, { payingUserIds = new Set(), now = n
     stripeCustomerId: clean.stripeCustomerId || null,
     role: clean.role || null,
     markedForReview: !!clean.markedForReview,
-    isTest: clean.isTest === true,
-    emailVerified: isValidVerifiedAt(clean.emailVerifiedAt),
-    payingCustomer: payingUserIds.has(idStr),
-    subscriptionActive: isActiveSubscriber(clean, now),
+    isTest: flags.isTest,
+    emailVerified: flags.emailVerified,
+    payingCustomer: flags.payingCustomer,
+    subscriptionActive: flags.subscriptionActive,
   };
 }
 
@@ -100,6 +105,135 @@ async function payingUserIdSet(db, userIds) {
   return new Set(rows.map((r) => r._id.toString()));
 }
 
+/** Lookup pipeline: does this user have ≥1 qualifying purchase? */
+function qualifyingPurchaseLookup() {
+  return {
+    $lookup: {
+      from: 'purchases',
+      let: { uid: '$_id' },
+      pipeline: [
+        {
+          $match: {
+            $and: [
+              { $expr: { $eq: ['$userId', '$$uid'] } },
+              { isTest: { $ne: true } },
+              { amount: { $type: 'number', $gt: 0 } },
+              purchaseNotFullyRefundedFilter,
+            ],
+          },
+        },
+        { $limit: 1 },
+        { $project: { _id: 1 } },
+      ],
+      as: 'qualifyingPurchases',
+    },
+  };
+}
+
+function statusRankAddFields(sortKey, now) {
+  const cfg = statusSortConfig(sortKey);
+  // preferTrue → true maps to 0 via $cond
+  const preferTrue = cfg?.preferTrue !== false;
+
+  return {
+    $addFields: {
+      _isTest: { $eq: ['$isTest', true] },
+      _verified: { $eq: [{ $type: '$emailVerifiedAt' }, 'date'] },
+      _paying: {
+        $and: [
+          { $ne: ['$isTest', true] },
+          { $gt: [{ $size: '$qualifyingPurchases' }, 0] },
+        ],
+      },
+      _activeSub: {
+        $and: [
+          { $ne: ['$isTest', true] },
+          { $eq: ['$subscriptionStatus', 'active'] },
+          { $gt: ['$subscriptionCurrentPeriodEnd', now] },
+        ],
+      },
+      _statusRank: (() => {
+        if (!cfg) return 0;
+        const flagExpr =
+          cfg.flag === 'emailVerified'
+            ? { $eq: [{ $type: '$emailVerifiedAt' }, 'date'] }
+            : cfg.flag === 'payingCustomer'
+              ? {
+                  $and: [
+                    { $ne: ['$isTest', true] },
+                    { $gt: [{ $size: '$qualifyingPurchases' }, 0] },
+                  ],
+                }
+              : {
+                  $and: [
+                    { $ne: ['$isTest', true] },
+                    { $eq: ['$subscriptionStatus', 'active'] },
+                    { $gt: ['$subscriptionCurrentPeriodEnd', now] },
+                  ],
+                };
+        // preferTrue: true→0, false→1; reverse: true→1, false→0
+        return preferTrue
+          ? { $cond: [flagExpr, 0, 1] }
+          : { $cond: [flagExpr, 1, 0] };
+      })(),
+    },
+  };
+}
+
+/**
+ * Browse-all with status sort via aggregation across the full user set, then paginate.
+ */
+async function browseCustomersByStatus({ page, limit, sortKey, now }) {
+  const db = getDatabase();
+  const limitNum = resolveLimit(limit);
+
+  const countPipeline = [
+    qualifyingPurchaseLookup(),
+    statusRankAddFields(sortKey, now),
+    { $count: 'total' },
+  ];
+  const countRows = await db.collection('users').aggregate(countPipeline).toArray();
+  const total = countRows[0]?.total ?? 0;
+  const pageNum = resolveEffectivePage(page, total, limitNum);
+  const skip = (pageNum - 1) * limitNum;
+
+  const pagePipeline = [
+    qualifyingPurchaseLookup(),
+    statusRankAddFields(sortKey, now),
+    { $sort: { _statusRank: 1, createdAt: -1, _id: -1 } },
+    { $skip: skip },
+    { $limit: limitNum },
+    {
+      $project: {
+        ...LIST_OMIT_PROJECTION,
+        qualifyingPurchases: 0,
+        _statusRank: 0,
+        _verified: 0,
+        _paying: 0,
+        _activeSub: 0,
+        _isTest: 0,
+      },
+    },
+  ];
+
+  const docs = await db.collection('users').aggregate(pagePipeline).toArray();
+  const paying = await payingUserIdSet(
+    db,
+    docs.map((u) => u._id)
+  );
+  const customers = docs.map((u) => enrichCustomerListRow(u, { payingUserIds: paying, now }));
+
+  return {
+    customers,
+    pagination: buildPaginationMeta({
+      page: pageNum,
+      limit: limitNum,
+      total,
+      sort: sortKey,
+    }),
+  };
+}
+
 /**
  * Browse all account records with server-side sort then pagination.
  */
@@ -107,10 +241,15 @@ export async function browseCustomers({
   page = 1,
   limit = DEFAULT_PAGE_SIZE,
   sort = undefined,
+  now = new Date(),
 } = {}) {
+  const sortKey = resolveSortKey(sort);
+  if (isStatusSort(sortKey)) {
+    return browseCustomersByStatus({ page, limit, sortKey, now });
+  }
+
   const db = getDatabase();
   const limitNum = resolveLimit(limit);
-  const sortKey = resolveSortKey(sort);
   const sortSpec = resolveSortSpec(sortKey);
 
   const usersCol = db.collection('users');
@@ -130,7 +269,7 @@ export async function browseCustomers({
     db,
     docs.map((u) => u._id)
   );
-  const customers = docs.map((u) => enrichCustomerListRow(u, { payingUserIds: paying }));
+  const customers = docs.map((u) => enrichCustomerListRow(u, { payingUserIds: paying, now }));
 
   return {
     customers,
@@ -143,6 +282,29 @@ export async function browseCustomers({
   };
 }
 
+function sortSearchResults(docs, sortKey, payingIds, now) {
+  if (isStatusSort(sortKey)) {
+    const cfg = statusSortConfig(sortKey);
+    const decorated = docs.map((u) => {
+      const flags = computeBusinessStatusFlags(u, {
+        isPaying: payingIds.has(u._id.toString()),
+        now,
+      });
+      return {
+        ...u,
+        _statusRank: statusRankForFlag(flags[cfg.flag], cfg.preferTrue),
+        ...flags,
+      };
+    });
+    decorated.sort((a, b) =>
+      compareBySortSpec(a, b, { _statusRank: 1, createdAt: -1, _id: -1 })
+    );
+    return decorated;
+  }
+  const sortSpec = resolveSortSpec(sortKey);
+  return [...docs].sort((a, b) => compareBySortSpec(a, b, sortSpec));
+}
+
 /**
  * Search users by email, name, user id, Stripe customer id, purchase id, subscription id,
  * checkout session id, or payment intent id.
@@ -153,21 +315,19 @@ export async function browseCustomers({
  */
 export async function searchCustomers(
   rawQuery,
-  { page = 1, limit = DEFAULT_PAGE_SIZE, sort = undefined } = {}
+  { page = 1, limit = DEFAULT_PAGE_SIZE, sort = undefined, now = new Date() } = {}
 ) {
   const db = getDatabase();
   const { ObjectId } = await import('mongodb');
   const q = (rawQuery || '').trim();
   const limitNum = resolveLimit(limit);
   const sortKey = resolveSortKey(sort);
-  const sortSpec = resolveSortSpec(sortKey);
 
   if (!q) {
-    return browseCustomers({ page, limit: limitNum, sort: sortKey });
+    return browseCustomers({ page, limit: limitNum, sort: sortKey, now });
   }
 
   const byId = new Map();
-  // Track whether any strategy hit the match cap (for metadata honesty).
   let searchPossiblyCapped = false;
 
   function addUser(user) {
@@ -183,7 +343,6 @@ export async function searchCustomers(
     return rows;
   }
 
-  // MongoDB ObjectId (user or purchase)
   if (/^[a-fA-F0-9]{24}$/.test(q)) {
     try {
       const oid = new ObjectId(q);
@@ -263,7 +422,6 @@ export async function searchCustomers(
     }
   }
 
-  // Text: email, firstName, lastName
   const safe = escapeRegex(q);
   const regex = new RegExp(safe, 'i');
   const textUsers = await limitedFind(() =>
@@ -274,19 +432,21 @@ export async function searchCustomers(
       })
       .project(LIST_OMIT_PROJECTION)
   );
-
   for (const u of textUsers) addUser(u);
 
-  const all = Array.from(byId.values()).sort((a, b) => compareBySortSpec(a, b, sortSpec));
-  const total = all.length;
+  const allDocs = Array.from(byId.values());
+  const payingAll = await payingUserIdSet(
+    db,
+    allDocs.map((u) => u._id)
+  );
+  const sorted = sortSearchResults(allDocs, sortKey, payingAll, now);
+  const total = sorted.length;
   const pageNum = resolveEffectivePage(page, total, limitNum);
   const skip = (pageNum - 1) * limitNum;
-  const pageDocs = all.slice(skip, skip + limitNum);
-  const paying = await payingUserIdSet(
-    db,
-    pageDocs.map((u) => u._id)
+  const pageDocs = sorted.slice(skip, skip + limitNum);
+  const customers = pageDocs.map((u) =>
+    enrichCustomerListRow(u, { payingUserIds: payingAll, now })
   );
-  const customers = pageDocs.map((u) => enrichCustomerListRow(u, { payingUserIds: paying }));
 
   const pagination = buildPaginationMeta({
     page: pageNum,
@@ -294,14 +454,10 @@ export async function searchCustomers(
     total,
     sort: sortKey,
   });
-  // Document search-strategy cap when it may have truncated results.
   if (searchPossiblyCapped) {
     pagination.searchPossiblyCapped = true;
     pagination.searchStrategyMatchCap = SEARCH_STRATEGY_MATCH_CAP;
   }
 
-  return {
-    customers,
-    pagination,
-  };
+  return { customers, pagination };
 }

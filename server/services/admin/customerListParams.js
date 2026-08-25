@@ -12,17 +12,41 @@ export const DEFAULT_SORT = 'created_desc';
 export const SEARCH_STRATEGY_MATCH_CAP = 50;
 
 /**
- * Allowlisted sort keys → MongoDB sort documents.
+ * Field sorts → MongoDB sort documents (browse uses find().sort()).
  * Always include `_id` as a deterministic tie-breaker.
- * Does not sort by Status (composite) or sensitive fields.
  */
-export const SORT_SPECS = Object.freeze({
+export const FIELD_SORT_SPECS = Object.freeze({
   created_desc: { createdAt: -1, _id: -1 },
   created_asc: { createdAt: 1, _id: 1 },
   name_asc: { firstName: 1, lastName: 1, _id: 1 },
   name_desc: { firstName: -1, lastName: -1, _id: -1 },
   email_asc: { email: 1, _id: 1 },
   email_desc: { email: -1, _id: -1 },
+});
+
+/**
+ * Status sorts: group by computed business status, then newest + `_id` desc within group.
+ * Reverse choices only flip the status group order.
+ */
+export const STATUS_SORT_KEYS = Object.freeze([
+  'verified_first',
+  'unverified_first',
+  'paying_first',
+  'nonpaying_first',
+  'active_first',
+  'inactive_first',
+]);
+
+/** @deprecated use FIELD_SORT_SPECS + STATUS_SORT_KEYS; kept as combined allowlist */
+export const SORT_SPECS = Object.freeze({
+  ...FIELD_SORT_SPECS,
+  // Status sorts are handled via aggregation / computed ranks, not plain field specs.
+  verified_first: { _statusRank: 1, createdAt: -1, _id: -1 },
+  unverified_first: { _statusRank: 1, createdAt: -1, _id: -1 },
+  paying_first: { _statusRank: 1, createdAt: -1, _id: -1 },
+  nonpaying_first: { _statusRank: 1, createdAt: -1, _id: -1 },
+  active_first: { _statusRank: 1, createdAt: -1, _id: -1 },
+  inactive_first: { _statusRank: 1, createdAt: -1, _id: -1 },
 });
 
 export const SORT_LABELS = Object.freeze({
@@ -32,7 +56,17 @@ export const SORT_LABELS = Object.freeze({
   name_desc: 'Name Z to A',
   email_asc: 'Email A to Z',
   email_desc: 'Email Z to A',
+  verified_first: 'Verified first',
+  unverified_first: 'Unverified first',
+  paying_first: 'Paying first',
+  nonpaying_first: 'Non-paying first',
+  active_first: 'Active subscribers first',
+  inactive_first: 'No active subscription first',
 });
+
+export function isStatusSort(sort) {
+  return STATUS_SORT_KEYS.includes(resolveSortKey(sort));
+}
 
 export function resolveSortKey(sort) {
   if (typeof sort === 'string' && Object.prototype.hasOwnProperty.call(SORT_SPECS, sort)) {
@@ -42,19 +76,55 @@ export function resolveSortKey(sort) {
 }
 
 export function resolveSortSpec(sort) {
-  return SORT_SPECS[resolveSortKey(sort)];
+  const key = resolveSortKey(sort);
+  if (isStatusSort(key)) {
+    return { _statusRank: 1, createdAt: -1, _id: -1 };
+  }
+  return FIELD_SORT_SPECS[key] || FIELD_SORT_SPECS[DEFAULT_SORT];
 }
 
 /**
- * Page size: exact approved values preferred by the UI; any integer 1–200 is
- * accepted by the API; oversized values clamp to 200; invalid → 25.
+ * Which status boolean drives `_statusRank` for a status sort key.
+ * Prefer-true sorts put true → 0; reverse sorts put true → 1.
+ */
+export function statusSortConfig(sortKey) {
+  const key = resolveSortKey(sortKey);
+  switch (key) {
+    case 'verified_first':
+      return { flag: 'emailVerified', preferTrue: true };
+    case 'unverified_first':
+      return { flag: 'emailVerified', preferTrue: false };
+    case 'paying_first':
+      return { flag: 'payingCustomer', preferTrue: true };
+    case 'nonpaying_first':
+      return { flag: 'payingCustomer', preferTrue: false };
+    case 'active_first':
+      return { flag: 'subscriptionActive', preferTrue: true };
+    case 'inactive_first':
+      return { flag: 'subscriptionActive', preferTrue: false };
+    default:
+      return null;
+  }
+}
+
+/** Status rank: 0 = preferred group, 1 = other group. */
+export function statusRankForFlag(flagValue, preferTrue) {
+  const truthy = !!flagValue;
+  if (preferTrue) return truthy ? 0 : 1;
+  return truthy ? 1 : 0;
+}
+
+/**
+ * Only the four visible page sizes are valid. Anything else → 25.
  */
 export function resolveLimit(limit) {
   const n = Number(limit);
   if (!Number.isFinite(n) || n < 1) return DEFAULT_PAGE_SIZE;
   const floor = Math.floor(n);
-  if (floor > MAX_PAGE_SIZE) return MAX_PAGE_SIZE;
-  return floor;
+  // Fractional values (e.g. 25.5, 50.1) are not exact allowlist sizes → default.
+  if (n !== floor) return DEFAULT_PAGE_SIZE;
+  if (ALLOWED_PAGE_SIZES.includes(floor)) return floor;
+  return DEFAULT_PAGE_SIZE;
 }
 
 /** Raw page request → positive integer (before total-based clamp). */
@@ -109,7 +179,6 @@ export function buildPageWindow(currentPage, totalPages, { siblingCount = 1 } = 
     pages.add(currentPage - i);
     pages.add(currentPage + i);
   }
-  // Keep a little context near ends
   pages.add(2);
   pages.add(totalPages - 1);
 
@@ -156,7 +225,6 @@ export function parseListState(input) {
 
 /**
  * Serialize list state to a query string (no leading ?).
- * Omits empty query; always includes page/limit/sort for round-trips.
  */
 export function serializeListState({ query = '', page = 1, limit = DEFAULT_PAGE_SIZE, sort = DEFAULT_SORT } = {}) {
   const params = new URLSearchParams();
@@ -170,9 +238,6 @@ export function serializeListState({ query = '', page = 1, limit = DEFAULT_PAGE_
 
 /**
  * Simulate history stack navigation for Back/Forward tests.
- * @param {string[]} stack query strings
- * @param {number} index current index
- * @param {'back'|'forward'} direction
  */
 export function navigateHistory(stack, index, direction) {
   if (!Array.isArray(stack) || stack.length === 0) {
@@ -197,6 +262,9 @@ export function compareBySortSpec(a, b, sortSpec) {
     } else if (field === '_id') {
       av = String(av);
       bv = String(bv);
+    } else if (field === '_statusRank') {
+      av = Number(av) || 0;
+      bv = Number(bv) || 0;
     } else {
       av = (av == null ? '' : String(av)).toLowerCase();
       bv = (bv == null ? '' : String(bv)).toLowerCase();
@@ -205,4 +273,25 @@ export function compareBySortSpec(a, b, sortSpec) {
     if (av > bv) return dir;
   }
   return 0;
+}
+
+/**
+ * Business status flags matching list badges / dashboard definitions.
+ * Test users are never paying or active-subscriber for status sorting.
+ */
+export function computeBusinessStatusFlags(user, { isPaying = false, now = new Date() } = {}) {
+  const isTest = user?.isTest === true;
+  const emailVerified =
+    user?.emailVerifiedAt instanceof Date && !Number.isNaN(user.emailVerifiedAt.getTime());
+  const periodEnd = user?.subscriptionCurrentPeriodEnd
+    ? new Date(user.subscriptionCurrentPeriodEnd)
+    : null;
+  const subscriptionActive =
+    !isTest &&
+    user?.subscriptionStatus === 'active' &&
+    periodEnd instanceof Date &&
+    !Number.isNaN(periodEnd.getTime()) &&
+    periodEnd > now;
+  const payingCustomer = !isTest && !!isPaying;
+  return { isTest, emailVerified, payingCustomer, subscriptionActive };
 }

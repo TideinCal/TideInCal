@@ -56,8 +56,9 @@ function resolveLimit(limit) {
   const n = Number(limit);
   if (!Number.isFinite(n) || n < 1) return DEFAULT_LIMIT;
   const floor = Math.floor(n);
-  if (floor > 200) return 200;
-  return floor;
+  if (n !== floor) return DEFAULT_LIMIT;
+  if (ALLOWED_LIMITS.includes(floor)) return floor;
+  return DEFAULT_LIMIT;
 }
 
 function resolveSort(sort) {
@@ -68,6 +69,12 @@ function resolveSort(sort) {
     'name_desc',
     'email_asc',
     'email_desc',
+    'verified_first',
+    'unverified_first',
+    'paying_first',
+    'nonpaying_first',
+    'active_first',
+    'inactive_first',
   ];
   return allowed.includes(sort) ? sort : DEFAULT_SORT;
 }

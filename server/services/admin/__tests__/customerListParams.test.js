@@ -2,10 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   ALLOWED_PAGE_SIZES,
   DEFAULT_SORT,
-  MAX_PAGE_SIZE,
+  FIELD_SORT_SPECS,
   SORT_SPECS,
+  STATUS_SORT_KEYS,
   buildPageWindow,
   buildPaginationMeta,
+  computeBusinessStatusFlags,
   navigateHistory,
   navControlState,
   parseListState,
@@ -13,30 +15,104 @@ import {
   resolveLimit,
   resolveSortKey,
   serializeListState,
+  statusRankForFlag,
+  statusSortConfig,
 } from '../customerListParams.js';
 
 describe('customerListParams', () => {
-  it('allowlists sorts and falls back to newest-first', () => {
+  it('allowlists field and status sorts and falls back to newest-first', () => {
     expect(resolveSortKey('created_asc')).toBe('created_asc');
     expect(resolveSortKey('email_desc')).toBe('email_desc');
+    expect(resolveSortKey('verified_first')).toBe('verified_first');
+    expect(resolveSortKey('paying_first')).toBe('paying_first');
+    expect(resolveSortKey('active_first')).toBe('active_first');
     expect(resolveSortKey('status_asc')).toBe(DEFAULT_SORT);
     expect(resolveSortKey(undefined)).toBe(DEFAULT_SORT);
-    expect(SORT_SPECS.created_desc).toEqual({ createdAt: -1, _id: -1 });
-    expect(SORT_SPECS.name_asc).toEqual({ firstName: 1, lastName: 1, _id: 1 });
+    expect(FIELD_SORT_SPECS.created_desc).toEqual({ createdAt: -1, _id: -1 });
+    expect(FIELD_SORT_SPECS.name_asc).toEqual({ firstName: 1, lastName: 1, _id: 1 });
+    for (const key of STATUS_SORT_KEYS) {
+      expect(SORT_SPECS[key]).toEqual({ _statusRank: 1, createdAt: -1, _id: -1 });
+      expect(statusSortConfig(key)).not.toBeNull();
+    }
   });
 
-  it('accepts page sizes 25/50/100/200 and clamps oversized/invalid input', () => {
+  it('accepts exactly 25, 50, 100, and 200; everything else becomes 25', () => {
     for (const size of ALLOWED_PAGE_SIZES) {
       expect(resolveLimit(size)).toBe(size);
       expect(resolveLimit(String(size))).toBe(size);
     }
-    expect(resolveLimit(500)).toBe(MAX_PAGE_SIZE);
-    expect(resolveLimit(9999)).toBe(200);
-    expect(resolveLimit(0)).toBe(25);
-    expect(resolveLimit(-10)).toBe(25);
-    expect(resolveLimit('nope')).toBe(25);
-    expect(resolveLimit(75)).toBe(75);
-    expect(resolveLimit(10)).toBe(10);
+    for (const bad of [1, 10, 75, 199, 201, 500, 9999, 0, -10, 25.5, 50.1, 'nope', '', null, undefined]) {
+      expect(resolveLimit(bad)).toBe(25);
+    }
+  });
+
+  it('URL parsing and pagination metadata always return one of the four visible page sizes', () => {
+    expect(parseListState('?limit=75')).toMatchObject({ limit: 25 });
+    expect(parseListState('?limit=199')).toMatchObject({ limit: 25 });
+    expect(parseListState('?limit=25.9')).toMatchObject({ limit: 25 });
+    expect(parseListState('?limit=100')).toMatchObject({ limit: 100 });
+    expect(serializeListState({ limit: 75 })).toContain('limit=25');
+    expect(serializeListState({ limit: 200 })).toContain('limit=200');
+
+    const meta = buildPaginationMeta({ page: 1, limit: 75, total: 100, sort: 'created_desc' });
+    expect(ALLOWED_PAGE_SIZES).toContain(meta.limit);
+    expect(meta.limit).toBe(25);
+  });
+
+  it('status rank prefers the badge-matching group; reverse only flips groups', () => {
+    expect(statusRankForFlag(true, true)).toBe(0);
+    expect(statusRankForFlag(false, true)).toBe(1);
+    expect(statusRankForFlag(true, false)).toBe(1);
+    expect(statusRankForFlag(false, false)).toBe(0);
+  });
+
+  it('computeBusinessStatusFlags matches badge definitions including test exclusion', () => {
+    const now = new Date('2026-06-01T00:00:00Z');
+    const verified = computeBusinessStatusFlags(
+      { emailVerifiedAt: new Date('2026-01-01'), isTest: false },
+      { isPaying: true, now }
+    );
+    expect(verified.emailVerified).toBe(true);
+    expect(verified.payingCustomer).toBe(true);
+
+    const invalidDate = computeBusinessStatusFlags(
+      { emailVerifiedAt: new Date('not-a-date'), isTest: false },
+      { isPaying: false, now }
+    );
+    expect(invalidDate.emailVerified).toBe(false);
+
+    const testUser = computeBusinessStatusFlags(
+      {
+        isTest: true,
+        emailVerifiedAt: new Date('2026-01-01'),
+        subscriptionStatus: 'active',
+        subscriptionCurrentPeriodEnd: new Date('2026-12-01'),
+      },
+      { isPaying: true, now }
+    );
+    expect(testUser.payingCustomer).toBe(false);
+    expect(testUser.subscriptionActive).toBe(false);
+    expect(testUser.emailVerified).toBe(true);
+
+    const active = computeBusinessStatusFlags(
+      {
+        isTest: false,
+        subscriptionStatus: 'active',
+        subscriptionCurrentPeriodEnd: new Date('2026-12-01'),
+      },
+      { now }
+    );
+    expect(active.subscriptionActive).toBe(true);
+
+    const expired = computeBusinessStatusFlags(
+      {
+        isTest: false,
+        subscriptionStatus: 'active',
+        subscriptionCurrentPeriodEnd: new Date('2025-01-01'),
+      },
+      { now }
+    );
+    expect(expired.subscriptionActive).toBe(false);
   });
 
   it('clamps out-of-range pages to the last valid page', () => {
@@ -93,25 +169,25 @@ describe('customerListParams', () => {
     });
   });
 
-  it('URL state round-trips query, page, limit, and sort', () => {
+  it('URL state round-trips query, page, limit, and sort including status sorts', () => {
     const qs = serializeListState({
       query: 'alice@example.com',
       page: 3,
       limit: 50,
-      sort: 'name_desc',
+      sort: 'paying_first',
     });
     expect(qs).toContain('query=alice%40example.com');
     expect(parseListState(qs)).toEqual({
       query: 'alice@example.com',
       page: 3,
       limit: 50,
-      sort: 'name_desc',
+      sort: 'paying_first',
     });
-    expect(parseListState('?page=2&limit=100&sort=created_asc')).toMatchObject({
+    expect(parseListState('?page=2&limit=100&sort=verified_first')).toMatchObject({
       query: '',
       page: 2,
       limit: 100,
-      sort: 'created_asc',
+      sort: 'verified_first',
     });
   });
 
