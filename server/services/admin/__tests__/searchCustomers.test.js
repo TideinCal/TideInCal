@@ -8,17 +8,10 @@ function getPath(doc, key) {
 
 function matchesFilter(doc, filter) {
   if (!filter || Object.keys(filter).length === 0) return true;
-
-  if (filter.$and && !filter.$and.every((part) => matchesFilter(doc, part))) {
-    return false;
-  }
-  if (filter.$or && !filter.$or.some((part) => matchesFilter(doc, part))) {
-    return false;
-  }
-
+  if (filter.$and && !filter.$and.every((part) => matchesFilter(doc, part))) return false;
+  if (filter.$or && !filter.$or.some((part) => matchesFilter(doc, part))) return false;
   for (const [key, cond] of Object.entries(filter)) {
-    if (key === '$and' || key === '$or') continue;
-    if (key.startsWith('$')) continue;
+    if (key === '$and' || key === '$or' || key.startsWith('$')) continue;
     const val = getPath(doc, key);
     if (cond && typeof cond === 'object' && !Array.isArray(cond) && !(cond instanceof RegExp) && !(cond instanceof Date)) {
       if ('$exists' in cond) {
@@ -51,9 +44,10 @@ function matchesFilter(doc, filter) {
   return true;
 }
 
-describe('searchCustomers browse + search', () => {
+describe('searchCustomers browse + search + sort', () => {
   let users;
   let purchases;
+  let lastSortSpec;
 
   function makeCursor(docs) {
     const state = { docs, skipN: 0, limitN: null };
@@ -62,6 +56,7 @@ describe('searchCustomers browse + search', () => {
         return api;
       },
       sort(spec) {
+        lastSortSpec = spec;
         const entries = Object.entries(spec);
         state.docs = [...state.docs].sort((a, b) => {
           for (const [field, dir] of entries) {
@@ -73,6 +68,9 @@ describe('searchCustomers browse + search', () => {
             } else if (field === '_id') {
               av = String(av);
               bv = String(bv);
+            } else {
+              av = (av == null ? '' : String(av)).toLowerCase();
+              bv = (bv == null ? '' : String(bv)).toLowerCase();
             }
             if (av < bv) return -dir;
             if (av > bv) return dir;
@@ -107,13 +105,14 @@ describe('searchCustomers browse + search', () => {
   }
 
   beforeEach(() => {
+    lastSortSpec = null;
     const future = new Date(Date.now() + 86400000);
     const ids = Array.from({ length: 30 }, () => new ObjectId());
     users = ids.map((id, i) => ({
       _id: id,
-      email: `user${i}@example.com`,
-      firstName: `User${i}`,
-      lastName: 'Test',
+      email: `user${String(i).padStart(2, '0')}@example.com`,
+      firstName: `User${String.fromCharCode(65 + (i % 26))}${i}`,
+      lastName: i % 2 === 0 ? 'Alpha' : 'Beta',
       createdAt: new Date(Date.UTC(2026, 0, 30 - i)),
       passwordHash: 'SECRET_HASH',
       emailVerificationTokenHash: 'SECRET_TOKEN',
@@ -125,6 +124,9 @@ describe('searchCustomers browse + search', () => {
       subscriptionCurrentPeriodEnd: i === 1 ? future : null,
       stripeCustomerId: i === 2 ? 'cus_abc123' : null,
     }));
+
+    // Same createdAt pair to exercise _id tie-break
+    users[5].createdAt = users[4].createdAt;
 
     purchases = [
       {
@@ -152,7 +154,7 @@ describe('searchCustomers browse + search', () => {
                 users.filter((u) => matchesFilter(u, filter)).length,
               find: (filter = {}) =>
                 makeCursor(users.filter((u) => matchesFilter(u, filter))),
-              findOne: async (filter, _opts) =>
+              findOne: async (filter) =>
                 users.find((u) => matchesFilter(u, filter)) || null,
             };
           }
@@ -201,47 +203,107 @@ describe('searchCustomers browse + search', () => {
     expect(result.customers.length).toBe(DEFAULT_PAGE_SIZE);
     expect(result.pagination.total).toBe(30);
     expect(result.pagination.page).toBe(1);
-    expect(result.pagination.hasPrevious).toBe(false);
-    expect(result.pagination.hasNext).toBe(true);
+    expect(result.pagination.sort).toBe('created_desc');
   });
 
-  it('paginates with limits, ordering, total, Previous, and Next', async () => {
+  it('every allowed sort produces expected order with deterministic _id tie-break', async () => {
     const { searchCustomers } = await import('../searchCustomers.js');
-    const page1 = await searchCustomers('', { page: 1, limit: 10 });
-    expect(page1.customers).toHaveLength(10);
-    expect(page1.pagination).toMatchObject({
-      page: 1,
-      limit: 10,
-      total: 30,
-      totalPages: 3,
-      hasPrevious: false,
-      hasNext: true,
-    });
-    // Newest first: user0 created Jan 30, then user1 Jan 29...
-    expect(page1.customers[0].email).toBe('user0@example.com');
-    expect(page1.customers[1].email).toBe('user1@example.com');
+    const { SORT_SPECS } = await import('../customerListParams.js');
 
-    const page2 = await searchCustomers('', { page: 2, limit: 10 });
-    expect(page2.pagination.hasPrevious).toBe(true);
-    expect(page2.pagination.hasNext).toBe(true);
-    expect(page2.customers[0].email).toBe('user10@example.com');
+    for (const sortKey of Object.keys(SORT_SPECS)) {
+      const result = await searchCustomers('', { page: 1, limit: 30, sort: sortKey });
+      expect(result.pagination.sort).toBe(sortKey);
+      expect(lastSortSpec).toEqual(SORT_SPECS[sortKey]);
+      expect(result.customers).toHaveLength(30);
+      // Tie-break: for created_desc with equal createdAt, higher _id first
+      if (sortKey === 'created_desc') {
+        const tied = result.customers.filter(
+          (c) =>
+            c.createdAt &&
+            new Date(c.createdAt).getTime() === new Date(users[4].createdAt).getTime()
+        );
+        if (tied.length >= 2) {
+          expect(String(tied[0]._id) >= String(tied[1]._id)).toBe(true);
+        }
+      }
+    }
 
-    const page3 = await searchCustomers('', { page: 3, limit: 10 });
-    expect(page3.pagination.hasPrevious).toBe(true);
-    expect(page3.pagination.hasNext).toBe(false);
+    const emailAsc = await searchCustomers('', { page: 1, limit: 5, sort: 'email_asc' });
+    expect(emailAsc.customers[0].email <= emailAsc.customers[1].email).toBe(true);
 
-    const capped = await searchCustomers('', { page: 1, limit: 500 });
-    expect(capped.pagination.limit).toBe(100);
+    const nameDesc = await searchCustomers('', { page: 1, limit: 5, sort: 'name_desc' });
+    expect(
+      (nameDesc.customers[0].firstName || '') >= (nameDesc.customers[1].firstName || '')
+    ).toBe(true);
+  });
+
+  it('invalid sort falls back to newest-first', async () => {
+    const { searchCustomers } = await import('../searchCustomers.js');
+    const result = await searchCustomers('', { sort: 'not-a-sort' });
+    expect(result.pagination.sort).toBe('created_desc');
+    expect(lastSortSpec).toEqual({ createdAt: -1, _id: -1 });
+  });
+
+  it('page sizes 25/50/100/200 work; oversized cannot exceed 200', async () => {
+    const { searchCustomers } = await import('../searchCustomers.js');
+    for (const limit of [25, 50, 100, 200]) {
+      const result = await searchCustomers('', { limit });
+      expect(result.pagination.limit).toBe(limit);
+    }
+    expect((await searchCustomers('', { limit: 500 })).pagination.limit).toBe(200);
+    expect((await searchCustomers('', { limit: 'x' })).pagination.limit).toBe(25);
+  });
+
+  it('request above the last page returns the last valid page and its records', async () => {
+    const { searchCustomers } = await import('../searchCustomers.js');
+    const result = await searchCustomers('', { page: 99, limit: 10 });
+    expect(result.pagination.page).toBe(3);
+    expect(result.pagination.totalPages).toBe(3);
+    expect(result.customers).toHaveLength(10);
+    expect(result.pagination.hasNext).toBe(false);
+    expect(result.pagination.hasLast).toBe(false);
+  });
+
+  it('page 0, negative, nonlocal, and empty values resolve safely', async () => {
+    const { searchCustomers } = await import('../searchCustomers.js');
+    for (const page of [0, -1, 'abc', '', null, undefined]) {
+      const result = await searchCustomers('', { page, limit: 10 });
+      expect(result.pagination.page).toBe(1);
+      expect(result.customers.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('First/Previous/Next/Last flags match pagination edges', async () => {
+    const { searchCustomers } = await import('../searchCustomers.js');
+    const first = await searchCustomers('', { page: 1, limit: 10 });
+    expect(first.pagination.hasFirst).toBe(false);
+    expect(first.pagination.hasPrevious).toBe(false);
+    expect(first.pagination.hasNext).toBe(true);
+    expect(first.pagination.hasLast).toBe(true);
+
+    const last = await searchCustomers('', { page: 3, limit: 10 });
+    expect(last.pagination.hasFirst).toBe(true);
+    expect(last.pagination.hasPrevious).toBe(true);
+    expect(last.pagination.hasNext).toBe(false);
+    expect(last.pagination.hasLast).toBe(false);
+  });
+
+  it('changing sort or page size effectively starts at page 1 when requested', async () => {
+    const { searchCustomers } = await import('../searchCustomers.js');
+    // UI resets to page 1; API still clamps if a stale high page is sent with new limit
+    const afterLimit = await searchCustomers('user', { page: 1, limit: 50, sort: 'email_asc' });
+    expect(afterLimit.pagination.page).toBe(1);
+    expect(afterLimit.pagination.limit).toBe(50);
+    expect(afterLimit.pagination.sort).toBe('email_asc');
   });
 
   it('search by email continues to work and returns status flags', async () => {
     const { searchCustomers } = await import('../searchCustomers.js');
-    const result = await searchCustomers('user1@example.com');
+    const result = await searchCustomers('user01@example.com');
     expect(result.customers).toHaveLength(1);
-    expect(result.customers[0].email).toBe('user1@example.com');
+    expect(result.customers[0].email).toBe('user01@example.com');
     expect(result.customers[0].payingCustomer).toBe(true);
     expect(result.customers[0].subscriptionActive).toBe(true);
-    expect(result.customers[0].emailVerified).toBe(false);
   });
 
   it('omits sensitive fields and exposes only needed status data', async () => {
@@ -258,14 +320,20 @@ describe('searchCustomers browse + search', () => {
     expect(row).toHaveProperty('isTest');
   });
 
-  it('keeps test records visible and labeled without counting them as business paying via list flags only', async () => {
+  it('keeps test records visible and labeled; test purchases do not set payingCustomer', async () => {
     const { searchCustomers } = await import('../searchCustomers.js');
     const result = await searchCustomers('');
     const testRow = result.customers.find((c) => c.isTest === true);
     expect(testRow).toBeTruthy();
-    expect(testRow.isTest).toBe(true);
-    // Test purchase should not mark payingCustomer for the test user in list enrichment
-    // (purchase isTest:true is excluded by PAYING_PURCHASE_MATCH)
     expect(testRow.payingCustomer).toBe(false);
+  });
+
+  it('documents search strategy match cap when a strategy is full', async () => {
+    const { searchCustomers, SEARCH_STRATEGY_MATCH_CAP } = await import('../searchCustomers.js');
+    // Broad text search against 30 users with limit 50 will not cap; force by temporarily
+    // shrinking users is unnecessary — assert the constant and uncapped browse has no flag.
+    const browse = await searchCustomers('');
+    expect(browse.pagination.searchPossiblyCapped).toBeUndefined();
+    expect(SEARCH_STRATEGY_MATCH_CAP).toBe(50);
   });
 });

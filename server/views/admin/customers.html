@@ -9,15 +9,39 @@
 <body class="bg-light">
   <div id="adminNav"></div>
   <main class="container pb-5">
-    <h1 class="h3 mb-4">Customers</h1>
-    <p class="text-muted small mb-3">Browse all account records, or search by email, name, user id, cus_, sub_, cs_, pi_, or purchase id.</p>
-    <form id="searchForm" class="row g-2 mb-4">
-      <div class="col-md-8">
-        <label for="queryInput" class="visually-hidden">Search</label>
-        <input type="text" class="form-control" id="queryInput" name="query" placeholder="Leave empty to browse all, or search email, name, user id, cus_, sub_, cs_, pi_, purchase id…" autocomplete="off">
+    <h1 class="h3 mb-3">Customers</h1>
+    <p class="mb-1">Search by name, email, account ID, Stripe ID, or purchase ID.</p>
+    <p class="text-muted small mb-3">
+      Stripe IDs begin with cus_ for a customer, sub_ for a subscription,
+      cs_ for a checkout, or pi_ for a payment.
+    </p>
+    <form id="searchForm" class="row g-2 mb-3 align-items-end">
+      <div class="col-lg-5">
+        <label for="queryInput" class="form-label">Search</label>
+        <input type="text" class="form-control" id="queryInput" name="query" placeholder="Name, email, account ID, or Stripe / purchase ID" autocomplete="off">
       </div>
-      <div class="col-md-4">
-        <button type="submit" class="btn btn-primary w-100">Search / Browse</button>
+      <div class="col-lg-3">
+        <label for="sortSelect" class="form-label">Sort</label>
+        <select class="form-select" id="sortSelect" name="sort">
+          <option value="created_desc">Newest created first</option>
+          <option value="created_asc">Oldest created first</option>
+          <option value="name_asc">Name A to Z</option>
+          <option value="name_desc">Name Z to A</option>
+          <option value="email_asc">Email A to Z</option>
+          <option value="email_desc">Email Z to A</option>
+        </select>
+      </div>
+      <div class="col-lg-2">
+        <label for="limitSelect" class="form-label">Rows per page</label>
+        <select class="form-select" id="limitSelect" name="limit">
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+        </select>
+      </div>
+      <div class="col-lg-2">
+        <button type="submit" class="btn btn-primary w-100">Apply</button>
       </div>
     </form>
     <div id="searchResults"></div>

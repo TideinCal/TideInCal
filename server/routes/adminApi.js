@@ -38,13 +38,14 @@ router.get('/dashboard', async (_req, res) => {
   }
 });
 
-// GET /api/admin/customers?query=&page=&limit=
+// GET /api/admin/customers?query=&page=&limit=&sort=
 router.get('/customers', async (req, res) => {
   try {
     const query = typeof req.query.query === 'string' ? req.query.query : '';
     const page = req.query.page;
     const limit = req.query.limit;
-    const result = await searchCustomers(query, { page, limit });
+    const sort = req.query.sort;
+    const result = await searchCustomers(query, { page, limit, sort });
     res.json(result);
   } catch (error) {
     console.error('[admin] customers search error:', error);
