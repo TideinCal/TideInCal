@@ -6,9 +6,9 @@ import { normalizeIsTest } from '../../attribution/index.js';
  * Sets users.isTest, mirrors the flag onto existing local purchase records,
  * and writes an admin audit entry. Does not mutate Stripe objects.
  *
- * Retry-safe: always reconciles local purchases even when the user flag already
- * matches, so a prior partial failure (user updated, purchases/audit failed) can
- * be repaired on repeat.
+ * Retry-safe: always reconciles local purchases and always writes an audit
+ * entry (including verified no-ops), so a prior partial failure that updated
+ * data but failed the audit insert can be repaired on repeat.
  */
 export async function setCustomerIsTest({
   targetUserId,
@@ -50,41 +50,44 @@ export async function setCustomerIsTest({
 
   const purchasesUpdated = purchaseResult.modifiedCount;
   const repaired = !userFlagChanged && purchasesUpdated > 0;
+  const verified = !userFlagChanged && purchasesUpdated === 0;
 
-  if (!userFlagChanged && purchasesUpdated === 0) {
-    return {
-      ok: true,
-      isTest: newVal,
-      unchanged: true,
-      purchasesUpdated: 0,
-    };
+  let actionType;
+  let reason = null;
+  if (verified) {
+    actionType = 'customer_test_flag_verified';
+    reason =
+      'Explicit repeat confirmed user and purchase isTest flags already matched';
+  } else if (repaired) {
+    actionType = 'customer_test_flag_reconciled';
+    reason = 'Retry reconciled local purchase isTest flags';
+  } else {
+    actionType = newVal ? 'customer_marked_test' : 'customer_unmarked_test';
   }
 
   await logAdminAction({
     adminUserId,
     targetUserId,
-    actionType: repaired
-      ? 'customer_test_flag_reconciled'
-      : newVal
-        ? 'customer_marked_test'
-        : 'customer_unmarked_test',
+    actionType,
     entityType: 'user',
     entityId: targetUserId,
     oldValue: { isTest: oldVal },
     newValue: { isTest: newVal },
-    reason: repaired ? 'Retry reconciled local purchase isTest flags' : null,
+    reason,
     metadata: {
       purchasesUpdated,
       repaired,
       userFlagChanged,
+      verified,
     },
   });
 
   return {
     ok: true,
     isTest: newVal,
-    unchanged: false,
+    unchanged: verified,
     purchasesUpdated,
     repaired,
+    verified,
   };
 }

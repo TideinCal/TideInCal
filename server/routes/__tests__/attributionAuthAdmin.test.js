@@ -199,7 +199,7 @@ describe('auth attribution persistence helpers (signup / login)', () => {
 });
 
 describe('admin setCustomerIsTest', () => {
-  function mockDbForIsTest({ userDoc, purchases, auditInserts }) {
+  function mockDbForIsTest({ userDoc, purchases, auditInserts, auditInsertImpl }) {
     return {
       getDatabase: () => ({
         collection(name) {
@@ -230,6 +230,9 @@ describe('admin setCustomerIsTest', () => {
           if (name === 'admin_audit_logs') {
             return {
               insertOne: async (doc) => {
+                if (auditInsertImpl) {
+                  return auditInsertImpl(doc, auditInserts);
+                }
                 auditInserts.push(doc);
                 return { insertedId: new ObjectId() };
               },
@@ -316,14 +319,85 @@ describe('admin setCustomerIsTest', () => {
     expect(auditInserts[0].actionType).toBe('customer_test_flag_reconciled');
     expect(auditInserts[0].metadata.repaired).toBe(true);
 
-    // Fully reconciled retry is a no-op
-    const noop = await setCustomerIsTest({
+    // Fully reconciled explicit repeat still audits as verified
+    const verified = await setCustomerIsTest({
       targetUserId,
       adminUserId,
       isTest: true,
     });
-    expect(noop.unchanged).toBe(true);
-    expect(noop.purchasesUpdated).toBe(0);
+    expect(verified.unchanged).toBe(true);
+    expect(verified.verified).toBe(true);
+    expect(verified.purchasesUpdated).toBe(0);
+    expect(auditInserts).toHaveLength(2);
+    expect(auditInserts[1].actionType).toBe('customer_test_flag_verified');
+    expect(auditInserts[1].metadata).toMatchObject({
+      userFlagChanged: false,
+      purchasesUpdated: 0,
+      verified: true,
+    });
+  });
+
+  it('retries after audit insert failure and restores the audit entry', async () => {
+    const targetUserId = new ObjectId();
+    const adminUserId = new ObjectId();
+    const auditInserts = [];
+    let userDoc = { _id: targetUserId, isTest: false };
+    const purchases = [
+      { _id: new ObjectId(), userId: targetUserId, isTest: false },
+    ];
+    let auditAttempts = 0;
+
+    vi.resetModules();
+    vi.doMock('../../db/index.js', () =>
+      mockDbForIsTest({
+        userDoc,
+        purchases,
+        auditInserts,
+        auditInsertImpl: async (doc, inserts) => {
+          auditAttempts += 1;
+          if (auditAttempts === 1) {
+            throw new Error('audit insert failed');
+          }
+          inserts.push(doc);
+          return { insertedId: new ObjectId() };
+        },
+      })
+    );
+
+    const { setCustomerIsTest } = await import('../../services/admin/setCustomerIsTest.js');
+
+    // 1–2: user + purchase updates succeed; first audit insert throws
+    await expect(
+      setCustomerIsTest({
+        targetUserId,
+        adminUserId,
+        isTest: true,
+      })
+    ).rejects.toThrow('audit insert failed');
+
+    expect(userDoc.isTest).toBe(true);
+    expect(purchases.every((p) => p.isTest === true)).toBe(true);
+    expect(auditInserts).toHaveLength(0);
+    expect(auditAttempts).toBe(1);
+
+    // 3–4: same request retried; audit is attempted and written
+    const retry = await setCustomerIsTest({
+      targetUserId,
+      adminUserId,
+      isTest: true,
+    });
+
+    expect(retry.ok).toBe(true);
+    expect(retry.verified).toBe(true);
+    expect(retry.purchasesUpdated).toBe(0);
+    expect(auditAttempts).toBe(2);
     expect(auditInserts).toHaveLength(1);
+    expect(auditInserts[0].actionType).toBe('customer_test_flag_verified');
+    expect(auditInserts[0].reason).toMatch(/already matched/i);
+    expect(auditInserts[0].metadata).toMatchObject({
+      userFlagChanged: false,
+      purchasesUpdated: 0,
+      verified: true,
+    });
   });
 });
