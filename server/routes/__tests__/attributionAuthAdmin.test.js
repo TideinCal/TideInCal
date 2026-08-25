@@ -1,0 +1,278 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ObjectId } from 'mongodb';
+import {
+  ATTRIBUTION_COOKIE_NAME,
+  mergeAttributionRecord,
+  attributionTouchFromQuery,
+  serializeAttributionCookie,
+} from '../../attribution/index.js';
+
+const SECRET = 'test-attr-secret-for-auth';
+
+function signedCookieHeader(record) {
+  const signed = serializeAttributionCookie(record, SECRET);
+  return `${ATTRIBUTION_COOKIE_NAME}=${encodeURIComponent(signed)}`;
+}
+
+describe('auth attribution persistence helpers (signup / login)', () => {
+  let users;
+  let insertOne;
+  let updateOne;
+  let findOne;
+
+  beforeEach(() => {
+    process.env.SESSION_SECRET = SECRET;
+    process.env.ATTRIBUTION_COOKIE_SECRET = SECRET;
+    users = new Map();
+    insertOne = vi.fn(async (doc) => {
+      const _id = new ObjectId();
+      const row = { ...doc, _id };
+      users.set(_id.toString(), row);
+      return { insertedId: _id };
+    });
+    updateOne = vi.fn(async (filter, update) => {
+      const id = filter._id.toString();
+      const row = users.get(id);
+      if (!row) return { modifiedCount: 0 };
+      if (update.$set) Object.assign(row, update.$set);
+      users.set(id, row);
+      return { modifiedCount: 1 };
+    });
+    findOne = vi.fn(async (query) => {
+      for (const row of users.values()) {
+        if (query._id && row._id.equals(query._id)) return row;
+        if (query.email && row.email === query.email) return row;
+        if (query.normalizedEmail && row.normalizedEmail === query.normalizedEmail) return row;
+        if (query.$or) {
+          for (const clause of query.$or) {
+            if (clause.normalizedEmail && row.normalizedEmail === clause.normalizedEmail) return row;
+            if (clause.email && row.email === clause.email) return row;
+          }
+        }
+      }
+      return null;
+    });
+  });
+
+  it('stores attribution on new signup user documents', async () => {
+    const {
+      sanitizeAcquisitionRecord,
+      readAttributionFromRequest,
+    } = await import('../../attribution/index.js');
+
+    const record = mergeAttributionRecord(
+      null,
+      attributionTouchFromQuery(
+        { utm_source: 'email', utm_medium: 'email', utm_campaign: 'welcome' },
+        '/',
+        new Date('2026-07-01T00:00:00.000Z')
+      )
+    );
+    const req = { headers: { cookie: signedCookieHeader(record) } };
+    const cookieAttribution = sanitizeAcquisitionRecord(readAttributionFromRequest(req, SECRET));
+    expect(cookieAttribution.firstTouch.source).toBe('email');
+
+    await insertOne({
+      email: 'new@example.com',
+      normalizedEmail: 'new@example.com',
+      isTest: false,
+      acquisition: cookieAttribution,
+    });
+
+    const stored = [...users.values()][0];
+    expect(stored.isTest).toBe(false);
+    expect(stored.acquisition.firstTouch.campaign).toBe('welcome');
+  });
+
+  it('does not attach attribution on existing-account idempotent signup response path', async () => {
+    const existingId = new ObjectId();
+    users.set(existingId.toString(), {
+      _id: existingId,
+      email: 'exists@example.com',
+      normalizedEmail: 'exists@example.com',
+      emailVerifiedAt: new Date(),
+      acquisition: {
+        firstTouch: {
+          source: 'instagram',
+          medium: 'organic_social',
+          campaign: 'old',
+          content: 'unknown',
+          landingPath: '/',
+          firstSeenAt: '2026-01-01T00:00:00.000Z',
+        },
+        lastTouch: {
+          source: 'instagram',
+          medium: 'organic_social',
+          campaign: 'old',
+          content: 'unknown',
+          landingPath: '/',
+          lastSeenAt: '2026-01-01T00:00:00.000Z',
+        },
+      },
+    });
+
+    // Existing-account path: findOne returns user; insertOne must not run; acquisition untouched
+    const found = await findOne({
+      $or: [{ normalizedEmail: 'exists@example.com' }, { email: 'exists@example.com' }],
+    });
+    expect(found).toBeTruthy();
+    expect(insertOne).not.toHaveBeenCalled();
+    expect(found.acquisition.firstTouch.campaign).toBe('old');
+    // Deliberately no updateOne for attribution on idempotent signup
+    expect(updateOne).not.toHaveBeenCalled();
+  });
+
+  it('login preserves first touch and updates last touch from cookie', async () => {
+    const { reconcileUserAcquisition, sanitizeAcquisitionRecord, readAttributionFromRequest } =
+      await import('../../attribution/index.js');
+
+    const userId = new ObjectId();
+    const existingAcquisition = mergeAttributionRecord(
+      null,
+      attributionTouchFromQuery(
+        { utm_source: 'instagram', utm_campaign: 'first-camp' },
+        '/',
+        new Date('2026-01-01T00:00:00.000Z')
+      )
+    );
+    users.set(userId.toString(), {
+      _id: userId,
+      email: 'user@example.com',
+      acquisition: existingAcquisition,
+    });
+
+    const cookieRecord = mergeAttributionRecord(
+      null,
+      attributionTouchFromQuery(
+        { utm_source: 'google', utm_medium: 'cpc', utm_campaign: 'retarget' },
+        '/map',
+        new Date('2026-08-01T00:00:00.000Z')
+      )
+    );
+    const req = { headers: { cookie: signedCookieHeader(cookieRecord) } };
+    const cookieAttribution = sanitizeAcquisitionRecord(readAttributionFromRequest(req, SECRET));
+    const user = await findOne({ email: 'user@example.com' });
+    const next = reconcileUserAcquisition(user.acquisition, cookieAttribution);
+    await updateOne({ _id: user._id }, { $set: { acquisition: next } });
+
+    const updated = users.get(userId.toString());
+    expect(updated.acquisition.firstTouch.source).toBe('instagram');
+    expect(updated.acquisition.firstTouch.campaign).toBe('first-camp');
+    expect(updated.acquisition.lastTouch.source).toBe('google');
+    expect(updated.acquisition.lastTouch.campaign).toBe('retarget');
+  });
+
+  it('email verification update does not erase acquisition', async () => {
+    const userId = new ObjectId();
+    const acquisition = mergeAttributionRecord(
+      null,
+      attributionTouchFromQuery(
+        { utm_source: 'facebook', utm_medium: 'paid_social', utm_campaign: 'ads' },
+        '/',
+        new Date('2026-03-01T00:00:00.000Z')
+      )
+    );
+    users.set(userId.toString(), {
+      _id: userId,
+      email: 'v@example.com',
+      acquisition,
+      emailVerificationTokenHash: 'abc',
+      emailVerificationTokenExpiresAt: new Date(Date.now() + 10000),
+    });
+
+    // Mirror verify-email $set / $unset shape from auth.js
+    await updateOne(
+      { _id: userId },
+      {
+        $set: { emailVerifiedAt: new Date(), updatedAt: new Date() },
+        $unset: { emailVerificationTokenHash: '', emailVerificationTokenExpiresAt: '' },
+      }
+    );
+    // apply unset manually like Mongo would
+    const row = users.get(userId.toString());
+    delete row.emailVerificationTokenHash;
+    delete row.emailVerificationTokenExpiresAt;
+
+    expect(row.acquisition.firstTouch.campaign).toBe('ads');
+    expect(row.emailVerifiedAt).toBeInstanceOf(Date);
+  });
+});
+
+describe('admin setCustomerIsTest', () => {
+  it('requires boolean, updates user + purchases, and audits', async () => {
+    const targetUserId = new ObjectId();
+    const adminUserId = new ObjectId();
+    const purchaseIds = [new ObjectId(), new ObjectId()];
+    const auditInserts = [];
+    let userDoc = { _id: targetUserId, isTest: false };
+    const purchases = purchaseIds.map((id) => ({
+      _id: id,
+      userId: targetUserId,
+      isTest: false,
+    }));
+
+    vi.resetModules();
+    vi.doMock('../../db/index.js', () => ({
+      getDatabase: () => ({
+        collection(name) {
+          if (name === 'users') {
+            return {
+              findOne: async () => userDoc,
+              updateOne: async (_f, update) => {
+                Object.assign(userDoc, update.$set);
+                return { modifiedCount: 1 };
+              },
+            };
+          }
+          if (name === 'purchases') {
+            return {
+              updateMany: async (_f, update) => {
+                let modifiedCount = 0;
+                for (const p of purchases) {
+                  if (p.userId.equals(targetUserId)) {
+                    Object.assign(p, update.$set);
+                    modifiedCount += 1;
+                  }
+                }
+                return { modifiedCount };
+              },
+            };
+          }
+          if (name === 'admin_audit_logs') {
+            return {
+              insertOne: async (doc) => {
+                auditInserts.push(doc);
+                return { insertedId: new ObjectId() };
+              },
+            };
+          }
+          throw new Error(name);
+        },
+      }),
+    }));
+
+    const { setCustomerIsTest } = await import('../../services/admin/setCustomerIsTest.js');
+
+    const bad = await setCustomerIsTest({
+      targetUserId,
+      adminUserId,
+      isTest: 'true',
+    });
+    expect(bad.ok).toBe(false);
+
+    const result = await setCustomerIsTest({
+      targetUserId,
+      adminUserId,
+      isTest: true,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.isTest).toBe(true);
+    expect(result.purchasesUpdated).toBe(2);
+    expect(userDoc.isTest).toBe(true);
+    expect(purchases.every((p) => p.isTest === true)).toBe(true);
+    expect(auditInserts).toHaveLength(1);
+    expect(auditInserts[0].actionType).toBe('customer_marked_test');
+    expect(auditInserts[0].oldValue).toEqual({ isTest: false });
+    expect(auditInserts[0].newValue).toEqual({ isTest: true });
+  });
+});

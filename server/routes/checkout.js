@@ -4,6 +4,14 @@ import { z } from 'zod';
 import csurf from 'csurf';
 import { attachUser, requireAuth } from '../auth/index.js';
 import { getDatabase } from '../db/index.js';
+import {
+  attributionToStripeMetadata,
+  normalizeIsTest,
+  readAttributionFromRequest,
+  reconcileUserAcquisition,
+  sanitizeAcquisitionRecord,
+  UNKNOWN,
+} from '../attribution/index.js';
 
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -25,6 +33,44 @@ export function getProCouponSessionOptions(plan, useProOffer, envCoupon) {
     allow_promotion_codes: !applyProCoupon,
     ...(applyProCoupon && proCoupon && { discounts: [{ coupon: proCoupon }] })
   };
+}
+
+/**
+ * Station metadata for Pro checkout: real pre-checkout station when provided, else unknown.
+ * Never invents a location. Exported for tests.
+ */
+export function resolveProStationMetadata({ stationID, stationTitle, country, stationLat, stationLng } = {}) {
+  const hasReal =
+    typeof stationID === 'string' &&
+    stationID.trim() !== '' &&
+    typeof stationTitle === 'string' &&
+    stationTitle.trim() !== '' &&
+    typeof country === 'string' &&
+    country.trim() !== '';
+
+  if (!hasReal) {
+    return {
+      stationID: UNKNOWN,
+      stationTitle: UNKNOWN,
+      country: UNKNOWN,
+    };
+  }
+
+  const meta = {
+    stationID: stationID.trim(),
+    stationTitle: stationTitle.trim(),
+    country: country.trim(),
+  };
+  if (typeof stationLat === 'number') meta.stationLat = String(stationLat);
+  if (typeof stationLng === 'number') meta.stationLng = String(stationLng);
+  return meta;
+}
+
+/**
+ * Build Stripe Checkout metadata attribution + is_test fields. Exported for tests.
+ */
+export function buildCheckoutAttributionMetadata(acquisition, isTest) {
+  return attributionToStripeMetadata(acquisition, isTest);
 }
 
 // Validation schema for plan-based checkout (useProOffer can be boolean or string 'true' from JSON)
@@ -67,7 +113,20 @@ router.post('/session', csrfProtection, async (req, res) => {
     
     const db = getDatabase();
     const { ObjectId } = await import('mongodb');
-    const user = await db.collection('users').findOne({ _id: new ObjectId(req.user._id) });
+    let user = await db.collection('users').findOne({ _id: new ObjectId(req.user._id) });
+
+    // Reconcile valid current cookie attribution before Checkout (preserve first touch)
+    const cookieAttribution = sanitizeAcquisitionRecord(readAttributionFromRequest(req));
+    if (cookieAttribution) {
+      const nextAcquisition = reconcileUserAcquisition(user?.acquisition, cookieAttribution);
+      if (nextAcquisition) {
+        await db.collection('users').updateOne(
+          { _id: new ObjectId(req.user._id) },
+          { $set: { acquisition: nextAcquisition, updatedAt: new Date() } }
+        );
+        user = { ...user, acquisition: nextAcquisition };
+      }
+    }
     
     // Check if user has active subscription
     const hasActiveSubscription = user?.subscriptionStatus === 'active' && 
@@ -94,12 +153,17 @@ router.post('/session', csrfProtection, async (req, res) => {
 
     let sessionMode = 'payment';
     const lineItems = [];
+    const attributionMeta = buildCheckoutAttributionMetadata(
+      user?.acquisition,
+      normalizeIsTest(user?.isTest)
+    );
     const metadata = {
       plan: plan === 'unlimited' ? 'subscription' : 'single',
       userId: req.user._id.toString(),
       includeMoon: includeMoon === true,
       includeGoldenHour: includeGoldenHour === true,
-      userTimezone: (userTimezone && String(userTimezone).trim()) || (req.body.userTimezone && String(req.body.userTimezone).trim()) || ''
+      userTimezone: (userTimezone && String(userTimezone).trim()) || (req.body.userTimezone && String(req.body.userTimezone).trim()) || '',
+      ...attributionMeta,
     };
 
     if (plan === 'unlimited') {
@@ -107,6 +171,10 @@ router.post('/session', csrfProtection, async (req, res) => {
       const priceId = process.env.STRIPE_PRICE_UNLIMITED;
       if (!priceId) throw new Error('Missing Stripe price configuration for unlimited plan');
       lineItems.push({ price: priceId, quantity: 1 });
+      Object.assign(
+        metadata,
+        resolveProStationMetadata({ stationID, stationTitle, country, stationLat, stationLng })
+      );
     } else {
       // plan === 'single': (a) tide only, (b) golden only, (c) tide + golden
       if (goldenOnly) {

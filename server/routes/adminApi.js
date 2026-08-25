@@ -8,6 +8,7 @@ import { searchCustomers } from '../services/admin/searchCustomers.js';
 import { getCustomerDetail } from '../services/admin/getCustomerDetail.js';
 import { createAdminNote, MAX_NOTE_LENGTH } from '../services/admin/createAdminNote.js';
 import { setCustomerMarkedForReview } from '../services/admin/setCustomerMarkedForReview.js';
+import { setCustomerIsTest } from '../services/admin/setCustomerIsTest.js';
 
 const router = Router();
 const csrfProtection = csurf({ cookie: false });
@@ -20,6 +21,10 @@ const noteBodySchema = z.object({
 
 const markReviewBodySchema = z.object({
   markedForReview: z.boolean(),
+});
+
+const isTestBodySchema = z.object({
+  isTest: z.boolean(),
 });
 
 // GET /api/admin/dashboard
@@ -120,6 +125,52 @@ router.post('/customers/:userId/mark-for-review', csrfProtection, async (req, re
       return res.status(400).json({ error: 'Invalid input', details: error.errors });
     }
     console.error('[admin] mark-for-review error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/admin/customers/:userId/is-test
+router.post('/customers/:userId/is-test', csrfProtection, async (req, res) => {
+  try {
+    const { ObjectId } = await import('mongodb');
+    let targetUserId;
+    try {
+      targetUserId = new ObjectId(req.params.userId);
+    } catch {
+      return res.status(400).json({ error: 'Invalid user id' });
+    }
+
+    const db = getDatabase();
+    const exists = await db.collection('users').findOne({ _id: targetUserId }, { projection: { _id: 1 } });
+    if (!exists) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    const validated = isTestBodySchema.parse(req.body || {});
+    const adminUserId = new ObjectId(req.user._id);
+
+    const result = await setCustomerIsTest({
+      targetUserId,
+      adminUserId,
+      isTest: validated.isTest,
+    });
+
+    if (!result.ok) {
+      return res.status(result.error === 'isTest must be an explicit boolean' ? 400 : 404).json({
+        error: result.error || 'Customer not found',
+      });
+    }
+
+    res.json({
+      isTest: result.isTest,
+      unchanged: !!result.unchanged,
+      purchasesUpdated: result.purchasesUpdated ?? 0,
+    });
+  } catch (error) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: 'Invalid input', details: error.errors });
+    }
+    console.error('[admin] is-test error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

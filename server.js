@@ -26,7 +26,9 @@ import downloadsRoutes from './server/routes/downloads.js';
 import adminApiRoutes from './server/routes/adminApi.js';
 import { attachUser } from './server/auth/index.js';
 import { requireAdminPage } from './server/middleware/requireAdmin.js';
+import { captureAttribution } from './server/middleware/captureAttribution.js';
 import { assertStripeEnv } from './server/bootstrap/envGuard.js';
+import { getAttributionCookieSecret } from './server/attribution/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -159,6 +161,8 @@ if (process.env.NODE_ENV === 'production') {
     throw new Error('SESSION_SECRET must be set to a secure value in production. Do not use the fallback.');
   }
   sessionConfig.secret = secret;
+  // Attribution cookie uses ATTRIBUTION_COOKIE_SECRET or SESSION_SECRET; assert now
+  getAttributionCookieSecret();
 }
 
 // Session middleware will be applied after DB connection
@@ -186,6 +190,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// First-party UTM capture BEFORE express.static (no session/DB required)
+app.use(captureAttribution);
 
 // Static files FIRST
 app.use(

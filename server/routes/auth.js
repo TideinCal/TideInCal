@@ -23,6 +23,11 @@ import {
   sendPasswordChangeConfirmation
 } from '../auth/email.js';
 import { z } from 'zod';
+import {
+  readAttributionFromRequest,
+  reconcileUserAcquisition,
+  sanitizeAcquisitionRecord,
+} from '../attribution/index.js';
 
 const router = Router();
 const csrfProtection = csurf({ cookie: false });
@@ -332,6 +337,7 @@ router.post('/signup', signupLimiter, async (req, res) => {
     const passwordHash = await hashPassword(password);
     const now = new Date();
     const verification = createEmailVerificationToken();
+    const cookieAttribution = sanitizeAcquisitionRecord(readAttributionFromRequest(req));
 
     const result = await db.collection('users').insertOne({
       email,
@@ -346,6 +352,8 @@ router.post('/signup', signupLimiter, async (req, res) => {
       unlimited: false,
       unlimitedSince: null,
       entitlements: [],
+      isTest: false,
+      ...(cookieAttribution ? { acquisition: cookieAttribution } : {}),
       createdAt: now,
       updatedAt: now
     });
@@ -405,6 +413,18 @@ router.post('/login', loginLimiter, async (req, res) => {
     const isValidPassword = await verifyPassword(user.passwordHash, password);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Preserve first touch; update last touch from valid current cookie
+    const cookieAttribution = sanitizeAcquisitionRecord(readAttributionFromRequest(req));
+    if (cookieAttribution) {
+      const nextAcquisition = reconcileUserAcquisition(user.acquisition, cookieAttribution);
+      if (nextAcquisition) {
+        await db.collection('users').updateOne(
+          { _id: user._id },
+          { $set: { acquisition: nextAcquisition, updatedAt: new Date() } }
+        );
+      }
     }
     
     // Set session

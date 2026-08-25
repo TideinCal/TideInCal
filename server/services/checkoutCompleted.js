@@ -2,7 +2,19 @@
 import { getDatabase } from '../db/index.js';
 import { sendDownloadReady } from '../auth/email.js';
 import Stripe from 'stripe';
+import { attributionFromStripeMetadata } from '../attribution/index.js';
 
+/**
+ * Attach sanitized attribution + isTest from Stripe metadata onto a purchase doc.
+ */
+function withAttributionFields(purchaseData, metadata) {
+  const { attribution, isTest } = attributionFromStripeMetadata(metadata || {});
+  return {
+    ...purchaseData,
+    attribution,
+    isTest,
+  };
+}
 /**
  * Creates a purchase record from a Stripe checkout session
  * Idempotent - can be called multiple times safely
@@ -169,7 +181,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
     }
 
     // Record subscription purchase
-    const purchaseData = {
+    const purchaseData = withAttributionFields({
       userId: new ObjectId(userId),
       stripeSessionId: session.id,
       stripeSubscriptionId: subscriptionId,
@@ -181,7 +193,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       subscriptionStatus: subscription.status,
       createdAt: new Date(),
       stripeCustomerId: stripeCustomerId || null
-    };
+    }, metadata);
     
     // Only add period end if we have a valid date
     if (currentPeriodEnd) {
@@ -213,7 +225,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
     const lng = parseFloat(goldenLng);
     const locationName = goldenLocationName || 'Location';
 
-    const purchaseData = {
+    const purchaseData = withAttributionFields({
       userId: new ObjectId(userId),
       stripeSessionId: session.id,
       stripePaymentIntentId: session.payment_intent ?? null,
@@ -225,7 +237,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       expiresAt,
       regenerationParams: { lat, lng, locationName, userTimezone: goldenTimezone },
       createdAt: now,
-    };
+    }, metadata);
     if (session.customer_details) {
       purchaseData.customerDetails = {
         name: session.customer_details.name,
@@ -250,7 +262,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
     const glng = parseFloat(goldenLng);
     const goldenName = goldenLocationName || stationTitle || 'Location';
 
-    const tideData = {
+    const tideData = withAttributionFields({
       userId: new ObjectId(userId),
       stripeSessionId: session.id,
       stripePaymentIntentId: session.payment_intent ?? null,
@@ -275,7 +287,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
         longitude: metadata.stationLng ? Number(metadata.stationLng) : undefined,
       },
       createdAt: now,
-    };
+    }, metadata);
     if (session.customer_details) {
       tideData.customerDetails = {
         name: session.customer_details.name,
@@ -303,7 +315,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       return new Date(Date.UTC(year, month, day));
     })();
 
-    const purchaseData = {
+    const purchaseData = withAttributionFields({
       userId: new ObjectId(userId),
       stripeSessionId: session.id,
       stripePaymentIntentId: session.payment_intent ?? null,
@@ -314,7 +326,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       purchaseDate,
       entitlementEnd,
       createdAt: now
-    };
+    }, metadata);
 
     if (session.customer_details) {
       purchaseData.customerDetails = {
@@ -337,7 +349,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
   const purchaseDate = now;
   const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 365 days
 
-  const purchaseData = {
+  const purchaseData = withAttributionFields({
     userId: new ObjectId(userId),
     stripeSessionId: session.id,
     stripePaymentIntentId: session.payment_intent ?? null,
@@ -358,7 +370,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       longitude: metadata.stationLng ? Number(metadata.stationLng) : undefined,
     },
     createdAt: now,
-  };
+  }, metadata);
 
   if (session.customer_details) {
     purchaseData.customerDetails = {

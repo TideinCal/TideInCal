@@ -53,6 +53,7 @@ function renderCustomer(data) {
     u._id && typeof u._id === 'object' && u._id.toString ? u._id.toString() : String(u._id);
   const sub = data.subscriptionSummary || {};
   const marked = !!u.markedForReview;
+  const isTest = u.isTest === true;
 
   const purchaseRows = (data.purchases || [])
     .map((p) => {
@@ -104,6 +105,19 @@ function renderCustomer(data) {
             ${marked ? 'Unmark for review' : 'Mark for review'}
           </button>
           <span class="small text-muted ms-2" id="reviewStatusMsg"></span>
+        </div>
+      </div>
+      <div class="card mb-3 shadow-sm ${isTest ? 'border-info' : ''}">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Test account</span>
+          ${isTest ? '<span class="badge bg-info text-dark">Test</span>' : '<span class="badge bg-secondary">Business</span>'}
+        </div>
+        <div class="card-body">
+          <p class="small text-muted mb-2">Marks this user and their existing local purchase records as test activity so they can be excluded from business reporting. Does not change Stripe objects.</p>
+          <button type="button" class="btn btn-sm ${isTest ? 'btn-outline-secondary' : 'btn-info'}" id="toggleTestBtn">
+            ${isTest ? 'Unmark as test' : 'Mark as test'}
+          </button>
+          <span class="small text-muted ms-2" id="testStatusMsg"></span>
         </div>
       </div>
       <div class="card mb-3 shadow-sm">
@@ -184,6 +198,34 @@ function renderCustomer(data) {
     try {
       await adminPostJson(`/api/admin/customers/${encodeURIComponent(userId)}/mark-for-review`, {
         markedForReview: !marked,
+      });
+      msg.textContent = 'Saved.';
+      await load();
+    } catch (e) {
+      msg.textContent = e.message || String(e);
+      msg.classList.add('text-danger');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById('toggleTestBtn').addEventListener('click', async () => {
+    const next = !isTest;
+    const confirmed = window.confirm(
+      next
+        ? 'Mark this account as a test user? Existing local purchases will also be marked as test and excluded from business reporting.'
+        : 'Unmark this account as a test user? Existing local purchases will be unmarked as well.'
+    );
+    if (!confirmed) return;
+
+    const btn = document.getElementById('toggleTestBtn');
+    const msg = document.getElementById('testStatusMsg');
+    msg.textContent = '';
+    msg.classList.remove('text-danger');
+    btn.disabled = true;
+    try {
+      await adminPostJson(`/api/admin/customers/${encodeURIComponent(userId)}/is-test`, {
+        isTest: next,
       });
       msg.textContent = 'Saved.';
       await load();
