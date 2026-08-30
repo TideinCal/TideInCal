@@ -28,6 +28,7 @@ import {
   reconcileUserAcquisition,
   sanitizeAcquisitionRecord,
 } from '../attribution/index.js';
+import { recordSignupCompleted } from '../funnel/index.js';
 
 const router = Router();
 const csrfProtection = csurf({ cookie: false });
@@ -359,6 +360,19 @@ router.post('/signup', signupLimiter, async (req, res) => {
     });
 
     req.session.userId = result.insertedId;
+
+    if (cookieAttribution?.journeyId) {
+      try {
+        await recordSignupCompleted({
+          db,
+          acquisition: cookieAttribution,
+          createdUserId: result.insertedId,
+          isTest: false,
+        });
+      } catch (eventError) {
+        console.warn('[funnel] signup event not recorded:', eventError?.message || eventError);
+      }
+    }
 
     const user = {
       _id: result.insertedId,

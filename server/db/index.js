@@ -66,10 +66,27 @@ export async function connectToDatabase() {
     
     // Create index on purchases.userId
     await db.collection('purchases').createIndex({ userId: 1 });
+    await db.collection('purchases').createIndex(
+      { userId: 1, createdAt: 1, isTest: 1, fullyRefundedAt: 1 },
+      { name: 'purchases_new_customer_lookup' }
+    );
 
     await db.collection('webhook_events').createIndex(
       { eventId: 1 },
       { unique: true, name: 'webhook_events_eventId_unique' }
+    );
+
+    await db.collection('funnel_events').createIndex(
+      { eventName: 1, dedupeKey: 1 },
+      { unique: true, name: 'funnel_events_event_dedupe_unique' }
+    );
+    await db.collection('funnel_events').createIndex(
+      { expiresAt: 1 },
+      { expireAfterSeconds: 0, name: 'funnel_events_anonymous_ttl' }
+    );
+    await db.collection('funnel_events').createIndex(
+      { campaign: 1, serverTimestamp: 1, eventName: 1, isTest: 1 },
+      { name: 'funnel_events_campaign_report' }
     );
 
     console.log('Connected to MongoDB (database: %s) and created indexes', databaseName);

@@ -199,7 +199,7 @@ describe('auth attribution persistence helpers (signup / login)', () => {
 });
 
 describe('admin setCustomerIsTest', () => {
-  function mockDbForIsTest({ userDoc, purchases, auditInserts, auditInsertImpl }) {
+  function mockDbForIsTest({ userDoc, purchases, funnelEvents = [], auditInserts, auditInsertImpl }) {
     return {
       getDatabase: () => ({
         collection(name) {
@@ -226,6 +226,18 @@ describe('admin setCustomerIsTest', () => {
                 return { modifiedCount };
               },
             };
+          }
+          if (name === 'funnel_events') {
+            return { updateMany: async (filter, update) => {
+              let modifiedCount = 0;
+              for (const event of funnelEvents) {
+                if (!event.userId.equals(filter.userId)) continue;
+                if (event.isTest === filter.isTest?.$ne) continue;
+                Object.assign(event, update.$set);
+                modifiedCount += 1;
+              }
+              return { modifiedCount };
+            } };
           }
           if (name === 'admin_audit_logs') {
             return {
@@ -255,10 +267,11 @@ describe('admin setCustomerIsTest', () => {
       userId: targetUserId,
       isTest: false,
     }));
+    const funnelEvents = [{ userId: targetUserId, isTest: false }];
 
     vi.resetModules();
     vi.doMock('../../db/index.js', () =>
-      mockDbForIsTest({ userDoc, purchases, auditInserts })
+      mockDbForIsTest({ userDoc, purchases, funnelEvents, auditInserts })
     );
 
     const { setCustomerIsTest } = await import('../../services/admin/setCustomerIsTest.js');
@@ -278,12 +291,15 @@ describe('admin setCustomerIsTest', () => {
     expect(result.ok).toBe(true);
     expect(result.isTest).toBe(true);
     expect(result.purchasesUpdated).toBe(2);
+    expect(result.funnelEventsUpdated).toBe(1);
     expect(userDoc.isTest).toBe(true);
     expect(purchases.every((p) => p.isTest === true)).toBe(true);
+    expect(funnelEvents.every((event) => event.isTest === true)).toBe(true);
     expect(auditInserts).toHaveLength(1);
     expect(auditInserts[0].actionType).toBe('customer_marked_test');
     expect(auditInserts[0].oldValue).toEqual({ isTest: false });
     expect(auditInserts[0].newValue).toEqual({ isTest: true });
+    expect(auditInserts[0].metadata.funnelEventsUpdated).toBe(1);
   });
 
   it('retries after partial failure: repairs purchase flags when user already matches', async () => {

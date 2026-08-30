@@ -3,8 +3,9 @@ import { logAdminAction } from './logAdminAction.js';
 import { normalizeIsTest } from '../../attribution/index.js';
 
 /**
- * Sets users.isTest, mirrors the flag onto existing local purchase records,
- * and writes an admin audit entry. Does not mutate Stripe objects.
+ * Sets users.isTest, mirrors the flag onto existing local purchase records and
+ * attributable authenticated funnel events, and writes an admin audit entry.
+ * Does not mutate Stripe objects.
  *
  * Retry-safe: always reconciles local purchases and always writes an audit
  * entry (including verified no-ops), so a prior partial failure that updated
@@ -39,7 +40,7 @@ export async function setCustomerIsTest({
     { $set: { isTest: newVal, updatedAt: new Date() } }
   );
 
-  // Reconcile purchases that are not already at the desired flag
+  // Reconcile local authenticated records that are not already at the desired flag.
   const purchaseResult = await db.collection('purchases').updateMany(
     {
       userId: targetUserId,
@@ -48,9 +49,18 @@ export async function setCustomerIsTest({
     { $set: { isTest: newVal, updatedAt: new Date() } }
   );
 
+  const funnelResult = await db.collection('funnel_events').updateMany(
+    {
+      userId: targetUserId,
+      isTest: { $ne: newVal },
+    },
+    { $set: { isTest: newVal } }
+  );
+
   const purchasesUpdated = purchaseResult.modifiedCount;
-  const repaired = !userFlagChanged && purchasesUpdated > 0;
-  const verified = !userFlagChanged && purchasesUpdated === 0;
+  const funnelEventsUpdated = funnelResult.modifiedCount;
+  const repaired = !userFlagChanged && (purchasesUpdated > 0 || funnelEventsUpdated > 0);
+  const verified = !userFlagChanged && purchasesUpdated === 0 && funnelEventsUpdated === 0;
 
   let actionType;
   let reason = null;
@@ -76,6 +86,7 @@ export async function setCustomerIsTest({
     reason,
     metadata: {
       purchasesUpdated,
+      funnelEventsUpdated,
       repaired,
       userFlagChanged,
       verified,
@@ -87,6 +98,7 @@ export async function setCustomerIsTest({
     isTest: newVal,
     unchanged: verified,
     purchasesUpdated,
+    funnelEventsUpdated,
     repaired,
     verified,
   };

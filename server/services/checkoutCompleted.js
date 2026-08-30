@@ -3,6 +3,7 @@ import { getDatabase } from '../db/index.js';
 import { sendDownloadReady } from '../auth/email.js';
 import Stripe from 'stripe';
 import { attributionFromStripeMetadata, UNKNOWN } from '../attribution/index.js';
+import { checkoutSessionDedupeKey, productTypeFromCheckout, recordFunnelEvent } from '../funnel/index.js';
 
 /**
  * Attach sanitized attribution + isTest from Stripe metadata onto a purchase doc.
@@ -58,6 +59,40 @@ export function selectedStationFromMetadata(metadata = {}) {
   }
 
   return out;
+}
+
+/** Record only after the authoritative completed-checkout path has a purchase. */
+export async function recordPurchaseCompletedEvent({ db, session, purchase, user }) {
+  if (!session?.id || !purchase?.userId || !user?.acquisition?.journeyId) {
+    return { recorded: false, reason: 'purchase_not_completed_or_unattributed' };
+  }
+  return recordFunnelEvent({
+    db,
+    eventName: 'purchase_completed',
+    acquisition: user.acquisition,
+    productType: productTypeFromCheckout({
+      plan: session.metadata?.plan,
+      productType: session.metadata?.productType,
+    }),
+    stationCountry: session.metadata?.country,
+    userId: purchase.userId,
+    isTest: user.isTest,
+    dedupeKey: checkoutSessionDedupeKey(session.id),
+  });
+}
+
+/**
+ * Funnel measurement is deliberately isolated from the authoritative purchase
+ * path. Once a purchase exists, an analytics write failure must not make the
+ * Stripe webhook fail or retry the completed payment workflow.
+ */
+export async function recordPurchaseCompletedEventSafely(args) {
+  try {
+    return await recordPurchaseCompletedEvent(args);
+  } catch (error) {
+    console.warn('[funnel] purchase event not recorded:', error?.message || error);
+    return { recorded: false, reason: 'analytics_write_failed' };
+  }
 }
 /**
  * Creates a purchase record from a Stripe checkout session
@@ -454,6 +489,14 @@ export async function handleCheckoutCompleted(session) {
     }
 
     console.log('[webhook] Successfully created/verified purchase record:', purchase._id.toString());
+
+    const funnelUser = await db.collection('users').findOne(
+      { _id: purchase.userId },
+      { projection: { acquisition: 1, isTest: 1 } }
+    );
+    if (funnelUser?.acquisition?.journeyId) {
+      await recordPurchaseCompletedEventSafely({ db, session, purchase, user: funnelUser });
+    }
 
     // Send email notification for one-time purchases
     const { metadata = {} } = session;

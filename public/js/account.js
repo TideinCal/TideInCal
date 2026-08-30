@@ -1049,6 +1049,13 @@ window.downloadMoonCalendar = downloadMoonCalendar;
 
 async function upgradeToSubscription() {
     try {
+        void fetch('/api/funnel/product-selected', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            keepalive: true,
+            body: JSON.stringify({ productType: 'subscription', stationCountry: 'unknown' })
+        }).catch(() => {});
         await startCheckoutSession({ plan: 'unlimited' });
     } catch (error) {
         console.error('[account] Upgrade error:', error);
@@ -1272,4 +1279,3 @@ document.addEventListener('DOMContentLoaded', () => {
     // Start the app
     init();
 });
-

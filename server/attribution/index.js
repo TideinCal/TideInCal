@@ -28,7 +28,18 @@ export const ALLOWED_MEDIUMS = Object.freeze([
 ]);
 
 const SLUG_RE = /^[a-z0-9_-]+$/;
+const JOURNEY_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const FALLBACK_SECRET = 'fallback-secret-change-in-production';
+
+export function createJourneyId() {
+  return crypto.randomUUID();
+}
+
+export function sanitizeJourneyId(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  return JOURNEY_ID_RE.test(normalized) ? normalized : null;
+}
 
 /**
  * Attribution cookie secret: dedicated env, else SESSION_SECRET.
@@ -224,12 +235,14 @@ export function mergeAttributionRecord(existing, incomingTouch) {
 
   if (!existing || !existing.firstTouch) {
     return {
+      journeyId: sanitizeJourneyId(existing?.journeyId) || createJourneyId(),
       firstTouch: incomingFirst,
       lastTouch: incomingLast,
     };
   }
 
   return {
+    journeyId: sanitizeJourneyId(existing.journeyId) || createJourneyId(),
     firstTouch: existing.firstTouch,
     lastTouch: incomingLast,
   };
@@ -353,6 +366,8 @@ function unsignPayload(signed, secret) {
  */
 export function sanitizeAcquisitionRecord(record) {
   if (!record || typeof record !== 'object') return null;
+  const journeyId = record.journeyId == null ? null : sanitizeJourneyId(record.journeyId);
+  if (record.journeyId != null && !journeyId) return null;
   const firstRaw = record.firstTouch;
   const lastRaw = record.lastTouch;
   if (!firstRaw && !lastRaw) return null;
@@ -362,6 +377,7 @@ export function sanitizeAcquisitionRecord(record) {
 
   if (!firstTouch && !lastTouch) return null;
   return {
+    ...(journeyId ? { journeyId } : {}),
     firstTouch: firstTouch || lastTouch,
     lastTouch: lastTouch || firstTouch,
   };
@@ -426,7 +442,7 @@ export function reconcileUserAcquisition(existingAcquisition, cookieRecord) {
   if (!cookieRecord) return existing;
   const incoming = cookieRecord.lastTouch || cookieRecord.firstTouch;
   if (!incoming) return existing;
-  return mergeAttributionRecord(existing, {
+  const merged = mergeAttributionRecord(existing, {
     source: incoming.source,
     medium: incoming.medium,
     campaign: incoming.campaign,
@@ -435,4 +451,9 @@ export function reconcileUserAcquisition(existingAcquisition, cookieRecord) {
     firstSeenAt: incoming.firstSeenAt || incoming.lastSeenAt,
     lastSeenAt: incoming.lastSeenAt || incoming.firstSeenAt,
   });
+  // The signed 30-day cookie is authoritative for the current anonymous
+  // journey; durable first-touch campaign attribution remains unchanged.
+  return sanitizeJourneyId(cookieRecord.journeyId)
+    ? { ...merged, journeyId: sanitizeJourneyId(cookieRecord.journeyId) }
+    : merged;
 }

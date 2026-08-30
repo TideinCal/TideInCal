@@ -12,34 +12,56 @@ import {
   sanitizeLandingPath,
   serializeAttributionCookie,
 } from '../attribution/index.js';
+import { getDatabase } from '../db/index.js';
+import { landingDedupeKey, recordFunnelEvent } from '../funnel/index.js';
 
 /**
- * Express middleware: read/update signed attribution cookie from UTM query params.
+ * Testable capture core. A tagged request writes the cookie and exactly one
+ * retry-safe landing event; an untagged request performs neither write.
  */
-export function captureAttribution(req, res, next) {
+export async function captureAttributionRequest({
+  req,
+  res,
+  db,
+  secret = getAttributionCookieSecret(),
+  now = new Date(),
+}) {
+  const existing = readAttributionFromRequest(req, secret);
+
+  const landingPath = sanitizeLandingPath(req.path || '/') || '/';
+  const incoming = attributionTouchFromQuery(req.query || {}, landingPath, now);
+
+  if (!incoming) {
+    req.attribution = existing;
+    return { tagged: false, attribution: existing };
+  }
+
+  const merged = mergeAttributionRecord(existing, incoming);
+  const signed = serializeAttributionCookie(merged, secret);
+  if (signed) {
+    res.append('Set-Cookie', buildSetCookieHeader(signed));
+  }
+  req.attribution = merged;
+  const eventDb = typeof db === 'function' ? db() : db;
+  await recordFunnelEvent({
+    db: eventDb,
+    eventName: 'tagged_landing',
+    acquisition: merged,
+    landingPath: incoming.landingPath,
+    dedupeKey: landingDedupeKey(merged),
+    now,
+  });
+  return { tagged: true, attribution: merged };
+}
+
+/** Express middleware: capture first-party attribution without blocking use on failure. */
+export async function captureAttribution(req, res, next) {
   try {
-    const secret = getAttributionCookieSecret();
-    const existing = readAttributionFromRequest(req, secret);
-
-    const landingPath = sanitizeLandingPath(req.path || '/') || '/';
-    const incoming = attributionTouchFromQuery(req.query || {}, landingPath);
-
-    if (!incoming) {
-      // Untagged visit must not overwrite existing attribution with direct
-      req.attribution = existing;
-      return next();
-    }
-
-    const merged = mergeAttributionRecord(existing, incoming);
-    const signed = serializeAttributionCookie(merged, secret);
-    if (signed) {
-      res.append('Set-Cookie', buildSetCookieHeader(signed));
-    }
-    req.attribution = merged;
+    await captureAttributionRequest({ req, res, db: getDatabase });
   } catch (err) {
-    // Malformed cookie / secret issues must not break the landing page
+    // Malformed cookies or measurement failures must not break the landing page.
     console.warn('[attribution] capture skipped:', err?.message || err);
-    req.attribution = null;
+    if (!req.attribution) req.attribution = null;
   }
   return next();
 }

@@ -12,6 +12,7 @@ import {
   sanitizeAcquisitionRecord,
   UNKNOWN,
 } from '../attribution/index.js';
+import { checkoutSessionDedupeKey, productTypeFromCheckout, recordFunnelEvent } from '../funnel/index.js';
 
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -71,6 +72,22 @@ export function resolveProStationMetadata({ stationID, stationTitle, country, st
  */
 export function buildCheckoutAttributionMetadata(acquisition, isTest) {
   return attributionToStripeMetadata(acquisition, isTest);
+}
+
+export async function recordCheckoutStarted({ db, user, validated, session }) {
+  if (!session?.id || !user?.acquisition?.journeyId) {
+    return { recorded: false, reason: 'checkout_not_created_or_unattributed' };
+  }
+  return recordFunnelEvent({
+    db,
+    eventName: 'checkout_started',
+    acquisition: user.acquisition,
+    productType: productTypeFromCheckout(validated),
+    stationCountry: validated?.country,
+    userId: user._id,
+    isTest: user.isTest,
+    dedupeKey: checkoutSessionDedupeKey(session.id),
+  });
 }
 
 // Validation schema for plan-based checkout (useProOffer can be boolean or string 'true' from JSON)
@@ -248,6 +265,14 @@ router.post('/session', csrfProtection, async (req, res) => {
     }
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    if (user?.acquisition?.journeyId) {
+      try {
+        await recordCheckoutStarted({ db, user, validated, session });
+      } catch (eventError) {
+        console.warn('[funnel] checkout event not recorded:', eventError?.message || eventError);
+      }
+    }
     
     res.json({ url: session.url });
   } catch (error) {

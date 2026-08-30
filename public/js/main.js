@@ -846,6 +846,17 @@ async function startCheckoutSession(checkoutData) {
   throw new Error('No checkout URL received');
 }
 
+function recordProductSelection(productType, stationCountry = 'unknown') {
+  // keepalive improves delivery across navigation without serially delaying UI.
+  void fetch('/api/funnel/product-selected', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    keepalive: true,
+    body: JSON.stringify({ productType, stationCountry: stationCountry || 'unknown' })
+  }).catch(() => {});
+}
+
 async function maybeResumeCheckoutAfterVerification() {
   const verifiedFlag = localStorage.getItem(EMAIL_VERIFIED_FLAG);
   if (!verifiedFlag) return;
@@ -948,6 +959,7 @@ async function attemptResumeCheckout() {
 
 async function handleDownloadClick(stationID, stationTitle, country) {
   try {
+    recordProductSelection('single', country);
     pendingContextType = 'tide';
     pendingGoldenLocation = null;
     pendingStationContext = {
@@ -1265,6 +1277,14 @@ async function selectPlan(plan, fromUpsell = false, _triggerButton = null) {
     if (plan === 'unlimited' && fromUpsell && upsellOfferActive) {
       checkoutData.useProOffer = true;
     }
+    const selectedProduct = plan === 'unlimited'
+      ? 'subscription'
+      : checkoutData.goldenOnly
+        ? 'golden'
+        : checkoutData.includeGoldenHour
+          ? 'tide_and_golden'
+          : 'single';
+    recordProductSelection(selectedProduct, checkoutData.country || 'unknown');
     // Close modals (move focus out first to avoid aria-hidden + focused descendant)
     const planModal = document.getElementById('planModal');
     const upsellModal = document.getElementById('upsellModal');
@@ -1437,6 +1457,7 @@ let pendingGoProAfterAuth = false;
 
 async function goProDirect(e) {
   if (e) e.preventDefault();
+  recordProductSelection('subscription', 'unknown');
   if (isUnlimitedProUser) {
     window.location.href = '/account';
     return;

@@ -9,6 +9,7 @@ import { getCustomerDetail } from '../services/admin/getCustomerDetail.js';
 import { createAdminNote, MAX_NOTE_LENGTH } from '../services/admin/createAdminNote.js';
 import { setCustomerMarkedForReview } from '../services/admin/setCustomerMarkedForReview.js';
 import { setCustomerIsTest } from '../services/admin/setCustomerIsTest.js';
+import { getCampaignFunnelReport } from '../funnel/report.js';
 
 const router = Router();
 const csrfProtection = csurf({ cookie: false });
@@ -34,6 +35,18 @@ router.get('/dashboard', async (_req, res) => {
     res.json(data);
   } catch (error) {
     console.error('[admin] dashboard error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/admin/funnel?campaign=&start=&end= (end is exclusive, max 31 days)
+router.get('/funnel', async (req, res) => {
+  try {
+    const report = await getCampaignFunnelReport(getDatabase(), req.query);
+    res.json(report);
+  } catch (error) {
+    if (error instanceof TypeError) return res.status(400).json({ error: error.message });
+    console.error('[admin] funnel report error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -168,6 +181,7 @@ router.post('/customers/:userId/is-test', csrfProtection, async (req, res) => {
       isTest: result.isTest,
       unchanged: !!result.unchanged,
       purchasesUpdated: result.purchasesUpdated ?? 0,
+      funnelEventsUpdated: result.funnelEventsUpdated ?? 0,
     });
   } catch (error) {
     if (error.name === 'ZodError') {

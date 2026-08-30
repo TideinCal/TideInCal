@@ -24,6 +24,7 @@ import checkoutRoutes from './server/routes/checkout.js';
 import filesRoutes from './server/routes/files.js';
 import downloadsRoutes from './server/routes/downloads.js';
 import adminApiRoutes from './server/routes/adminApi.js';
+import funnelRoutes from './server/routes/funnel.js';
 import { attachUser } from './server/auth/index.js';
 import { requireAdminPage } from './server/middleware/requireAdmin.js';
 import { captureAttribution } from './server/middleware/captureAttribution.js';
@@ -287,6 +288,7 @@ async function startServer() {
     app.use('/api/files', filesUserLimiter, filesIPLimiter, filesRoutes);
     app.use('/api/downloads', downloadsUserLimiter, downloadsIPLimiter, downloadsRoutes);
     app.use('/api/admin', adminApiRoutes);
+    app.use('/api/funnel', funnelRoutes);
 
     // Admin HTML lives outside /public so express.static cannot bypass requireAdminPage.
     const adminViewsDir = path.join(__dirname, 'server', 'views', 'admin');
@@ -524,4 +526,3 @@ const formatDateForICS = (date, country, userTimezone) => {
 //     console.error("Oh shit! You got nothing!")
 //   }
 // };
-

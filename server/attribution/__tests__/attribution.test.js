@@ -18,6 +18,7 @@ import {
   sanitizeSlug,
   sanitizeSource,
   serializeAttributionCookie,
+  sanitizeJourneyId,
 } from '../index.js';
 
 describe('attribution allowlisting and normalization', () => {
@@ -128,10 +129,26 @@ describe('cookie serialize/parse', () => {
     );
     const signed = serializeAttributionCookie(record, secret);
     expect(parseAttributionCookie(signed, secret)).toMatchObject({
+      journeyId: expect.stringMatching(/^[0-9a-f-]{36}$/),
       firstTouch: { source: 'google', campaign: 'us-search' },
     });
     expect(parseAttributionCookie(signed + 'x', secret)).toBeNull();
     expect(parseAttributionCookie('not-valid', secret)).toBeNull();
+  });
+
+  it('generates a random UUID and rejects malformed journey identifiers', () => {
+    const first = mergeAttributionRecord(
+      null,
+      attributionTouchFromQuery({ utm_campaign: 'launch' }, '/')
+    );
+    const second = mergeAttributionRecord(
+      null,
+      attributionTouchFromQuery({ utm_campaign: 'launch' }, '/')
+    );
+    expect(sanitizeJourneyId(first.journeyId)).toBe(first.journeyId);
+    expect(first.journeyId).not.toBe(second.journeyId);
+    expect(serializeAttributionCookie({ ...first, journeyId: 'email@example.com' }, secret)).toBeNull();
+    expect(sanitizeJourneyId('not-a-uuid')).toBeNull();
   });
 
   it('builds an HttpOnly SameSite=Lax Set-Cookie header', () => {
