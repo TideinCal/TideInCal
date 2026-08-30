@@ -198,6 +198,8 @@ router.post('/regenerate/:purchaseId', csrfProtection, async (req, res) => {
     // Store timezone from station coordinates if available
     const regenCoords = resolveStationCoords(params.country, params.stationId);
     const regenTz = regenCoords ? timezoneFromCoords(regenCoords.lat, regenCoords.lon) : null;
+    // Tide boundaries require the station timezone; UTC is the safe fallback when station coordinates are unavailable.
+    const stationTimezone = regenTz || 'UTC';
     if (regenTz) storeTimezoneOnUser(db, req.user._id, regenTz);
 
     // Generate ICS content on-demand
@@ -207,6 +209,7 @@ router.post('/regenerate/:purchaseId', csrfProtection, async (req, res) => {
       title: params.stationTitle,
       country: params.country,
       userTimezone,
+      stationTimezone,
       feet: params.feet || false
     });
     
@@ -386,6 +389,8 @@ router.post('/generate', csrfProtection, async (req, res) => {
     // Derive timezone from station coordinates when possible
     const stationCoords = resolveStationCoords(country, stationID);
     const derivedTz = stationCoords ? timezoneFromCoords(stationCoords.lat, stationCoords.lon) : null;
+    // Tide boundaries require the station timezone; UTC is the safe fallback when station coordinates are unavailable.
+    const stationTimezone = derivedTz || 'UTC';
     if (derivedTz) {
       storeTimezoneOnUser(db, req.user._id, derivedTz);
     }
@@ -397,6 +402,7 @@ router.post('/generate', csrfProtection, async (req, res) => {
       title: resolvedStationTitle,
       country,
       userTimezone: userTimezone || 'UTC',
+      stationTimezone,
       feet: feet || false,
       startDate: new Date(),
       endDate: subscriptionPeriodEnd || null
