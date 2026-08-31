@@ -4,6 +4,15 @@ import { z } from 'zod';
 import csurf from 'csurf';
 import { attachUser, requireAuth } from '../auth/index.js';
 import { getDatabase } from '../db/index.js';
+import {
+  attributionToStripeMetadata,
+  normalizeIsTest,
+  readAttributionFromRequest,
+  reconcileUserAcquisition,
+  sanitizeAcquisitionRecord,
+  UNKNOWN,
+} from '../attribution/index.js';
+import { checkoutSessionDedupeKey, productTypeFromCheckout, recordFunnelEvent } from '../funnel/index.js';
 
 const router = Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -25,6 +34,60 @@ export function getProCouponSessionOptions(plan, useProOffer, envCoupon) {
     allow_promotion_codes: !applyProCoupon,
     ...(applyProCoupon && proCoupon && { discounts: [{ coupon: proCoupon }] })
   };
+}
+
+/**
+ * Station metadata for Pro checkout: real pre-checkout station when provided, else unknown.
+ * Never invents a location. Exported for tests.
+ */
+export function resolveProStationMetadata({ stationID, stationTitle, country, stationLat, stationLng } = {}) {
+  const hasReal =
+    typeof stationID === 'string' &&
+    stationID.trim() !== '' &&
+    typeof stationTitle === 'string' &&
+    stationTitle.trim() !== '' &&
+    typeof country === 'string' &&
+    country.trim() !== '';
+
+  if (!hasReal) {
+    return {
+      stationID: UNKNOWN,
+      stationTitle: UNKNOWN,
+      country: UNKNOWN,
+    };
+  }
+
+  const meta = {
+    stationID: stationID.trim(),
+    stationTitle: stationTitle.trim(),
+    country: country.trim(),
+  };
+  if (typeof stationLat === 'number') meta.stationLat = String(stationLat);
+  if (typeof stationLng === 'number') meta.stationLng = String(stationLng);
+  return meta;
+}
+
+/**
+ * Build Stripe Checkout metadata attribution + is_test fields. Exported for tests.
+ */
+export function buildCheckoutAttributionMetadata(acquisition, isTest) {
+  return attributionToStripeMetadata(acquisition, isTest);
+}
+
+export async function recordCheckoutStarted({ db, user, validated, session }) {
+  if (!session?.id || !user?.acquisition?.journeyId) {
+    return { recorded: false, reason: 'checkout_not_created_or_unattributed' };
+  }
+  return recordFunnelEvent({
+    db,
+    eventName: 'checkout_started',
+    acquisition: user.acquisition,
+    productType: productTypeFromCheckout(validated),
+    stationCountry: validated?.country,
+    userId: user._id,
+    isTest: user.isTest,
+    dedupeKey: checkoutSessionDedupeKey(session.id),
+  });
 }
 
 // Validation schema for plan-based checkout (useProOffer can be boolean or string 'true' from JSON)
@@ -67,14 +130,32 @@ router.post('/session', csrfProtection, async (req, res) => {
     
     const db = getDatabase();
     const { ObjectId } = await import('mongodb');
-    const user = await db.collection('users').findOne({ _id: new ObjectId(req.user._id) });
+    let user = await db.collection('users').findOne({ _id: new ObjectId(req.user._id) });
+
+    // Reconcile valid current cookie attribution before Checkout (preserve first touch)
+    const cookieAttribution = sanitizeAcquisitionRecord(readAttributionFromRequest(req));
+    if (cookieAttribution) {
+      const nextAcquisition = reconcileUserAcquisition(user?.acquisition, cookieAttribution);
+      if (nextAcquisition) {
+        await db.collection('users').updateOne(
+          { _id: new ObjectId(req.user._id) },
+          { $set: { acquisition: nextAcquisition, updatedAt: new Date() } }
+        );
+        user = { ...user, acquisition: nextAcquisition };
+      }
+    }
     
     // Check if user has active subscription
     const hasActiveSubscription = user?.subscriptionStatus === 'active' && 
                                    user?.subscriptionCurrentPeriodEnd && 
                                    new Date(user.subscriptionCurrentPeriodEnd) > new Date();
     
-    // If user has active subscription and is requesting single station (tide), allow free generation
+    // Block double-charge: active subscribers should not be able to purchase again
+    if (hasActiveSubscription && plan === 'unlimited') {
+      return res.status(400).json({ 
+        error: 'You already have an active Pro subscription.' 
+      });
+    }
     if (hasActiveSubscription && plan === 'single' && !goldenOnly) {
       return res.status(400).json({ 
         error: 'You have an active subscription. Please use the dashboard to generate files for free.' 
@@ -89,12 +170,17 @@ router.post('/session', csrfProtection, async (req, res) => {
 
     let sessionMode = 'payment';
     const lineItems = [];
+    const attributionMeta = buildCheckoutAttributionMetadata(
+      user?.acquisition,
+      normalizeIsTest(user?.isTest)
+    );
     const metadata = {
       plan: plan === 'unlimited' ? 'subscription' : 'single',
       userId: req.user._id.toString(),
       includeMoon: includeMoon === true,
       includeGoldenHour: includeGoldenHour === true,
-      userTimezone: (userTimezone && String(userTimezone).trim()) || (req.body.userTimezone && String(req.body.userTimezone).trim()) || ''
+      userTimezone: (userTimezone && String(userTimezone).trim()) || (req.body.userTimezone && String(req.body.userTimezone).trim()) || '',
+      ...attributionMeta,
     };
 
     if (plan === 'unlimited') {
@@ -102,6 +188,10 @@ router.post('/session', csrfProtection, async (req, res) => {
       const priceId = process.env.STRIPE_PRICE_UNLIMITED;
       if (!priceId) throw new Error('Missing Stripe price configuration for unlimited plan');
       lineItems.push({ price: priceId, quantity: 1 });
+      Object.assign(
+        metadata,
+        resolveProStationMetadata({ stationID, stationTitle, country, stationLat, stationLng })
+      );
     } else {
       // plan === 'single': (a) tide only, (b) golden only, (c) tide + golden
       if (goldenOnly) {
@@ -175,6 +265,14 @@ router.post('/session', csrfProtection, async (req, res) => {
     }
 
     const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    if (user?.acquisition?.journeyId) {
+      try {
+        await recordCheckoutStarted({ db, user, validated, session });
+      } catch (eventError) {
+        console.warn('[funnel] checkout event not recorded:', eventError?.message || eventError);
+      }
+    }
     
     res.json({ url: session.url });
   } catch (error) {
@@ -352,6 +450,38 @@ router.get('/verify', async (req, res) => {
   } catch (error) {
     console.error('[verify] Checkout verification error:', error);
     res.status(500).json({ ok: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/checkout/portal - Create a Stripe Customer Portal session for subscription management
+router.post('/portal', csrfProtection, async (req, res) => {
+  try {
+    const db = getDatabase();
+    const { ObjectId } = await import('mongodb');
+    const user = await db.collection('users').findOne({ _id: new ObjectId(req.user._id) });
+
+    let customerId = user?.stripeCustomerId;
+    if (customerId && typeof customerId === 'object') {
+      customerId = customerId.id || customerId.customer || null;
+    }
+    if (!customerId || typeof customerId !== 'string' || !customerId.startsWith('cus_')) {
+      return res.status(400).json({ error: 'No Stripe customer found for this account.' });
+    }
+
+    const appUrl = process.env.APP_URL?.trim();
+    if (!appUrl) {
+      return res.status(503).json({ error: 'Portal is not fully configured.' });
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${appUrl}/account`
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error('[portal] Billing portal error:', error?.message ?? error);
+    res.status(500).json({ error: 'Unable to open subscription management.' });
   }
 });
 

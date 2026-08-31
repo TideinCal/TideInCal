@@ -23,8 +23,13 @@ import checkoutRoutes from './server/routes/checkout.js';
 // NOTE: do NOT import webhook as a router; we mount a raw handler inline
 import filesRoutes from './server/routes/files.js';
 import downloadsRoutes from './server/routes/downloads.js';
+import adminApiRoutes from './server/routes/adminApi.js';
+import funnelRoutes from './server/routes/funnel.js';
 import { attachUser } from './server/auth/index.js';
+import { requireAdminPage } from './server/middleware/requireAdmin.js';
+import { captureAttribution } from './server/middleware/captureAttribution.js';
 import { assertStripeEnv } from './server/bootstrap/envGuard.js';
+import { getAttributionCookieSecret } from './server/attribution/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -157,6 +162,8 @@ if (process.env.NODE_ENV === 'production') {
     throw new Error('SESSION_SECRET must be set to a secure value in production. Do not use the fallback.');
   }
   sessionConfig.secret = secret;
+  // Attribution cookie uses ATTRIBUTION_COOKIE_SECRET or SESSION_SECRET; assert now
+  getAttributionCookieSecret();
 }
 
 // Session middleware will be applied after DB connection
@@ -184,6 +191,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// First-party UTM capture BEFORE express.static (no session/DB required)
+app.use(captureAttribution);
 
 // Static files FIRST
 app.use(
@@ -277,6 +287,20 @@ async function startServer() {
     app.use('/api/checkout', checkoutLimiter, checkoutRoutes);
     app.use('/api/files', filesUserLimiter, filesIPLimiter, filesRoutes);
     app.use('/api/downloads', downloadsUserLimiter, downloadsIPLimiter, downloadsRoutes);
+    app.use('/api/admin', adminApiRoutes);
+    app.use('/api/funnel', funnelRoutes);
+
+    // Admin HTML lives outside /public so express.static cannot bypass requireAdminPage.
+    const adminViewsDir = path.join(__dirname, 'server', 'views', 'admin');
+    app.get('/admin/customers/:userId', requireAdminPage, (req, res) => {
+      res.sendFile(path.join(adminViewsDir, 'customer-detail.html'));
+    });
+    app.get('/admin/customers', requireAdminPage, (_req, res) => {
+      res.sendFile(path.join(adminViewsDir, 'customers.html'));
+    });
+    app.get('/admin', requireAdminPage, (_req, res) => {
+      res.sendFile(path.join(adminViewsDir, 'dashboard.html'));
+    });
   } else {
     // Mount routes with error handlers for DB-dependent endpoints
     app.use('/api/auth', (req, res) => {
@@ -289,6 +313,9 @@ async function startServer() {
       res.status(503).json({ error: 'Database not available. MongoDB connection required.' });
     });
     app.use('/api/downloads', (req, res) => {
+      res.status(503).json({ error: 'Database not available. MongoDB connection required.' });
+    });
+    app.use('/api/admin', (req, res) => {
       res.status(503).json({ error: 'Database not available. MongoDB connection required.' });
     });
   }
@@ -499,4 +526,3 @@ const formatDateForICS = (date, country, userTimezone) => {
 //     console.error("Oh shit! You got nothing!")
 //   }
 // };
-

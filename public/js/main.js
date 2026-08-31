@@ -122,6 +122,25 @@ async function refreshAuthUI() {
   }
 }
 
+// Signup form time-trap: timestamp issued by the server when the modal opens.
+// We attach it to the submission so the server can reject forms that POST too
+// fast (a strong bot signal). Re-fetched each time the modal opens so the
+// minimum-age check is enforced even if the user revisits the modal.
+let signupFormIssuedAt = 0;
+
+async function refreshSignupFormToken() {
+  try {
+    const res = await fetch('/api/auth/signup-form-token', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    signupFormIssuedAt = Number(data?.issuedAt) || Date.now();
+  } catch (e) {
+    // If this fails the server will fall back to the body-supplied timestamp;
+    // we still set a reasonable value so honest users aren't blocked.
+    signupFormIssuedAt = Date.now();
+  }
+}
+
 // Auth modal functions
 function openAuthModal(mode = 'signup') {
   const modal = document.getElementById('authModal');
@@ -149,6 +168,8 @@ function openAuthModal(mode = 'signup') {
   }
 
   resetForgotPasswordUI();
+
+  refreshSignupFormToken();
 
   // Show modal
   if (window.bootstrap?.Modal) {
@@ -200,7 +221,26 @@ async function handleAuth(formData, isSignup = false) {
       throw new Error(errorMessage);
     }
 
-    const { user } = await response.json();
+    const payload = await response.json();
+    const { user } = payload;
+
+    // Idempotent signup path: server accepted the request without creating a
+    // new session (either the address already has an account, or the form
+    // tripped the honeypot/time-trap). We show a generic "check your email"
+    // banner that's identical to the legitimate-new-account case so the form
+    // can't be used to enumerate which emails are registered.
+    if (isSignup && !user) {
+      setVerificationBannerState({
+        title: 'Check your email',
+        message: 'If we were able to create or update your account, a verification email is on its way. It can take a few minutes to arrive — check your spam folder too.',
+        variant: 'info',
+        showResend: false,
+        showContinue: false,
+        showSelectLink: false,
+        showDismiss: true
+      });
+      return true;
+    }
 
     // New session: clear cached CSRF so logout/checkout get a token for this session
     csrfToken = null;
@@ -325,10 +365,37 @@ const setForgotState = (show) => {
 forgotPasswordLink?.addEventListener('click', () => setForgotState(true));
 forgotPasswordBack?.addEventListener('click', () => setForgotState(false));
 
+// Lock the submit button for `seconds` with a visible countdown, then restore.
+// Pure UX: makes accidental double-clicks impossible and gives bots one fewer
+// trivially-cheap signal to spam. The real defense is server-side rate limiting.
+function lockButtonWithCountdown(button, seconds) {
+  if (!button) return;
+  const originalText = button.dataset.originalText || button.textContent;
+  button.dataset.originalText = originalText;
+  button.disabled = true;
+
+  let remaining = seconds;
+  button.textContent = `Wait ${remaining}s`;
+  const tick = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(tick);
+      button.disabled = false;
+      button.textContent = originalText;
+      delete button.dataset.originalText;
+    } else {
+      button.textContent = `Wait ${remaining}s`;
+    }
+  }, 1000);
+}
+
 forgotPasswordForm?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const formData = new FormData(e.target);
   const email = formData.get('email');
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+
+  lockButtonWithCountdown(submitBtn, 10);
 
   try {
     const response = await fetch('/api/auth/forgot-password', {
@@ -338,7 +405,7 @@ forgotPasswordForm?.addEventListener('submit', async (e) => {
       body: JSON.stringify({ email })
     });
 
-    let message = 'If that email exists, we sent a reset link.';
+    let message = 'If an account uses that email, we just sent a reset link. Check your inbox (and spam folder) in the next few minutes.';
     if (!response.ok) {
       try {
         const data = await response.json();
@@ -367,7 +434,9 @@ document.getElementById('signupForm')?.addEventListener('submit', async (e) => {
     email: formData.get('email'),
     password: formData.get('password'),
     firstName: formData.get('firstName') || undefined,
-    lastName: formData.get('lastName') || undefined
+    lastName: formData.get('lastName') || undefined,
+    company: formData.get('company') || '',
+    formIssuedAt: signupFormIssuedAt
   };
   await handleAuth(data, true);
 });
@@ -498,6 +567,65 @@ let map;
 
 // Entitlements cache (used to show Pro-only UI like Golden Hour checkbox on tide popup)
 let isUnlimitedProUser = false;
+
+function applyProSubscriberUI() {
+  // Plan strip: replace two cards with single subscriber card
+  const planStripCards = document.querySelector('.plan-strip-cards');
+  if (planStripCards) {
+    planStripCards.innerHTML = `
+      <div class="plan-strip-card plan-strip-card--pro" style="max-width:520px; margin:0 auto;">
+        <div class="plan-strip-badge plan-strip-badge--pro">Pro Subscriber</div>
+        <h3 class="plan-strip-name">You're a Pro</h3>
+        <p class="plan-strip-hook">You have unlimited access to everything TideInCal offers.</p>
+        <ul class="plan-strip-list">
+          <li><i class="bi bi-check-circle-fill"></i> Unlimited tide stations, any beach, harbor or marina</li>
+          <li><i class="bi bi-check-circle-fill"></i> 🌕 Moon Phases synced to your calendar</li>
+          <li><i class="bi bi-check-circle-fill"></i> Golden Hour for every station and location</li>
+          <li><i class="bi bi-check-circle-fill"></i> Your current location and searched places included</li>
+          <li><i class="bi bi-check-circle-fill"></i> Regenerate or refresh anytime, no extra cost</li>
+        </ul>
+        <a href="/account" class="cta-button plan-strip-cta">Go to My Account</a>
+        <a href="#mapSection" class="cta-button plan-strip-cta" style="background:linear-gradient(135deg,rgba(21,27,72,1) 20%,#3b4a8a 80%); margin-top:0.5em;">Find My Station</a>
+      </div>`;
+  }
+
+  // Plan strip heading
+  const planStripHeading = document.querySelector('.plan-strip-heading');
+  if (planStripHeading) planStripHeading.textContent = 'Your Pro Plan';
+  const planStripSub = document.querySelector('.plan-strip-sub');
+  if (planStripSub) planStripSub.textContent = 'Unlimited access. Every feature. No extra charges.';
+
+  // Moon phase section: swap CTA
+  const moonCta = document.querySelector('.moon-cta');
+  if (moonCta) {
+    moonCta.textContent = '🌕 Get Moon Phases';
+    moonCta.setAttribute('href', '/account');
+    moonCta.removeAttribute('onclick');
+  }
+  const moonCallout = document.querySelector('.moon-pro-callout');
+  if (moonCallout) {
+    const badge = moonCallout.querySelector('.moon-pro-badge');
+    if (badge) badge.textContent = 'You Have This';
+    const text = moonCallout.querySelector('.moon-pro-text');
+    if (text) text.textContent = 'Moon Phases are ready and waiting in your account. Download them anytime.';
+    const trust = moonCallout.querySelector('.moon-trust');
+    if (trust) trust.textContent = 'Included with your Pro subscription';
+  }
+
+  // Moon eyebrow
+  const moonEyebrow = document.querySelector('.moon-eyebrow');
+  if (moonEyebrow) moonEyebrow.textContent = 'Included In Your Plan';
+
+  // Golden Hour section: update Go Pro pricing card for subscribers
+  const ghProInner = document.querySelector('.gh-pro-inner');
+  if (ghProInner) {
+    const label = ghProInner.querySelector('.gh-price-label');
+    if (label) label.textContent = 'Your Plan';
+    const note = ghProInner.querySelector('.gh-price-note');
+    if (note) note.textContent = 'included with your Pro subscription';
+  }
+}
+
 (async function initEntitlementsForMap() {
   try {
     const authRes = await fetch('/api/auth/me', { credentials: 'include' });
@@ -508,6 +636,9 @@ let isUnlimitedProUser = false;
     if (res.ok) {
       const { unlimited } = await res.json();
       isUnlimitedProUser = !!unlimited;
+      if (isUnlimitedProUser) {
+        applyProSubscriberUI();
+      }
     }
   } catch (e) {
     // Ignore; non-auth users simply won't see Pro-only UI
@@ -715,6 +846,17 @@ async function startCheckoutSession(checkoutData) {
   throw new Error('No checkout URL received');
 }
 
+function recordProductSelection(productType, stationCountry = 'unknown') {
+  // keepalive improves delivery across navigation without serially delaying UI.
+  void fetch('/api/funnel/product-selected', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    keepalive: true,
+    body: JSON.stringify({ productType, stationCountry: stationCountry || 'unknown' })
+  }).catch(() => {});
+}
+
 async function maybeResumeCheckoutAfterVerification() {
   const verifiedFlag = localStorage.getItem(EMAIL_VERIFIED_FLAG);
   if (!verifiedFlag) return;
@@ -817,6 +959,7 @@ async function attemptResumeCheckout() {
 
 async function handleDownloadClick(stationID, stationTitle, country) {
   try {
+    recordProductSelection('single', country);
     pendingContextType = 'tide';
     pendingGoldenLocation = null;
     pendingStationContext = {
@@ -1082,6 +1225,11 @@ function moveFocusOutOfModal(modal) {
 
 async function selectPlan(plan, fromUpsell = false, _triggerButton = null) {
   try {
+    if (plan === 'unlimited' && isUnlimitedProUser) {
+      window.location.href = '/account';
+      return;
+    }
+
     const includeMoon = document.getElementById('planIncludeMoon')?.checked === true;
     const includeGoldenHour = document.getElementById('planIncludeGoldenHour')?.checked === true;
 
@@ -1129,6 +1277,14 @@ async function selectPlan(plan, fromUpsell = false, _triggerButton = null) {
     if (plan === 'unlimited' && fromUpsell && upsellOfferActive) {
       checkoutData.useProOffer = true;
     }
+    const selectedProduct = plan === 'unlimited'
+      ? 'subscription'
+      : checkoutData.goldenOnly
+        ? 'golden'
+        : checkoutData.includeGoldenHour
+          ? 'tide_and_golden'
+          : 'single';
+    recordProductSelection(selectedProduct, checkoutData.country || 'unknown');
     // Close modals (move focus out first to avoid aria-hidden + focused descendant)
     const planModal = document.getElementById('planModal');
     const upsellModal = document.getElementById('upsellModal');
@@ -1301,6 +1457,11 @@ let pendingGoProAfterAuth = false;
 
 async function goProDirect(e) {
   if (e) e.preventDefault();
+  recordProductSelection('subscription', 'unknown');
+  if (isUnlimitedProUser) {
+    window.location.href = '/account';
+    return;
+  }
   try {
     const authResponse = await fetch('/api/auth/me', { credentials: 'include' });
     if (!authResponse.ok) {
@@ -1313,6 +1474,16 @@ async function goProDirect(e) {
       pendingGoProAfterAuth = true;
       openAuthModal('signup');
       return;
+    }
+    const entRes = await fetch('/api/auth/me/entitlements', { credentials: 'include' });
+    if (entRes.ok) {
+      const { unlimited } = await entRes.json();
+      if (unlimited) {
+        isUnlimitedProUser = true;
+        applyProSubscriberUI();
+        window.location.href = '/account';
+        return;
+      }
     }
     pendingStationContext = null;
     pendingContextType = 'tide';

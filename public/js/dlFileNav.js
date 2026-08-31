@@ -42,13 +42,27 @@ async function refreshNavUser() {
   if (menuLogoutContainer) menuLogoutContainer.style.display = 'none';
 }
 
+let navCsrfToken = null;
+
+async function getNavCsrfToken() {
+  if (navCsrfToken) return navCsrfToken;
+  const response = await fetch('/api/csrf', { credentials: 'include' });
+  if (!response.ok) throw new Error('Unable to fetch CSRF token');
+  const data = await response.json();
+  navCsrfToken = data.csrfToken;
+  return navCsrfToken;
+}
+
 async function logoutNav() {
   try {
+    const token = await getNavCsrfToken();
     const response = await fetch('/api/auth/logout', {
       method: 'POST',
-      credentials: 'include'
+      credentials: 'include',
+      headers: { 'X-CSRF-Token': token }
     });
     if (response.ok) {
+      navCsrfToken = null;
       window.location.href = '/';
       return;
     }
