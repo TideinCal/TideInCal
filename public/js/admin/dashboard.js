@@ -14,6 +14,13 @@ function adminNav() {
 
 document.getElementById('adminNav').innerHTML = adminNav();
 
+function localDateString(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function escapeHtml(s) {
   const d = document.createElement('div');
   d.textContent = s;
@@ -31,6 +38,40 @@ function metricCard({ title, value, description, borderClass = '' }) {
         </div>
       </div>
     </div>`;
+}
+
+function setupSsmfBaselineDownload() {
+  const form = document.getElementById('ssmfBaselineForm');
+  const campaign = document.getElementById('ssmfCampaignId');
+  const start = document.getElementById('ssmfStart');
+  const end = document.getElementById('ssmfEnd');
+  const error = document.getElementById('ssmfBaselineError');
+  const today = new Date();
+  const todayString = localDateString(today);
+  const defaultStart = new Date(today);
+  defaultStart.setDate(today.getDate() - 6);
+
+  start.value = localDateString(defaultStart);
+  end.value = todayString;
+  start.max = todayString;
+  end.max = todayString;
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    error.classList.add('d-none');
+    const campaignId = campaign.value.trim();
+    const startDate = start.value;
+    const endDate = end.value;
+    const rangeDays = (new Date(`${endDate}T00:00:00Z`) - new Date(`${startDate}T00:00:00Z`)) / 86400000 + 1;
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(campaignId) || !startDate || !endDate || rangeDays < 1 || rangeDays > 365) {
+      error.textContent = 'Enter a lowercase hyphen-separated campaign ID and a valid non-future date range of at most 365 days.';
+      error.classList.remove('d-none');
+      return;
+    }
+
+    const params = new URLSearchParams({ campaign_id: campaignId, start: startDate, end: endDate });
+    window.location.assign(`/api/admin/ssmf-baseline?${params.toString()}`);
+  });
 }
 
 async function load() {
@@ -88,4 +129,5 @@ async function load() {
   }
 }
 
+setupSsmfBaselineDownload();
 load();

@@ -10,6 +10,7 @@ import { createAdminNote, MAX_NOTE_LENGTH } from '../services/admin/createAdminN
 import { setCustomerMarkedForReview } from '../services/admin/setCustomerMarkedForReview.js';
 import { setCustomerIsTest } from '../services/admin/setCustomerIsTest.js';
 import { getCampaignFunnelReport } from '../funnel/report.js';
+import { getSsmfBaseline } from '../services/admin/getSsmfBaseline.js';
 
 const router = Router();
 const csrfProtection = csurf({ cookie: false });
@@ -47,6 +48,21 @@ router.get('/funnel', async (req, res) => {
   } catch (error) {
     if (error instanceof TypeError) return res.status(400).json({ error: error.message });
     console.error('[admin] funnel report error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/admin/ssmf-baseline?campaign_id=&start=YYYY-MM-DD&end=YYYY-MM-DD
+router.get('/ssmf-baseline', async (req, res) => {
+  try {
+    const baseline = await getSsmfBaseline(getDatabase(), req.query);
+    const { campaign_id: campaignId } = baseline.export_context;
+    const { start_date: start, end_date: end } = baseline.window;
+    res.attachment(`ssmf-baseline-${campaignId}-${start}-to-${end}.json`);
+    res.json(baseline);
+  } catch (error) {
+    if (error instanceof TypeError) return res.status(400).json({ error: error.message });
+    console.error('[admin] SSMF baseline error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

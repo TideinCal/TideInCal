@@ -11,6 +11,31 @@
   <main class="container pb-5">
     <h1 class="h3 mb-4">Dashboard</h1>
     <div id="dashboardContent"></div>
+    <section class="card shadow-sm mt-4" aria-labelledby="ssmfBaselineHeading">
+      <div class="card-body">
+        <h2 id="ssmfBaselineHeading" class="h4">SSMF aggregate baseline</h2>
+        <p class="small text-muted">Downloads aggregate counts only. No customer records or identifiers are included.</p>
+        <form id="ssmfBaselineForm" class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="ssmfCampaignId">Campaign ID</label>
+            <input id="ssmfCampaignId" name="campaign_id" class="form-control" required maxlength="80"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfStart">Start date</label>
+            <input id="ssmfStart" name="start" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfEnd">End date</label>
+            <input id="ssmfEnd" name="end" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">Download SSMF aggregate baseline (JSON)</button>
+          </div>
+        </form>
+        <div id="ssmfBaselineError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+      </div>
+    </section>
   </main>
   <script src="/js/admin/common.js"></script>
   <script src="/js/admin/dashboard.js"></script>
