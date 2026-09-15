@@ -233,6 +233,9 @@ export async function getSsmfBaseline(db, rawFilters, now = new Date()) {
       neutral_export: true,
       raw_export_approved: false,
       raw_export_accepted_by_tidy: false,
+      generated_at: now.toISOString(),
+      report_version: 'tide-app-aggregate-raw-v1',
+      collector: 'CalendarWaves',
       campaign_id: filters.campaignId,
       inclusive_days: filters.inclusiveDays,
       tidy_wrapper_required: {

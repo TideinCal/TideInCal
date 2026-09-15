@@ -143,7 +143,13 @@ describe('getSsmfBaseline', () => {
     expect(result.source).toBe('tide_app_aggregate');
     expect(result.window).toEqual({ start_date: '2026-09-01', end_date: '2026-09-13' });
     expect(result.export_context).toMatchObject({
-      neutral_export: true, raw_export_approved: false, raw_export_accepted_by_tidy: false, campaign_id: 'fall-2026',
+      neutral_export: true,
+      raw_export_approved: false,
+      raw_export_accepted_by_tidy: false,
+      generated_at: '2026-09-13T12:00:00.000Z',
+      report_version: 'tide-app-aggregate-raw-v1',
+      collector: 'CalendarWaves',
+      campaign_id: 'fall-2026',
     });
     expect(result.privacy).toEqual({
       customer_rows_emitted: false, direct_identifiers_emitted: false, minimum_group_size: 3,
