@@ -25,6 +25,21 @@ const EIGHT_PHASES = [
   { key: 'waningCrescent', label: 'Waning Crescent', summary: '🌘 Waning Crescent', isMajor: false }
 ];
 
+const DEFAULT_FULL_MOON_NAMES = {
+  1: 'Wolf Moon',
+  2: 'Snow Moon',
+  3: 'Worm Moon',
+  4: 'Pink Moon',
+  5: 'Flower Moon',
+  6: 'Strawberry Moon',
+  7: 'Buck Moon',
+  8: 'Sturgeon Moon',
+  9: 'Corn Moon',
+  10: "Hunter's Moon",
+  11: 'Beaver Moon',
+  12: 'Cold Moon'
+};
+
 /** Approved visibility note for solar eclipses. */
 const SOLAR_ECLIPSE_VISIBILITY =
   'Visible from parts of Earth along the eclipse path. Strongest visibility occurs along the central path for total or annular eclipses. Check NASA eclipse resources for exact visibility locations.';
@@ -124,13 +139,13 @@ function formatPeakInTimezone(utcDate, timezone) {
 /**
  * Principal phase dates from Astronomy Engine: SearchMoonQuarter + NextMoonQuarter.
  * Quarter: 0 = New Moon, 1 = First Quarter, 2 = Full Moon, 3 = Last Quarter.
- * Returns Sets of local date keys (YYYY-MM-DD) in the target timezone for each principal phase.
+ * Returns Maps of local date key (YYYY-MM-DD) → peak UTC Date for each principal phase.
  */
 function getPrincipalPhaseDatesByLocal(startMs, endMs, timezone) {
-  const newSet = new Set();
-  const firstQuarterSet = new Set();
-  const fullSet = new Set();
-  const lastQuarterSet = new Set();
+  const newSet = new Map();
+  const firstQuarterSet = new Map();
+  const fullSet = new Map();
+  const lastQuarterSet = new Map();
   const endMsInclusive = endMs + MS_PER_DAY - 1;
 
   let mq = Astronomy.SearchMoonQuarter(new Date(startMs - MS_PER_DAY * 2));
@@ -138,16 +153,100 @@ function getPrincipalPhaseDatesByLocal(startMs, endMs, timezone) {
     const peakMs = mq.time.date.getTime();
     if (peakMs >= startMs) {
       const localKey = localDateKey(mq.time.date, timezone);
-      if (mq.quarter === 0) newSet.add(localKey);
-      else if (mq.quarter === 1) firstQuarterSet.add(localKey);
-      else if (mq.quarter === 2) fullSet.add(localKey);
-      else lastQuarterSet.add(localKey);
+      if (mq.quarter === 0) newSet.set(localKey, mq.time.date);
+      else if (mq.quarter === 1) firstQuarterSet.set(localKey, mq.time.date);
+      else if (mq.quarter === 2) fullSet.set(localKey, mq.time.date);
+      else lastQuarterSet.set(localKey, mq.time.date);
     }
     mq = Astronomy.NextMoonQuarter(mq);
     if (mq.time.date.getTime() > endMsInclusive + MS_PER_DAY * 32) break;
   }
 
   return { new: newSet, firstQuarter: firstQuarterSet, full: fullSet, lastQuarter: lastQuarterSet };
+}
+
+/**
+ * Compute traditional full moon names for all full moons that fall within the
+ * generated date range. Searches a wider window so Harvest/Hunter Moon assignment
+ * is correct even when the range starts after the autumnal equinox.
+ *
+ * Algorithm: default month name → Blue Moon override (second in month) →
+ * Harvest Moon (closest to autumnal equinox) → Hunter's Moon (next after Harvest).
+ */
+function getTraditionalFullMoonNames(startMs, endMs, timezone) {
+  const wideStartMs = startMs - MS_PER_DAY * 90;
+  const wideEndMs = endMs + MS_PER_DAY * 90;
+
+  const allFullMoons = [];
+  let mq = Astronomy.SearchMoonQuarter(new Date(wideStartMs - MS_PER_DAY * 35));
+  while (mq.time.date.getTime() <= wideEndMs) {
+    if (mq.quarter === 2) {
+      const localKey = localDateKey(mq.time.date, timezone);
+      const parts = localKey.split('-');
+      allFullMoons.push({
+        peakDate: mq.time.date,
+        localDateKey: localKey,
+        localYear: parseInt(parts[0], 10),
+        localMonth: parseInt(parts[1], 10),
+        peakMs: mq.time.date.getTime()
+      });
+    }
+    mq = Astronomy.NextMoonQuarter(mq);
+    if (mq.time.date.getTime() > wideEndMs + MS_PER_DAY * 35) break;
+  }
+
+  const years = [...new Set(allFullMoons.map((fm) => fm.localYear))];
+  const equinoxByYear = {};
+  for (const year of years) {
+    try {
+      equinoxByYear[year] = Astronomy.Seasons(year).sep_equinox.date.getTime();
+    } catch (_) {
+      equinoxByYear[year] = new Date(Date.UTC(year, 8, 22, 12)).getTime();
+    }
+  }
+
+  const names = new Map();
+
+  for (const fm of allFullMoons) {
+    names.set(fm.localDateKey, DEFAULT_FULL_MOON_NAMES[fm.localMonth] || 'Full Moon');
+  }
+
+  const monthYearGroups = {};
+  for (const fm of allFullMoons) {
+    const key = `${fm.localYear}-${fm.localMonth}`;
+    if (!monthYearGroups[key]) monthYearGroups[key] = [];
+    monthYearGroups[key].push(fm);
+  }
+  for (const group of Object.values(monthYearGroups)) {
+    if (group.length > 1) {
+      for (let i = 1; i < group.length; i++) {
+        names.set(group[i].localDateKey, 'Blue Moon');
+      }
+    }
+  }
+
+  for (const year of years) {
+    const equinoxMs = equinoxByYear[year];
+    if (!equinoxMs) continue;
+    let harvestFm = null;
+    let minDist = Infinity;
+    for (const fm of allFullMoons) {
+      const dist = Math.abs(fm.peakMs - equinoxMs);
+      if (dist < 45 * MS_PER_DAY && dist < minDist) {
+        minDist = dist;
+        harvestFm = fm;
+      }
+    }
+    if (harvestFm) {
+      names.set(harvestFm.localDateKey, 'Harvest Moon');
+      const idx = allFullMoons.indexOf(harvestFm);
+      if (idx >= 0 && idx + 1 < allFullMoons.length) {
+        names.set(allFullMoons[idx + 1].localDateKey, "Hunter's Moon");
+      }
+    }
+  }
+
+  return names;
 }
 
 /**
@@ -265,8 +364,14 @@ function getEclipsesInRange(startMs, endMs, timezone) {
 }
 
 /** Build DESCRIPTION lines for a daily moon event (phase, illumination, optional tidal line). */
-function buildMoonDescription(phaseName, illumination, isMajor) {
-  const lines = [`Lunar phase: ${phaseName}`, `Illumination: ${illumination}%`];
+function buildMoonDescription(phaseName, illumination, isMajor, opts = {}) {
+  const { traditionalName, peakTimeStr } = opts;
+  const phaseLabel = traditionalName ? `${phaseName} (${traditionalName})` : phaseName;
+  const lines = [`Lunar phase: ${phaseLabel}`];
+  if (peakTimeStr) {
+    lines.push(`Peak: ${peakTimeStr}`);
+  }
+  lines.push(`Illumination: ${illumination}%`);
   if (isMajor) {
     if (phaseName === 'New Moon' || phaseName === 'Full Moon') {
       lines.push('Tidal ranges are often stronger near full and new moons.');
@@ -319,6 +424,7 @@ export function generateMoonCalendar(startDate, endDate, userTimezone = 'UTC') {
 
   const majorDates = getPrincipalPhaseDatesByLocal(startMs, endMs, timezone);
   const eclipses = getEclipsesInRange(startMs, endMs, timezone);
+  const traditionalNames = getTraditionalFullMoonNames(startMs, endMs, timezone);
 
   const localStart = localDateKey(new Date(startMs), timezone);
   const localEnd = localDateKey(new Date(endMs + MS_PER_DAY - 1), timezone);
@@ -338,26 +444,33 @@ export function generateMoonCalendar(startDate, endDate, userTimezone = 'UTC') {
     const evalTime = getUtcForLocalNoon(localKey, timezone, referenceUtc.getTime());
     const phaseInfo = getDailyMoonFromAstronomy(evalTime);
     let phaseName, summary, isMajor, illumination;
+    let peakDate = null;
+    let traditionalName = null;
     if (majorDates.new.has(localKey)) {
       phaseName = MAJOR_LABELS.new.phaseName;
       summary = MAJOR_LABELS.new.summary;
       isMajor = true;
       illumination = MAJOR_LABELS.new.illumination;
+      peakDate = majorDates.new.get(localKey);
     } else if (majorDates.firstQuarter.has(localKey)) {
       phaseName = MAJOR_LABELS.firstQuarter.phaseName;
       summary = MAJOR_LABELS.firstQuarter.summary;
       isMajor = true;
       illumination = MAJOR_LABELS.firstQuarter.illumination;
+      peakDate = majorDates.firstQuarter.get(localKey);
     } else if (majorDates.full.has(localKey)) {
+      traditionalName = traditionalNames.get(localKey) || null;
       phaseName = MAJOR_LABELS.full.phaseName;
-      summary = MAJOR_LABELS.full.summary;
+      summary = traditionalName ? `🌕 ${traditionalName}` : MAJOR_LABELS.full.summary;
       isMajor = true;
       illumination = MAJOR_LABELS.full.illumination;
+      peakDate = majorDates.full.get(localKey);
     } else if (majorDates.lastQuarter.has(localKey)) {
       phaseName = MAJOR_LABELS.lastQuarter.phaseName;
       summary = MAJOR_LABELS.lastQuarter.summary;
       isMajor = true;
       illumination = MAJOR_LABELS.lastQuarter.illumination;
+      peakDate = majorDates.lastQuarter.get(localKey);
     } else {
       phaseName = phaseInfo.phaseName;
       summary = phaseInfo.summary;
@@ -372,7 +485,11 @@ export function generateMoonCalendar(startDate, endDate, userTimezone = 'UTC') {
       illumination >= 99 || illumination <= 1 || (illumination >= 48 && illumination <= 52);
     const summaryLine =
       isMajor || isNearMajorBleed ? summary : `${summary} @ ${illumination}%`;
-    const description = buildMoonDescription(phaseName, illumination, isMajor);
+    const peakTimeStr = peakDate ? formatPeakInTimezone(peakDate, timezone) : null;
+    const description = buildMoonDescription(phaseName, illumination, isMajor, {
+      traditionalName,
+      peakTimeStr
+    });
 
     events.push(`BEGIN:VEVENT
 UID:${uid}

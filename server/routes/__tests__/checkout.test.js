@@ -1,6 +1,8 @@
 // server/routes/__tests__/checkout.test.js
 import { describe, it, expect } from 'vitest';
-import { getProCouponSessionOptions } from '../checkout.js';
+import { ObjectId } from 'mongodb';
+import { attributionTouchFromQuery, mergeAttributionRecord } from '../../attribution/index.js';
+import { getProCouponSessionOptions, recordCheckoutStarted } from '../checkout.js';
 
 describe('getProCouponSessionOptions (Pro coupon at checkout)', () => {
   const testCouponId = 'Qs5nl4do';
@@ -50,5 +52,33 @@ describe('getProCouponSessionOptions (Pro coupon at checkout)', () => {
   it('trims env coupon value', () => {
     const result = getProCouponSessionOptions('unlimited', true, `  ${testCouponId}  `);
     expect(result.discounts).toEqual([{ coupon: testCouponId }]);
+  });
+});
+
+describe('checkout-started authority', () => {
+  it('records only after Stripe returns a Checkout Session and deduplicates retries', async () => {
+    const rows = [];
+    const db = { collection: () => ({
+      insertOne: async (doc) => {
+        if (rows.some((row) => row.eventName === doc.eventName && row.dedupeKey === doc.dedupeKey)) {
+          const error = new Error('duplicate');
+          error.code = 11000;
+          throw error;
+        }
+        rows.push(doc);
+      },
+    }) };
+    const user = {
+      _id: new ObjectId(),
+      isTest: false,
+      acquisition: mergeAttributionRecord(null, attributionTouchFromQuery({ utm_campaign: 'launch' }, '/')),
+    };
+    const validated = { plan: 'single', country: 'usa' };
+    expect(await recordCheckoutStarted({ db, user, validated, session: null }))
+      .toMatchObject({ recorded: false });
+    expect(rows).toHaveLength(0);
+    expect((await recordCheckoutStarted({ db, user, validated, session: { id: 'cs_1' } })).recorded).toBe(true);
+    expect((await recordCheckoutStarted({ db, user, validated, session: { id: 'cs_1' } })).recorded).toBe(false);
+    expect(rows).toHaveLength(1);
   });
 });

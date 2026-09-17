@@ -2,7 +2,98 @@
 import { getDatabase } from '../db/index.js';
 import { sendDownloadReady } from '../auth/email.js';
 import Stripe from 'stripe';
+import { attributionFromStripeMetadata, UNKNOWN } from '../attribution/index.js';
+import { checkoutSessionDedupeKey, productTypeFromCheckout, recordFunnelEvent } from '../funnel/index.js';
 
+/**
+ * Attach sanitized attribution + isTest from Stripe metadata onto a purchase doc.
+ */
+function withAttributionFields(purchaseData, metadata) {
+  const { attribution, isTest } = attributionFromStripeMetadata(metadata || {});
+  return {
+    ...purchaseData,
+    attribution,
+    isTest,
+  };
+}
+
+/**
+ * Pro / subscription selected-station from Checkout metadata.
+ * Preserves a real station when supplied; otherwise unknown. Never invents a location.
+ */
+export function selectedStationFromMetadata(metadata = {}) {
+  const stationId = metadata.stationID != null ? String(metadata.stationID).trim() : '';
+  const stationTitle =
+    metadata.stationTitle != null ? String(metadata.stationTitle).trim() : '';
+  const country = metadata.country != null ? String(metadata.country).trim() : '';
+
+  const hasReal =
+    stationId !== '' &&
+    stationId !== UNKNOWN &&
+    stationTitle !== '' &&
+    stationTitle !== UNKNOWN &&
+    country !== '' &&
+    country !== UNKNOWN;
+
+  if (!hasReal) {
+    return {
+      stationId: UNKNOWN,
+      stationTitle: UNKNOWN,
+      country: UNKNOWN,
+    };
+  }
+
+  const out = {
+    stationId,
+    stationTitle,
+    country,
+  };
+
+  if (metadata.stationLat !== undefined && metadata.stationLat !== '' && metadata.stationLat != null) {
+    const lat = Number(metadata.stationLat);
+    if (!Number.isNaN(lat)) out.latitude = lat;
+  }
+  if (metadata.stationLng !== undefined && metadata.stationLng !== '' && metadata.stationLng != null) {
+    const lng = Number(metadata.stationLng);
+    if (!Number.isNaN(lng)) out.longitude = lng;
+  }
+
+  return out;
+}
+
+/** Record only after the authoritative completed-checkout path has a purchase. */
+export async function recordPurchaseCompletedEvent({ db, session, purchase, user }) {
+  if (!session?.id || !purchase?.userId || !user?.acquisition?.journeyId) {
+    return { recorded: false, reason: 'purchase_not_completed_or_unattributed' };
+  }
+  return recordFunnelEvent({
+    db,
+    eventName: 'purchase_completed',
+    acquisition: user.acquisition,
+    productType: productTypeFromCheckout({
+      plan: session.metadata?.plan,
+      productType: session.metadata?.productType,
+    }),
+    stationCountry: session.metadata?.country,
+    userId: purchase.userId,
+    isTest: user.isTest,
+    dedupeKey: checkoutSessionDedupeKey(session.id),
+  });
+}
+
+/**
+ * Funnel measurement is deliberately isolated from the authoritative purchase
+ * path. Once a purchase exists, an analytics write failure must not make the
+ * Stripe webhook fail or retry the completed payment workflow.
+ */
+export async function recordPurchaseCompletedEventSafely(args) {
+  try {
+    return await recordPurchaseCompletedEvent(args);
+  } catch (error) {
+    console.warn('[funnel] purchase event not recorded:', error?.message || error);
+    return { recorded: false, reason: 'analytics_write_failed' };
+  }
+}
 /**
  * Creates a purchase record from a Stripe checkout session
  * Idempotent - can be called multiple times safely
@@ -169,7 +260,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
     }
 
     // Record subscription purchase
-    const purchaseData = {
+    const purchaseData = withAttributionFields({
       userId: new ObjectId(userId),
       stripeSessionId: session.id,
       stripeSubscriptionId: subscriptionId,
@@ -180,8 +271,9 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       customerEmail: customerEmail,
       subscriptionStatus: subscription.status,
       createdAt: new Date(),
-      stripeCustomerId: stripeCustomerId || null
-    };
+      stripeCustomerId: stripeCustomerId || null,
+      selectedStation: selectedStationFromMetadata(metadata),
+    }, metadata);
     
     // Only add period end if we have a valid date
     if (currentPeriodEnd) {
@@ -213,7 +305,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
     const lng = parseFloat(goldenLng);
     const locationName = goldenLocationName || 'Location';
 
-    const purchaseData = {
+    const purchaseData = withAttributionFields({
       userId: new ObjectId(userId),
       stripeSessionId: session.id,
       stripePaymentIntentId: session.payment_intent ?? null,
@@ -225,7 +317,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       expiresAt,
       regenerationParams: { lat, lng, locationName, userTimezone: goldenTimezone },
       createdAt: now,
-    };
+    }, metadata);
     if (session.customer_details) {
       purchaseData.customerDetails = {
         name: session.customer_details.name,
@@ -250,7 +342,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
     const glng = parseFloat(goldenLng);
     const goldenName = goldenLocationName || stationTitle || 'Location';
 
-    const tideData = {
+    const tideData = withAttributionFields({
       userId: new ObjectId(userId),
       stripeSessionId: session.id,
       stripePaymentIntentId: session.payment_intent ?? null,
@@ -275,7 +367,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
         longitude: metadata.stationLng ? Number(metadata.stationLng) : undefined,
       },
       createdAt: now,
-    };
+    }, metadata);
     if (session.customer_details) {
       tideData.customerDetails = {
         name: session.customer_details.name,
@@ -303,7 +395,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       return new Date(Date.UTC(year, month, day));
     })();
 
-    const purchaseData = {
+    const purchaseData = withAttributionFields({
       userId: new ObjectId(userId),
       stripeSessionId: session.id,
       stripePaymentIntentId: session.payment_intent ?? null,
@@ -314,7 +406,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       purchaseDate,
       entitlementEnd,
       createdAt: now
-    };
+    }, metadata);
 
     if (session.customer_details) {
       purchaseData.customerDetails = {
@@ -337,7 +429,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
   const purchaseDate = now;
   const expiresAt = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 365 days
 
-  const purchaseData = {
+  const purchaseData = withAttributionFields({
     userId: new ObjectId(userId),
     stripeSessionId: session.id,
     stripePaymentIntentId: session.payment_intent ?? null,
@@ -358,7 +450,7 @@ export async function createPurchaseFromSession(session, db, ObjectId) {
       longitude: metadata.stationLng ? Number(metadata.stationLng) : undefined,
     },
     createdAt: now,
-  };
+  }, metadata);
 
   if (session.customer_details) {
     purchaseData.customerDetails = {
@@ -397,6 +489,14 @@ export async function handleCheckoutCompleted(session) {
     }
 
     console.log('[webhook] Successfully created/verified purchase record:', purchase._id.toString());
+
+    const funnelUser = await db.collection('users').findOne(
+      { _id: purchase.userId },
+      { projection: { acquisition: 1, isTest: 1 } }
+    );
+    if (funnelUser?.acquisition?.journeyId) {
+      await recordPurchaseCompletedEventSafely({ db, session, purchase, user: funnelUser });
+    }
 
     // Send email notification for one-time purchases
     const { metadata = {} } = session;

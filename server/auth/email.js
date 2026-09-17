@@ -16,7 +16,24 @@ const getResend = () => {
   return resend;
 };
 
-const FROM_EMAIL = 'TideInCal <noreply@tideincal.com>';
+const FROM_EMAIL = 'TideInCal <no-reply@tideincal.com>';
+
+// Headers we attach to every transactional auth email (verification, reset,
+// confirmation). These help mailbox providers (Gmail, Outlook) classify the
+// message correctly and give a victim of any future spam-bombing attempt a
+// clean one-click way to report it without hurting our sender reputation.
+//
+// - `List-Unsubscribe` with a mailto: form is required by Gmail's bulk-sender
+//   guidelines (Feb 2024) and is also what Gmail uses to show the "unsubscribe"
+//   chip on transactional mail. We point it at noreply so the bounce is
+//   discarded but the user gets the chip.
+// - `Auto-Submitted: auto-generated` (RFC 3834) marks this as an automated
+//   message so auto-responders don't reply and threading clients treat it
+//   appropriately.
+const AUTH_EMAIL_HEADERS = {
+  'List-Unsubscribe': '<mailto:no-reply@tideincal.com?subject=unsubscribe>',
+  'Auto-Submitted': 'auto-generated',
+};
 
 export async function sendEmailVerification({ to, token }) {
   const client = getResend();
@@ -30,6 +47,7 @@ export async function sendEmailVerification({ to, token }) {
       from: FROM_EMAIL,
       to: [to],
       subject: 'Verify your email for TideInCal',
+      headers: AUTH_EMAIL_HEADERS,
       template: {
         id: '74af04fe-8e30-417d-ba78-3f237f017e65',
         variables: {
@@ -63,6 +81,7 @@ export async function sendPasswordReset({ to, token }) {
       from: FROM_EMAIL,
       to: [to],
       subject: 'Reset your TideInCal password',
+      headers: AUTH_EMAIL_HEADERS,
       template: {
         id: '058d37b8-314e-49c7-872e-983a43df96d9',
         variables: {
@@ -93,6 +112,7 @@ export async function sendPasswordChangeConfirmation({ to }) {
       from: FROM_EMAIL,
       to: [to],
       subject: 'Your TideInCal password was updated',
+      headers: AUTH_EMAIL_HEADERS,
       template: {
         id: 'cc0a3043-651a-44e2-85b8-cc3051ec46db'
       }

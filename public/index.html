@@ -268,9 +268,6 @@
 
   <!-- MOON PHASE SECTION -->
   <section class="moon-phase-section" id="moon-phases">
-    <div class="moon-glow-orb moon-glow-orb--1"></div>
-    <div class="moon-glow-orb moon-glow-orb--2"></div>
-
     <div class="moon-phase-inner">
       <span class="moon-eyebrow">Pro Exclusive</span>
       <h2 class="moon-phase-heading">
@@ -283,10 +280,10 @@
 
       <div class="moon-feature-row">
         <div class="moon-feature-card">
-          <div class="moon-feature-icon">🌑</div>
+          <div class="moon-feature-icon">🌕</div>
           <h3 class="moon-feature-title">Every Phase, Every Night</h3>
           <p class="moon-feature-desc">
-            New Moon, First Quarter, Full Moon, Last Quarter. Every phase appears
+            🌑 New Moon, 🌓 First Quarter, 🌕 Full Moon, 🌗 Last Quarter. Every phase appears
             as a calendar event so you always know what's overhead.
           </p>
         </div>
@@ -687,7 +684,11 @@
             </form>
           </div>
           <div class="tab-pane fade show active" id="signupPane" role="tabpanel" aria-labelledby="signupTab">
-            <form id="signupForm" class="mt-3">
+            <form id="signupForm" class="mt-3" autocomplete="on">
+              <div aria-hidden="true" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">
+                <label for="signupCompany">Company</label>
+                <input type="text" id="signupCompany" name="company" tabindex="-1" autocomplete="off">
+              </div>
               <div class="mb-3">
                 <label for="signupEmail" class="form-label">Email</label>
                 <input type="email" class="form-control" id="signupEmail" name="email" required>

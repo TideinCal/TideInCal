@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+  <div id="adminNav"></div>
+  <main class="container pb-5">
+    <h1 class="h3 mb-4">Dashboard</h1>
+    <div id="dashboardContent"></div>
+    <section class="card shadow-sm mt-4" aria-labelledby="ssmfBaselineHeading">
+      <div class="card-body">
+        <h2 id="ssmfBaselineHeading" class="h4">SSMF aggregate baseline</h2>
+        <p class="small text-muted">Downloads aggregate counts only. No customer records or identifiers are included.</p>
+        <form id="ssmfBaselineForm" class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="ssmfCampaignId">Campaign ID</label>
+            <input id="ssmfCampaignId" name="campaign_id" class="form-control" required maxlength="80"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfStart">Start date</label>
+            <input id="ssmfStart" name="start" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfEnd">End date</label>
+            <input id="ssmfEnd" name="end" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">Download SSMF aggregate baseline (JSON)</button>
+          </div>
+        </form>
+        <div id="ssmfBaselineError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+      </div>
+    </section>
+    <section class="card shadow-sm mt-4" aria-labelledby="ssmfStripeHistoryAuditHeading">
+      <div class="card-body">
+        <h2 id="ssmfStripeHistoryAuditHeading" class="h4">Stripe history coverage audit</h2>
+        <p class="small text-muted">Checks Tide's stored purchase records for test labels, Checkout references,
+          refund markers, and billing-location field availability. Downloads counts only: no customer rows,
+          complete ZIP/postal codes, or buyer-geography conclusions. This does not contact Stripe.</p>
+        <p class="small text-muted">The campaign ID is a report/export label only; it does not filter purchase records by campaign.
+          The audit scans all stored purchases within the selected Pacific dates.</p>
+        <form id="ssmfStripeHistoryAuditForm" class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="ssmfStripeAuditCampaignId">Campaign ID</label>
+            <input id="ssmfStripeAuditCampaignId" name="campaign_id" class="form-control" required maxlength="80"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off" value="tic-2026-first-controlled-30-day">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfStripeAuditStart">Start date (Pacific)</label>
+            <input id="ssmfStripeAuditStart" name="start" class="form-control" type="date" required value="2025-09-13">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfStripeAuditEnd">End date (Pacific)</label>
+            <input id="ssmfStripeAuditEnd" name="end" class="form-control" type="date" required value="2026-09-12">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">Download coverage counts (JSON)</button>
+          </div>
+        </form>
+        <div id="ssmfStripeHistoryAuditError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+      </div>
+    </section>
+    <section class="card shadow-sm mt-4" aria-labelledby="ssmfStripeReconciliationHeading">
+      <div class="card-body">
+        <h2 id="ssmfStripeReconciliationHeading" class="h4">Historical Stripe reconciliation</h2>
+        <p class="small text-muted">The campaign ID is a report label only; it is not a live campaign filter.
+          Submitting runs a live, read-only Stripe lookup for no more than 20 locally selected Checkout references.
+          The downloaded report contains aggregate counts only; no raw rows leave the server.</p>
+        <form id="ssmfStripeReconciliationForm" class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="ssmfStripeReconciliationCampaignId">Campaign ID</label>
+            <input id="ssmfStripeReconciliationCampaignId" name="campaign_id" class="form-control" required maxlength="80"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off" value="tic-2026-first-controlled-30-day">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfStripeReconciliationStart">Start date (Pacific)</label>
+            <input id="ssmfStripeReconciliationStart" name="start" class="form-control" type="date" required value="2025-09-13" readonly>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfStripeReconciliationEnd">End date (Pacific)</label>
+            <input id="ssmfStripeReconciliationEnd" name="end" class="form-control" type="date" required value="2026-09-12" readonly>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">Run reconciliation (JSON)</button>
+          </div>
+        </form>
+        <div id="ssmfStripeReconciliationError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+      </div>
+    </section>
+    <section class="card shadow-sm mt-4" aria-labelledby="funnelReportHeading">
+      <div class="card-body">
+        <h2 id="funnelReportHeading" class="h4">Campaign post funnel</h2>
+        <p class="small text-muted">Counts use the stored last-touch campaign content. Local purchase records are not independently Stripe-confirmed and do not establish that a post caused a sale.</p>
+        <form id="funnelReportForm" class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="funnelCampaign">Campaign</label>
+            <input id="funnelCampaign" name="campaign" class="form-control" required maxlength="80"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="funnelStart">Start date</label>
+            <input id="funnelStart" name="start" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="funnelEnd">End date (exclusive)</label>
+            <input id="funnelEnd" name="end" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">View post counts</button>
+          </div>
+        </form>
+        <div id="funnelReportError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+        <div id="funnelReportResult" class="mt-3" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+  <script src="/js/admin/common.js"></script>
+  <script src="/js/admin/dashboard.js"></script>
+</body>
+</html>
