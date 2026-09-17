@@ -11,6 +11,7 @@ import { setCustomerMarkedForReview } from '../services/admin/setCustomerMarkedF
 import { setCustomerIsTest } from '../services/admin/setCustomerIsTest.js';
 import { getCampaignFunnelReport } from '../funnel/report.js';
 import { getSsmfBaseline } from '../services/admin/getSsmfBaseline.js';
+import { getSsmfStripeHistoryAudit } from '../services/admin/getSsmfStripeHistoryAudit.js';
 
 const router = Router();
 const csrfProtection = csurf({ cookie: false });
@@ -63,6 +64,22 @@ router.get('/ssmf-baseline', async (req, res) => {
   } catch (error) {
     if (error instanceof TypeError) return res.status(400).json({ error: error.message });
     console.error('[admin] SSMF baseline error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/admin/ssmf-stripe-history-audit?campaign_id=&start=YYYY-MM-DD&end=YYYY-MM-DD
+// This reads local purchase coverage only; it never calls Stripe or exports customer rows.
+router.get('/ssmf-stripe-history-audit', async (req, res) => {
+  try {
+    const audit = await getSsmfStripeHistoryAudit(getDatabase(), req.query);
+    const { campaign_id: campaignId } = audit.export_context;
+    const { start_date: start, end_date: end } = audit.window;
+    res.attachment(`ssmf-stripe-history-audit-${campaignId}-${start}-to-${end}.json`);
+    res.json(audit);
+  } catch (error) {
+    if (error instanceof TypeError) return res.status(400).json({ error: error.message });
+    console.error('[admin] SSMF Stripe history audit error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

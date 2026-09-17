@@ -36,6 +36,35 @@
         <div id="ssmfBaselineError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
       </div>
     </section>
+    <section class="card shadow-sm mt-4" aria-labelledby="ssmfStripeHistoryAuditHeading">
+      <div class="card-body">
+        <h2 id="ssmfStripeHistoryAuditHeading" class="h4">Stripe history coverage audit</h2>
+        <p class="small text-muted">Checks Tide's stored purchase records for test labels, Checkout references,
+          refund markers, and billing-location field availability. Downloads counts only: no customer rows,
+          complete ZIP/postal codes, or buyer-geography conclusions. This does not contact Stripe.</p>
+        <p class="small text-muted">The campaign ID is a report/export label only; it does not filter purchase records by campaign.
+          The audit scans all stored purchases within the selected Pacific dates.</p>
+        <form id="ssmfStripeHistoryAuditForm" class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="ssmfStripeAuditCampaignId">Campaign ID</label>
+            <input id="ssmfStripeAuditCampaignId" name="campaign_id" class="form-control" required maxlength="80"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off" value="tic-2026-first-controlled-30-day">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfStripeAuditStart">Start date (Pacific)</label>
+            <input id="ssmfStripeAuditStart" name="start" class="form-control" type="date" required value="2025-09-13">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfStripeAuditEnd">End date (Pacific)</label>
+            <input id="ssmfStripeAuditEnd" name="end" class="form-control" type="date" required value="2026-09-12">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">Download coverage counts (JSON)</button>
+          </div>
+        </form>
+        <div id="ssmfStripeHistoryAuditError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+      </div>
+    </section>
     <section class="card shadow-sm mt-4" aria-labelledby="funnelReportHeading">
       <div class="card-body">
         <h2 id="funnelReportHeading" class="h4">Campaign post funnel</h2>

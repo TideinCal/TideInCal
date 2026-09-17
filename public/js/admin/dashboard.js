@@ -74,6 +74,34 @@ function setupSsmfBaselineDownload() {
   });
 }
 
+function setupSsmfStripeHistoryAuditDownload() {
+  const form = document.getElementById('ssmfStripeHistoryAuditForm');
+  const campaign = document.getElementById('ssmfStripeAuditCampaignId');
+  const start = document.getElementById('ssmfStripeAuditStart');
+  const end = document.getElementById('ssmfStripeAuditEnd');
+  const error = document.getElementById('ssmfStripeHistoryAuditError');
+  const todayString = localDateString(new Date());
+  start.max = todayString;
+  end.max = todayString;
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    error.classList.add('d-none');
+    const campaignId = campaign.value.trim();
+    const startDate = start.value;
+    const endDate = end.value;
+    const rangeDays = (new Date(`${endDate}T00:00:00Z`) - new Date(`${startDate}T00:00:00Z`)) / 86400000 + 1;
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(campaignId) || !startDate || !endDate ||
+        endDate > todayString || rangeDays < 1 || rangeDays > 365) {
+      error.textContent = 'Enter a valid campaign ID and Pacific date range of at most 365 days ending no later than today.';
+      error.classList.remove('d-none');
+      return;
+    }
+    const params = new URLSearchParams({ campaign_id: campaignId, start: startDate, end: endDate });
+    window.location.assign(`/api/admin/ssmf-stripe-history-audit?${params.toString()}`);
+  });
+}
+
 function setupFunnelReport() {
   const form = document.getElementById('funnelReportForm');
   const campaign = document.getElementById('funnelCampaign');
@@ -197,5 +225,6 @@ async function load() {
 }
 
 setupSsmfBaselineDownload();
+setupSsmfStripeHistoryAuditDownload();
 setupFunnelReport();
 load();
