@@ -12,6 +12,7 @@ import { setCustomerIsTest } from '../services/admin/setCustomerIsTest.js';
 import { getCampaignFunnelReport } from '../funnel/report.js';
 import { getSsmfBaseline } from '../services/admin/getSsmfBaseline.js';
 import { getSsmfStripeHistoryAudit } from '../services/admin/getSsmfStripeHistoryAudit.js';
+import { getSsmfStripeReconciliation } from '../services/admin/getSsmfStripeReconciliation.js';
 
 const router = Router();
 const csrfProtection = csurf({ cookie: false });
@@ -80,6 +81,21 @@ router.get('/ssmf-stripe-history-audit', async (req, res) => {
   } catch (error) {
     if (error instanceof TypeError) return res.status(400).json({ error: error.message });
     console.error('[admin] SSMF Stripe history audit error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/admin/ssmf-stripe-reconciliation?campaign_id=&start=2025-09-13&end=2026-09-12
+// Explicit, on-demand aggregate report. It performs only bounded Stripe GET reads.
+router.get('/ssmf-stripe-reconciliation', async (req, res) => {
+  try {
+    const report = await getSsmfStripeReconciliation(getDatabase(), req.query);
+    const { campaign_id: campaignId } = report.export_context;
+    res.attachment(`ssmf-stripe-reconciliation-${campaignId}-2025-09-13-to-2026-09-12.json`);
+    res.json(report);
+  } catch (error) {
+    if (error instanceof TypeError) return res.status(400).json({ error: error.message });
+    console.error('[admin] SSMF Stripe reconciliation failed');
     res.status(500).json({ error: 'Internal server error' });
   }
 });

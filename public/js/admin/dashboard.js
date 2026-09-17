@@ -102,6 +102,28 @@ function setupSsmfStripeHistoryAuditDownload() {
   });
 }
 
+function setupSsmfStripeReconciliationDownload() {
+  const form = document.getElementById('ssmfStripeReconciliationForm');
+  if (!form) return;
+  const campaign = document.getElementById('ssmfStripeReconciliationCampaignId');
+  const start = document.getElementById('ssmfStripeReconciliationStart');
+  const end = document.getElementById('ssmfStripeReconciliationEnd');
+  const error = document.getElementById('ssmfStripeReconciliationError');
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    error.classList.add('d-none');
+    const campaignId = campaign.value.trim();
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(campaignId) ||
+        start.value !== '2025-09-13' || end.value !== '2026-09-12') {
+      error.textContent = 'Enter a valid campaign ID. This protected reconciliation uses its fixed historical Pacific date window.';
+      error.classList.remove('d-none');
+      return;
+    }
+    const params = new URLSearchParams({ campaign_id: campaignId, start: start.value, end: end.value });
+    window.location.assign(`/api/admin/ssmf-stripe-reconciliation?${params.toString()}`);
+  });
+}
+
 function setupFunnelReport() {
   const form = document.getElementById('funnelReportForm');
   const campaign = document.getElementById('funnelCampaign');
@@ -226,5 +248,6 @@ async function load() {
 
 setupSsmfBaselineDownload();
 setupSsmfStripeHistoryAuditDownload();
+setupSsmfStripeReconciliationDownload();
 setupFunnelReport();
 load();

@@ -65,6 +65,33 @@
         <div id="ssmfStripeHistoryAuditError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
       </div>
     </section>
+    <section class="card shadow-sm mt-4" aria-labelledby="ssmfStripeReconciliationHeading">
+      <div class="card-body">
+        <h2 id="ssmfStripeReconciliationHeading" class="h4">Historical Stripe reconciliation</h2>
+        <p class="small text-muted">The campaign ID is a report label only; it is not a live campaign filter.
+          Submitting runs a live, read-only Stripe lookup for no more than 20 locally selected Checkout references.
+          The downloaded report contains aggregate counts only; no raw rows leave the server.</p>
+        <form id="ssmfStripeReconciliationForm" class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="ssmfStripeReconciliationCampaignId">Campaign ID</label>
+            <input id="ssmfStripeReconciliationCampaignId" name="campaign_id" class="form-control" required maxlength="80"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off" value="tic-2026-first-controlled-30-day">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfStripeReconciliationStart">Start date (Pacific)</label>
+            <input id="ssmfStripeReconciliationStart" name="start" class="form-control" type="date" required value="2025-09-13" readonly>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="ssmfStripeReconciliationEnd">End date (Pacific)</label>
+            <input id="ssmfStripeReconciliationEnd" name="end" class="form-control" type="date" required value="2026-09-12" readonly>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">Run reconciliation (JSON)</button>
+          </div>
+        </form>
+        <div id="ssmfStripeReconciliationError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+      </div>
+    </section>
     <section class="card shadow-sm mt-4" aria-labelledby="funnelReportHeading">
       <div class="card-body">
         <h2 id="funnelReportHeading" class="h4">Campaign post funnel</h2>
