@@ -36,6 +36,32 @@
         <div id="ssmfBaselineError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
       </div>
     </section>
+    <section class="card shadow-sm mt-4" aria-labelledby="funnelReportHeading">
+      <div class="card-body">
+        <h2 id="funnelReportHeading" class="h4">Campaign post funnel</h2>
+        <p class="small text-muted">Counts use the stored last-touch campaign content. Local purchase records are not independently Stripe-confirmed and do not establish that a post caused a sale.</p>
+        <form id="funnelReportForm" class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label" for="funnelCampaign">Campaign</label>
+            <input id="funnelCampaign" name="campaign" class="form-control" required maxlength="80"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*" autocomplete="off">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="funnelStart">Start date</label>
+            <input id="funnelStart" name="start" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" for="funnelEnd">End date (exclusive)</label>
+            <input id="funnelEnd" name="end" class="form-control" type="date" required>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-primary w-100" type="submit">View post counts</button>
+          </div>
+        </form>
+        <div id="funnelReportError" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+        <div id="funnelReportResult" class="mt-3" aria-live="polite"></div>
+      </div>
+    </section>
   </main>
   <script src="/js/admin/common.js"></script>
   <script src="/js/admin/dashboard.js"></script>

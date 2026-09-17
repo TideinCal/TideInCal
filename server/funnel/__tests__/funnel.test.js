@@ -67,6 +67,9 @@ function reportDb({ events = [], purchases = [] }) {
           const targetCampaign = match.$and[0][name === 'purchases' ? 'attribution.campaign' : 'campaign'];
           const dateField = name === 'purchases' ? 'createdAt' : 'serverTimestamp';
           const range = match[dateField];
+          const isContentBreakdown = name === 'funnel_events'
+            ? !pipeline[1].$facet.tagged.some((stage) => '$count' in stage)
+            : '$group' in pipeline[1];
 
           if (name === 'funnel_events') {
             const eligible = events.filter((event) =>
@@ -78,6 +81,26 @@ function reportDb({ events = [], purchases = [] }) {
             const distinct = (eventName) => new Set(
               eligible.filter((event) => event.eventName === eventName).map((event) => event.journeyId)
             ).size;
+            if (isContentBreakdown) {
+              const byContent = (eventName, distinctJourney) => {
+                const counts = new Map();
+                const seen = new Set();
+                for (const event of eligible.filter((row) => row.eventName === eventName)) {
+                  const content = event.content || 'unknown';
+                  const key = `${content}:${event.journeyId}`;
+                  if (distinctJourney && seen.has(key)) continue;
+                  seen.add(key);
+                  counts.set(content, (counts.get(content) || 0) + 1);
+                }
+                return [...counts].map(([_id, count]) => ({ _id, count }));
+              };
+              return { toArray: async () => [{
+                tagged: byContent('tagged_landing', true),
+                selected: byContent('product_selected', true),
+                signups: byContent('signup_completed', false),
+                checkout: byContent('checkout_started', true),
+              }] };
+            }
             const result = [{
               tagged: distinct('tagged_landing') ? [{ count: distinct('tagged_landing') }] : [],
               selected: distinct('product_selected') ? [{ count: distinct('product_selected') }] : [],
@@ -96,6 +119,14 @@ function reportDb({ events = [], purchases = [] }) {
             typeof purchase.amount === 'number' && purchase.amount > 0 &&
             purchase.createdAt >= range.$gte && purchase.createdAt < range.$lt
           );
+          if (isContentBreakdown) {
+            const counts = new Map();
+            for (const row of windowPurchases) {
+              const content = row.attribution?.content || 'unknown';
+              counts.set(content, (counts.get(content) || 0) + 1);
+            }
+            return { toArray: async () => [...counts].map(([_id, localPurchases]) => ({ _id, localPurchases })) };
+          }
           const notFullyRefunded = (purchase) => purchase.fullyRefundedAt == null;
           const candidateUsers = [...new Map(
             windowPurchases.filter(notFullyRefunded).map((purchase) => [purchase.userId.toString(), purchase.userId])
@@ -284,6 +315,7 @@ describe('campaign report fixture semantics', () => {
       events.push(funnelEvent('signup_completed', journey), funnelEvent('checkout_started', journey));
     }
     events.push(funnelEvent('tagged_landing', 'j4'), funnelEvent('product_selected', 'j4'));
+    events.push(funnelEvent('tagged_landing', 'unknown-content', { content: undefined }));
     events.push(funnelEvent('tagged_landing', 'test', { isTest: true }));
     events.push(funnelEvent('tagged_landing', 'verify', { campaign: 'tidy_measurement_verification' }));
     events.push(funnelEvent('tagged_landing', 'cookie', { content: 'cookie_only' }));
@@ -301,21 +333,42 @@ describe('campaign report fixture semantics', () => {
       purchase(uPriorRefund, 400, { createdAt: new Date('2026-07-01T00:00:00Z'), fullyRefundedAt: new Date('2026-07-02T00:00:00Z') }),
       purchase(uFull, 700, { fullyRefundedAt: new Date('2026-08-11T00:00:00Z') }),
       purchase(uPartial, 1000, { refundedAmount: 200 }),
+      purchase(new ObjectId(), 750, { attribution: { campaign: 'launch' } }),
       purchase(new ObjectId(), 900, { isTest: true }),
       purchase(new ObjectId(), 800, { attribution: { campaign: 'launch', content: 'cookie_only' } }),
     ];
     const report = await getCampaignFunnelReport(reportDb({ events, purchases }), { campaign: 'launch', start: START, end: END }, NOW);
     expect(report).toMatchObject({
-      taggedJourneys: 4, selectedJourneys: 4, completedSignups: 3, checkoutJourneys: 3,
-      payingCustomers: 3, completedPurchases: 6, proSubscriptionsStarted: 2,
-      grossByCurrency: { usd: 5200, cad: 2500 },
+      taggedJourneys: 5, selectedJourneys: 4, completedSignups: 3, checkoutJourneys: 3,
+      payingCustomers: 4, completedPurchases: 7, proSubscriptionsStarted: 2,
+      grossByCurrency: { usd: 5950, cad: 2500 },
       refundsByCurrency: { usd: 900, cad: 0 },
-      netByCurrency: { usd: 4300, cad: 2500 },
+      netByCurrency: { usd: 5050, cad: 2500 },
       conversionPercentages: {
-        landingToSelection: 100, selectionToSignup: 75,
-        signupToCheckout: 100, checkoutToPayingCustomer: 100,
+        landingToSelection: 80, selectionToSignup: 75,
+        signupToCheckout: 100, checkoutToPayingCustomer: 133.33,
       },
     });
+    expect(report.contentBreakdown).toEqual([
+      {
+        content: 'reel-1',
+        taggedJourneys: 4,
+        selectedJourneys: 4,
+        completedSignups: 3,
+        checkoutJourneys: 3,
+        localPurchases: 6,
+      },
+      {
+        content: 'unknown',
+        taggedJourneys: 1,
+        selectedJourneys: 0,
+        completedSignups: 0,
+        checkoutJourneys: 0,
+        localPurchases: 1,
+      },
+    ]);
+    expect(report.contentBreakdown.reduce((sum, row) => sum + row.localPurchases, 0))
+      .toBe(report.completedPurchases);
     expect(JSON.stringify(report)).not.toMatch(/"(?:email|name|stationTitle|userId)"/i);
   });
 
@@ -330,6 +383,65 @@ describe('campaign report fixture semantics', () => {
     expect(report.payingCustomers).toBe(0);
     expect(report.completedPurchases).toBe(2);
     expect(report.refundsByCurrency).toEqual({ usd: 700 });
+  });
+
+  it('deduplicates repeated journey steps within each content label', async () => {
+    const events = [
+      funnelEvent('tagged_landing', 'same-journey'),
+      funnelEvent('tagged_landing', 'same-journey'),
+      funnelEvent('product_selected', 'same-journey'),
+      funnelEvent('product_selected', 'same-journey'),
+      funnelEvent('checkout_started', 'same-journey'),
+      funnelEvent('checkout_started', 'same-journey'),
+    ];
+    const report = await getCampaignFunnelReport(reportDb({ events }), {
+      campaign: 'launch', start: START, end: END,
+    }, NOW);
+
+    expect(report.taggedJourneys).toBe(1);
+    expect(report.selectedJourneys).toBe(1);
+    expect(report.checkoutJourneys).toBe(1);
+    expect(report.contentBreakdown).toEqual([{
+      content: 'reel-1',
+      taggedJourneys: 1,
+      selectedJourneys: 1,
+      completedSignups: 0,
+      checkoutJourneys: 1,
+      localPurchases: 0,
+    }]);
+  });
+
+  it('reports a journey under each tagged content it touched without changing campaign totals', async () => {
+    const events = [
+      funnelEvent('tagged_landing', 'cross-post'),
+      funnelEvent('product_selected', 'cross-post'),
+      funnelEvent('tagged_landing', 'cross-post', { content: 'reel-2' }),
+      funnelEvent('product_selected', 'cross-post', { content: 'reel-2' }),
+    ];
+    const report = await getCampaignFunnelReport(reportDb({ events }), {
+      campaign: 'launch', start: START, end: END,
+    }, NOW);
+
+    expect(report.taggedJourneys).toBe(1);
+    expect(report.selectedJourneys).toBe(1);
+    expect(report.contentBreakdown).toEqual([
+      {
+        content: 'reel-1',
+        taggedJourneys: 1,
+        selectedJourneys: 1,
+        completedSignups: 0,
+        checkoutJourneys: 0,
+        localPurchases: 0,
+      },
+      {
+        content: 'reel-2',
+        taggedJourneys: 1,
+        selectedJourneys: 1,
+        completedSignups: 0,
+        checkoutJourneys: 0,
+        localPurchases: 0,
+      },
+    ]);
   });
 
   it('allows a customer whose only prior purchase was fully refunded', async () => {
@@ -347,6 +459,7 @@ describe('campaign report fixture semantics', () => {
       landingToSelection: 0, selectionToSignup: 0,
       signupToCheckout: 0, checkoutToPayingCustomer: 0,
     });
+    expect(report.contentBreakdown).toEqual([]);
   });
 
   it('builds the prior-paid lookup from the full purchases collection', () => {

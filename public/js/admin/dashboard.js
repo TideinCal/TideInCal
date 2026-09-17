@@ -74,6 +74,73 @@ function setupSsmfBaselineDownload() {
   });
 }
 
+function setupFunnelReport() {
+  const form = document.getElementById('funnelReportForm');
+  const campaign = document.getElementById('funnelCampaign');
+  const start = document.getElementById('funnelStart');
+  const end = document.getElementById('funnelEnd');
+  const error = document.getElementById('funnelReportError');
+  const result = document.getElementById('funnelReportResult');
+  const today = new Date();
+  const todayString = localDateString(today);
+  const defaultStart = new Date(today);
+  defaultStart.setDate(today.getDate() - 7);
+
+  start.value = localDateString(defaultStart);
+  end.value = todayString;
+  start.max = todayString;
+  end.max = todayString;
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    error.classList.add('d-none');
+    result.innerHTML = '<p class="text-muted mb-0">Loading…</p>';
+    const campaignId = campaign.value.trim();
+    const startDate = start.value;
+    const endDate = end.value;
+    const rangeDays = (new Date(`${endDate}T00:00:00Z`) - new Date(`${startDate}T00:00:00Z`)) / 86400000;
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(campaignId) || !startDate || !endDate || rangeDays <= 0 || rangeDays > 31) {
+      result.innerHTML = '';
+      error.textContent = 'Enter a lowercase hyphen-separated campaign and an ordered date range of at most 31 days. The end date is excluded.';
+      error.classList.remove('d-none');
+      return;
+    }
+
+    try {
+      const params = new URLSearchParams({ campaign: campaignId, start: startDate, end: endDate });
+      const data = await adminFetchJson(`/api/admin/funnel?${params.toString()}`);
+      const rows = data.contentBreakdown || [];
+      if (!rows.length) {
+        result.innerHTML = '<p class="text-muted mb-0">No eligible attributed funnel activity or local purchases were recorded for this campaign and range.</p>';
+        return;
+      }
+      result.innerHTML = `
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead><tr>
+              <th scope="col">Post/content</th><th scope="col">Tagged landings</th>
+              <th scope="col">Product selections</th><th scope="col">Completed signups</th>
+              <th scope="col">Checkout starts</th><th scope="col">Local purchases</th>
+            </tr></thead>
+            <tbody>${rows.map((row) => `<tr>
+              <th scope="row">${escapeHtml(row.content === 'unknown' ? 'Unknown post/content' : row.content)}</th>
+              <td>${escapeHtml(String(row.taggedJourneys))}</td>
+              <td>${escapeHtml(String(row.selectedJourneys))}</td>
+              <td>${escapeHtml(String(row.completedSignups))}</td>
+              <td>${escapeHtml(String(row.checkoutJourneys))}</td>
+              <td>${escapeHtml(String(row.localPurchases))}</td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </div>
+        <p class="small text-muted mb-0 mt-2">Journey steps are deduplicated within each content label. A journey touching two tagged posts can appear once under each, so per-post rows are not necessarily additive to the campaign unique-journey total. Local purchases are assigned by stored last-touch content. Unknown post/content is shown separately; it is not assigned by date. Counts are aggregate-only and do not include customer rows or identifiers.</p>`;
+    } catch (e) {
+      result.innerHTML = '';
+      error.textContent = e.message || String(e);
+      error.classList.remove('d-none');
+    }
+  });
+}
+
 async function load() {
   const el = document.getElementById('dashboardContent');
   el.innerHTML = '<p class="text-muted">Loading…</p>';
@@ -130,4 +197,5 @@ async function load() {
 }
 
 setupSsmfBaselineDownload();
+setupFunnelReport();
 load();

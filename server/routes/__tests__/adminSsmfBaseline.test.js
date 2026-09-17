@@ -19,10 +19,24 @@ const baseline = {
   },
 };
 
-async function makeApp(user, implementation = async () => baseline) {
+const funnelReport = {
+  filters: { campaign: 'launch', start: '2026-09-01', end: '2026-09-10' },
+  taggedJourneys: 2,
+  contentBreakdown: [{
+    content: 'reel-1',
+    taggedJourneys: 2,
+    selectedJourneys: 1,
+    completedSignups: 1,
+    checkoutJourneys: 1,
+    localPurchases: 1,
+  }],
+};
+
+async function makeApp(user, implementation = async () => baseline, funnelImplementation = async () => funnelReport) {
   vi.resetModules();
   vi.doMock('../../db/index.js', () => ({ getDatabase: () => ({}) }));
   vi.doMock('../../services/admin/getSsmfBaseline.js', () => ({ getSsmfBaseline: implementation }));
+  vi.doMock('../../funnel/report.js', () => ({ getCampaignFunnelReport: funnelImplementation }));
   const { default: adminApi } = await import('../adminApi.js');
   const app = express();
   app.use((req, _res, next) => {
@@ -74,5 +88,40 @@ describe('GET /api/admin/ssmf-baseline', () => {
     const response = await request(app).get('/api/admin/ssmf-baseline?campaign_id=fall&start=bad&end=bad');
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'date range must be ordered' });
+  });
+});
+
+describe('GET /api/admin/funnel', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('requires an authenticated admin before invoking the report', async () => {
+    const report = vi.fn(async () => funnelReport);
+    const anonymousApp = await makeApp(null, undefined, report);
+    const customerApp = await makeApp({ role: 'customer' }, undefined, report);
+
+    expect((await request(anonymousApp).get('/api/admin/funnel?campaign=launch&start=2026-09-01&end=2026-09-10')).status).toBe(401);
+    expect((await request(customerApp).get('/api/admin/funnel?campaign=launch&start=2026-09-01&end=2026-09-10')).status).toBe(403);
+    expect(report).not.toHaveBeenCalled();
+  });
+
+  it('returns aggregate post counts without customer identifiers for an admin', async () => {
+    const report = vi.fn(async () => funnelReport);
+    const app = await makeApp({ role: 'admin' }, undefined, report);
+    const response = await request(app).get('/api/admin/funnel?campaign=launch&start=2026-09-01&end=2026-09-10');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(funnelReport);
+    expect(JSON.stringify(response.body)).not.toMatch(/"(?:email|name|userId|_id)"/i);
+    expect(report).toHaveBeenCalledWith({}, expect.objectContaining({ campaign: 'launch' }));
+  });
+
+  it('returns a 400 for campaign/date validation errors', async () => {
+    const app = await makeApp({ role: 'admin' }, undefined, async () => {
+      throw new TypeError('date range must be positive, no more than 31 days, and not in the future');
+    });
+    const response = await request(app).get('/api/admin/funnel?campaign=bad&start=bad&end=bad');
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toMatch(/31 days/);
   });
 });

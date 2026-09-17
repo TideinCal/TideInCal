@@ -24,17 +24,35 @@ function percentage(numerator, denominator) {
   return denominator > 0 ? Number(((numerator / denominator) * 100).toFixed(2)) : 0;
 }
 
+function eventReportMatch(filters) {
+  return {
+    $and: [
+      { campaign: filters.campaign },
+      { campaign: { $nin: VERIFICATION_IDENTIFIERS } },
+    ],
+    serverTimestamp: { $gte: filters.start, $lt: filters.end },
+    isTest: { $ne: true },
+    content: { $nin: VERIFICATION_IDENTIFIERS },
+  };
+}
+
+function purchaseReportMatch(filters) {
+  return {
+    $and: [
+      { 'attribution.campaign': filters.campaign },
+      { 'attribution.campaign': { $nin: VERIFICATION_IDENTIFIERS } },
+    ],
+    createdAt: { $gte: filters.start, $lt: filters.end },
+    isTest: { $ne: true },
+    userId: { $type: 'objectId' },
+    amount: { $type: 'number', $gt: 0 },
+    'attribution.content': { $nin: VERIFICATION_IDENTIFIERS },
+  };
+}
+
 export function buildEventReportPipeline(filters) {
   return [
-    { $match: {
-      $and: [
-        { campaign: filters.campaign },
-        { campaign: { $nin: VERIFICATION_IDENTIFIERS } },
-      ],
-      serverTimestamp: { $gte: filters.start, $lt: filters.end },
-      isTest: { $ne: true },
-      content: { $nin: VERIFICATION_IDENTIFIERS },
-    } },
+    { $match: eventReportMatch(filters) },
     { $facet: {
       tagged: [{ $match: { eventName: 'tagged_landing' } }, { $group: { _id: '$journeyId' } }, { $count: 'count' }],
       selected: [{ $match: { eventName: 'product_selected' } }, { $group: { _id: '$journeyId' } }, { $count: 'count' }],
@@ -46,17 +64,7 @@ export function buildEventReportPipeline(filters) {
 
 export function buildPurchaseReportPipeline(filters) {
   return [
-    { $match: {
-      $and: [
-        { 'attribution.campaign': filters.campaign },
-        { 'attribution.campaign': { $nin: VERIFICATION_IDENTIFIERS } },
-      ],
-      createdAt: { $gte: filters.start, $lt: filters.end },
-      isTest: { $ne: true },
-      userId: { $type: 'objectId' },
-      amount: { $type: 'number', $gt: 0 },
-      'attribution.content': { $nin: VERIFICATION_IDENTIFIERS },
-    } },
+    { $match: purchaseReportMatch(filters) },
     { $facet: {
       paying: [
         // KPI: a window purchaser is new only when no earlier qualifying paid
@@ -94,12 +102,73 @@ export function buildPurchaseReportPipeline(filters) {
   ];
 }
 
+function contentKey(field) {
+  return { $ifNull: [field, 'unknown'] };
+}
+
+function distinctJourneysByContent(eventName) {
+  return [
+    { $match: { eventName } },
+    { $group: { _id: { content: contentKey('$content'), journeyId: '$journeyId' } } },
+    { $group: { _id: '$_id.content', count: { $sum: 1 } } },
+  ];
+}
+
+export function buildContentEventReportPipeline(filters) {
+  return [
+    { $match: eventReportMatch(filters) },
+    { $facet: {
+      tagged: distinctJourneysByContent('tagged_landing'),
+      selected: distinctJourneysByContent('product_selected'),
+      signups: [
+        { $match: { eventName: 'signup_completed' } },
+        { $group: { _id: contentKey('$content'), count: { $sum: 1 } } },
+      ],
+      checkout: distinctJourneysByContent('checkout_started'),
+    } },
+  ];
+}
+
+export function buildContentPurchaseReportPipeline(filters) {
+  return [
+    { $match: purchaseReportMatch(filters) },
+    { $group: { _id: contentKey('$attribution.content'), localPurchases: { $sum: 1 } } },
+  ];
+}
+
+function contentCounts(rows, field) {
+  return new Map(rows.map((row) => [row._id || 'unknown', row[field] || 0]));
+}
+
+function contentBreakdown(eventSummary = {}, purchaseRows = []) {
+  const tagged = contentCounts(eventSummary.tagged || [], 'count');
+  const selected = contentCounts(eventSummary.selected || [], 'count');
+  const signups = contentCounts(eventSummary.signups || [], 'count');
+  const checkout = contentCounts(eventSummary.checkout || [], 'count');
+  const localPurchases = contentCounts(purchaseRows, 'localPurchases');
+  const contents = new Set([...tagged.keys(), ...selected.keys(), ...signups.keys(), ...checkout.keys(), ...localPurchases.keys()]);
+
+  return [...contents].sort().map((content) => ({
+    content,
+    taggedJourneys: tagged.get(content) || 0,
+    selectedJourneys: selected.get(content) || 0,
+    completedSignups: signups.get(content) || 0,
+    checkoutJourneys: checkout.get(content) || 0,
+    localPurchases: localPurchases.get(content) || 0,
+  }));
+}
+
 export async function getCampaignFunnelReport(db, rawFilters, now = new Date()) {
   const filters = parseCampaignReportFilters(rawFilters, now);
-  const [eventSummary = {}] = await db.collection('funnel_events')
-    .aggregate(buildEventReportPipeline(filters)).toArray();
-  const [purchaseSummary = {}] = await db.collection('purchases')
-    .aggregate(buildPurchaseReportPipeline(filters)).toArray();
+  const [eventRows, purchaseRows, contentEventRows, contentPurchaseRows] = await Promise.all([
+    db.collection('funnel_events').aggregate(buildEventReportPipeline(filters)).toArray(),
+    db.collection('purchases').aggregate(buildPurchaseReportPipeline(filters)).toArray(),
+    db.collection('funnel_events').aggregate(buildContentEventReportPipeline(filters)).toArray(),
+    db.collection('purchases').aggregate(buildContentPurchaseReportPipeline(filters)).toArray(),
+  ]);
+  const [eventSummary = {}] = eventRows;
+  const [purchaseSummary = {}] = purchaseRows;
+  const [contentEventSummary = {}] = contentEventRows;
 
   const paying = purchaseSummary.paying?.[0] || {};
   const completed = purchaseSummary.completed?.[0] || {};
@@ -120,6 +189,7 @@ export async function getCampaignFunnelReport(db, rawFilters, now = new Date()) 
     grossByCurrency: currencyMap(money, 'gross'),
     refundsByCurrency: currencyMap(money, 'refunds'),
     netByCurrency: currencyMap(money, 'net'),
+    contentBreakdown: contentBreakdown(contentEventSummary, contentPurchaseRows),
     conversionPercentages: {
       landingToSelection: percentage(counts.selectedJourneys, counts.taggedJourneys),
       selectionToSignup: percentage(counts.completedSignups, counts.selectedJourneys),
